@@ -1,9 +1,11 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:app_frontend/Component/student_dashboard.dart';
+
 import 'register.dart';
-import 'forgot_password.dart';
-import 'auth_service.dart'; // ✅ correct path
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,187 +16,312 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  bool hidePassword = true;
-  bool isLoading = false; // ✅ ADDED
-
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  bool hidePassword = true;
+  bool isLoading = false;
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Card(
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  // 🔥 Attractive Popup Dialog
+  void showPopup({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color color,
+    bool success = false,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 64, color: color),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+              ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    const Text(
-                      "Login",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+
+                onPressed: () {
+                  Navigator.pop(context); // close popup
+
+                  if (success) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const StudentDashboard(),
                       ),
-                    ),
-                    const SizedBox(height: 25),
+                    );
+                  }
+                },
 
-                    buildTextField(
-                      controller: emailController,
-                      label: "Email",
-                      icon: Icons.email,
-                    ),
-
-                    buildTextField(
-                      controller: passwordController,
-                      label: "Password",
-                      icon: Icons.lock,
-                      isPassword: true,
-                    ),
-
-                    // 🔹 FORGOT PASSWORD
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ForgotPassword(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Forgot Password?",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.deepPurple,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 25),
-
-                    // 🔹 LOGIN BUTTON
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: isLoading ? null : loginUser,
-                        child: isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                "Login",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RegisterScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        "Don't have an account? Register",
-                        style: TextStyle(color: Colors.deepPurple),
-                      ),
-                    ),
-                  ],
+                child: const Text(
+                  "OK",
+                  style: TextStyle(
+                    color: Colors.white, // 👈 change text color here
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  // ================= LOGIN FUNCTION =================
-  Future<void> loginUser() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => isLoading = true);
+  Future<void> login() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      bool success = await AuthService.loginUser(
-        emailController.text,
-        passwordController.text,
+    setState(() => isLoading = true);
+
+    try {
+      final response = await http.post(
+        Uri.parse("http://localhost:8000/api/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": emailController.text.trim(),
+          "password": passwordController.text,
+        }),
       );
 
       setState(() => isLoading = false);
 
-      if (success) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Login Successful")));
+      final data = jsonDecode(response.body);
 
-        // Navigator.pushReplacement(...)
+      if (response.statusCode == 200) {
+        showPopup(
+          title: "Login Successful 🎉",
+          message: "Welcome back to Smart Queue System!",
+          icon: Icons.check_circle,
+          color: Colors.deepPurple,
+          success: true,
+        );
+      } else if (response.statusCode == 401) {
+        showPopup(
+          title: "Wrong Password",
+          message: "The password you entered is incorrect.",
+          icon: Icons.lock_outline,
+          color: Colors.deepPurple,
+        );
+      } else if (response.statusCode == 404) {
+        showPopup(
+          title: "Email Not Found",
+          message: "No account found with this email.",
+          icon: Icons.email_outlined,
+          color: Colors.deepPurple,
+        );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid email or password")),
+        showPopup(
+          title: "Login Failed",
+          message: data["message"] ?? "Something went wrong",
+          icon: Icons.error_outline,
+          color: Colors.red,
         );
       }
+    } catch (e) {
+      setState(() => isLoading = false);
+      showPopup(
+        title: "Error",
+        message: "Unable to connect to server.",
+        icon: Icons.wifi_off,
+        color: Colors.red,
+      );
     }
   }
 
-  // ================= TEXT FIELD =================
-  Widget buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool isPassword = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword ? hidePassword : false,
-        validator: (value) =>
-            value == null || value.isEmpty ? "Please enter $label" : null,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          suffixIcon: isPassword
-              ? IconButton(
-                  icon: Icon(
-                    hidePassword ? Icons.visibility_off : Icons.visibility,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const Icon(Icons.queue, size: 72, color: Colors.deepPurple),
+              const SizedBox(height: 12),
+              const Text(
+                "Smart Queue System",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 32),
+
+              Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Login",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          "Please sign in to continue",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Email
+                        TextFormField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: "Email",
+                            prefixIcon: Icon(Icons.email_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return "Enter email";
+                            }
+                            if (!RegExp(
+                              r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$",
+                            ).hasMatch(value)) {
+                              return "Enter valid email";
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Password
+                        TextFormField(
+                          controller: passwordController,
+                          obscureText: hidePassword,
+                          decoration: InputDecoration(
+                            labelText: "Password",
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                hidePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  hidePassword = !hidePassword;
+                                });
+                              },
+                            ),
+                            border: const OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return "Enter password";
+                            }
+                            if (value.length < 6) {
+                              return "Minimum 6 characters";
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Login Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: isLoading ? null : login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: isLoading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : const Text(
+                                    "LOGIN",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "Don’t have an account? ",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const RegisterScreen(),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                "Register",
+                                style: TextStyle(
+                                  color: Colors.deepPurple,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      hidePassword = !hidePassword;
-                    });
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

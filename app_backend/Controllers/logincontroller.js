@@ -1,44 +1,49 @@
-const User = require('../Models/registermodel'); // ✅ SAME MODEL AS REGISTER
+const User = require('../Models/registermodel');
 
-// LOGIN USER
+// LOGIN USER (STUDENT / ADMIN)
 const loginStudent = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validation
+    // 1️⃣ Validation
     if (!email || !password) {
       return res.status(400).json({
+        success: false,
         message: "Email and password are required",
       });
     }
 
-    // Find registered user
+    // 2️⃣ Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({
-        message: "Invalid email ",
+        success: false,
+        message: "Invalid email",
       });
     }
 
-    // Match password
+    // 3️⃣ Password check
     if (user.password !== password) {
       return res.status(401).json({
-        message: "Invalid  password",
+        success: false,
+        message: "Invalid password",
       });
     }
 
-    // SUCCESS
+    // 4️⃣ SUCCESS RESPONSE (IMPORTANT)
     return res.status(200).json({
+      success: true,
       message: "Login successful",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      role: user.role,          // ✅ admin / student
+      userId: user._id,         // optional
+      email: user.email,        // optional
     });
+
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 

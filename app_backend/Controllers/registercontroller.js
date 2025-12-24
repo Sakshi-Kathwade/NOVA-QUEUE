@@ -1,52 +1,70 @@
 const User = require('../Models/registermodel');
 
-// Add new student
+// REGISTER USER
 const addstudent = async (req, res) => {
   try {
     const { name, email, password, confirmPassword, role } = req.body;
 
-    // ✅ GOOGLE LOGIN CASE
-    if (password === "google_login") {
-      const existingUser = await User.findOne({ email });
-
-      if (existingUser) {
-        return res.status(200).json({ message: "Google login success", user: existingUser });
-      }
-
-      // If Google user not exists → create new user
-      const user = new User({
-        name,
-        email,
-        password: "google_login",
-        confirmPassword: "google_login",
-        role
+    // 1️⃣ Check empty fields
+    if (!name || !email || !password || !confirmPassword || !role) {
+      return res.status(400).json({
+        error: "All fields are required",
       });
-
-      await user.save();
-      return res.status(201).json({ message: "Google signup success", user });
     }
 
-    // ✅ NORMAL REGISTRATION
-    if (!name || !email || !password || !confirmPassword) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
+    // 2️⃣ Password match check
     if (password !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
+      return res.status(400).json({
+        error: "Passwords do not match",
+      });
     }
 
+    // 3️⃣ Strong password validation
+    const strongPasswordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    if (!strongPasswordRegex.test(password)) {
+      return res.status(400).json({
+        error:
+          "Create a strong password. It must contain at least 8 characters, including uppercase, lowercase, number, and special symbol.",
+      });
+    }
+
+    // 4️⃣ Check existing user
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
+      return res.status(400).json({
+        error: "Email already registered",
+      });
     }
 
-    const user = new User({ name, email, password, confirmPassword, role });
+    // 5️⃣ Save user
+    const user = new User({
+      name,
+      email,
+      password,
+      confirmPassword, // (later hash it)
+      role,
+    });
+
     await user.save();
 
-    res.status(201).json({ message: "Student added successfully", student: user });
+    // 6️⃣ Success response
+    return res.status(201).json({
+      message: "Registration successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      error: "Server error",
+      details: err.message,
+    });
   }
 };
 

@@ -1,8 +1,8 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../screen/auth_service.dart';
-import '../screen/google_auth_service.dart';
+import 'package:http/http.dart' as http;
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -14,247 +14,329 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  String selectedRole = 'Student';
-  bool hidePassword = true;
-  bool isLoading = false;
-
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: const Text("Register"),
-        backgroundColor: Colors.deepPurple,
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Card(
-          elevation: 8,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  const Text(
-                    "Create Account",
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
-                    ),
-                  ),
-                  const SizedBox(height: 25),
+  String selectedRole = "Student";
+  bool hidePassword = true;
+  bool hideConfirmPassword = true;
+  bool isLoading = false;
 
-                  buildTextField(
-                    controller: nameController,
-                    label: "Full Name",
-                    icon: Icons.person,
-                  ),
-
-                  buildTextField(
-                    controller: emailController,
-                    label: "Email",
-                    icon: Icons.email,
-                  ),
-
-                  buildTextField(
-                    controller: passwordController,
-                    label: "Password",
-                    icon: Icons.lock,
-                    isPassword: true,
-                  ),
-
-                  buildTextField(
-                    controller: confirmPasswordController,
-                    label: "Confirm Password",
-                    icon: Icons.lock_outline,
-                    isPassword: true,
-                  ),
-
-                  DropdownButtonFormField<String>(
-                    // ignore: deprecated_member_use
-                    value: selectedRole,
-                    decoration: InputDecoration(
-                      labelText: "Select Role",
-                      prefixIcon: const Icon(Icons.person_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Student',
-                        child: Text('Student'),
-                      ),
-                      DropdownMenuItem(value: 'Staff', child: Text('Staff')),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedRole = value!;
-                      });
-                    },
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : registerUser,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              "Register",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-                  const Text("OR"),
-
-                  const SizedBox(height: 15),
-
-                  socialButton(
-                    icon: Icons.g_mobiledata,
-                    text: "Sign up with Google",
-                    color: Colors.red,
-                    onTap: () async {
-                      bool success = await GoogleAuthService.signInWithGoogle();
-
-                      if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Google Login Successful"),
-                          ),
-                        );
-                        Navigator.pop(context);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Google Login Failed")),
-                        );
-                      }
-                    },
-                  ),
-                ],
+  // 🔥 POPUP
+  void showPopup({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color color,
+    bool success = false,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 64, color: color),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
               ),
             ),
-          ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (success) {
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text(
+                  "OK",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Future<void> registerUser() async {
-    if (_formKey.currentState!.validate()) {
-      if (passwordController.text != confirmPasswordController.text) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
-        return;
-      }
+  Future<void> register() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      setState(() => isLoading = true);
+    if (passwordController.text != confirmPasswordController.text) {
+      showPopup(
+        title: "Password Mismatch",
+        message: "Passwords do not match. Please enter the correct password.",
+        icon: Icons.lock_outline,
+        color: Colors.red,
+      );
+      return;
+    }
 
-      bool success = await AuthService.registerUser(
-        nameController.text,
-        emailController.text,
-        passwordController.text,
-        confirmPasswordController.text,
-        selectedRole,
+    setState(() => isLoading = true);
+
+    try {
+      final response = await http.post(
+        Uri.parse("http://localhost:8000/api/Register"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": nameController.text.trim(),
+          "email": emailController.text.trim(),
+          "password": passwordController.text,
+          "confirmPassword": confirmPasswordController.text,
+          "role": selectedRole.toLowerCase(),
+        }),
       );
 
       setState(() => isLoading = false);
 
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registration Successful")),
+      if (response.statusCode == 201) {
+        showPopup(
+          title: "Registration Successful 🎉",
+          message:
+              "Welcome to Smart Queue System!\nYour account has been created successfully.",
+          icon: Icons.check_circle,
+          color: Colors.deepPurple,
+          success: true,
         );
-        Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Registration Failed")));
+        final data = jsonDecode(response.body);
+        showPopup(
+          title: "Registration Failed",
+          message: data["error"] ?? "Something went wrong",
+          icon: Icons.error_outline,
+          color: Colors.red,
+        );
       }
+    } catch (e) {
+      setState(() => isLoading = false);
+      showPopup(
+        title: "Server Error",
+        message: "Unable to connect to server.",
+        icon: Icons.wifi_off,
+        color: Colors.red,
+      );
     }
   }
 
-  Widget buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool isPassword = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword ? hidePassword : false,
-        validator: (value) =>
-            value == null || value.isEmpty ? "Please enter $label" : null,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          suffixIcon: isPassword
-              ? IconButton(
-                  icon: Icon(
-                    hidePassword ? Icons.visibility_off : Icons.visibility,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      hidePassword = !hidePassword;
-                    });
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(
+        title: const Text("Register"),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple,
       ),
-    );
-  }
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Card(
+            elevation: 6,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Create Account",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      "Fill details to get started",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 24),
 
-  Widget socialButton({
-    required IconData icon,
-    required String text,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: OutlinedButton.icon(
-        icon: Icon(icon, color: color, size: 28),
-        label: Text(
-          text,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: color,
-            fontSize: 16,
+                    TextFormField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: "Full Name",
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) => v!.isEmpty ? "Enter your name" : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: "Email",
+                        prefixIcon: Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return "Enter email";
+                        if (!RegExp(
+                          r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$",
+                        ).hasMatch(v)) {
+                          return "Enter valid email";
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField<String>(
+                      // ignore: deprecated_member_use
+                      value: selectedRole,
+                      decoration: const InputDecoration(
+                        labelText: "Role",
+                        prefixIcon: Icon(Icons.account_circle_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: "Student",
+                          child: Text("Student"),
+                        ),
+                        DropdownMenuItem(value: "Staff", child: Text("Staff")),
+                      ],
+                      onChanged: (v) => setState(() => selectedRole = v!),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: hidePassword,
+                      decoration: InputDecoration(
+                        labelText: "Password",
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            hidePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () =>
+                              setState(() => hidePassword = !hidePassword),
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (v) =>
+                          v!.length < 6 ? "Minimum 6 characters" : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: confirmPasswordController,
+                      obscureText: hideConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: "Confirm Password",
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            hideConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => hideConfirmPassword = !hideConfirmPassword,
+                          ),
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (v) => v!.isEmpty ? "Confirm password" : null,
+                    ),
+                    const SizedBox(height: 24),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : register,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                        ),
+                        child: isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : const Text(
+                                "REGISTER",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    OutlinedButton.icon(
+                      onPressed: () {},
+                      icon: Image.network(
+                        "https://img.icons8.com/color/48/google-logo.png",
+                        height: 24,
+                      ),
+                      label: const Text("Sign up with Google"),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Already have an account? "),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Text(
+                            "Login",
+                            style: TextStyle(
+                              color: Colors.deepPurple,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
-        onPressed: onTap,
       ),
     );
   }

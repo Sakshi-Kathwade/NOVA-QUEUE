@@ -5,7 +5,11 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     confirmPassword: { type: String, required: true },
-    role: { type: String, default: 'Student' },
+     role: {
+    type: String,
+    enum: ['staff', 'student'],
+    default: '',
+  },
 }, { timestamps: true });
 
 // Export the model

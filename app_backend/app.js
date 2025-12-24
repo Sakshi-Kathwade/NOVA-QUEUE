@@ -4,13 +4,11 @@ const cors = require('cors');
 
 const app = express();
 
-// Middleware
+//middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// Connect to MongoDB
-// Fixed code (for Mongoose v7+)
 mongoose.connect("mongodb://localhost:27017/smart_queue_management_application")
 .then(() => console.log("Database connected"))
 .catch((err) => console.log("DB connection error:", err));
