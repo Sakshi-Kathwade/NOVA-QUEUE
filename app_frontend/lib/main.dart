@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screen/login.dart';
+import 'screen/home.dart';
 
 void main() async {
   runApp(const MyApp());
@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Smart Queue Management System',
-      home: const LoginScreen(),
+      home: const HomeScreen(),
     );
   }
 }

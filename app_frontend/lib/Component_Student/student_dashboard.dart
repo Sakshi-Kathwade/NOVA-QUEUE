@@ -58,13 +58,12 @@ class StudentDashboard extends StatelessWidget {
         // 🔔 Right-side actions (optional)
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
+            icon: const Icon(Icons.notifications_none, color: Colors.white),
             onPressed: () {},
           ),
           const SizedBox(width: 8),
         ],
       ),
-
       // 🧾 BODY (Empty for now)
       body: Center(
         child: Text(

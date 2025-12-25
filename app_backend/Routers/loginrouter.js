@@ -5,4 +5,5 @@ const { loginStudent } = require('../Controllers/logincontroller');
 // POST /api/login
 router.post('/login', loginStudent);
 
+
 module.exports = router;

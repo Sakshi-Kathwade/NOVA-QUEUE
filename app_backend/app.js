@@ -27,6 +27,8 @@ app.use('/api', register); // All routes start with /api
 const login = require('./Routers/loginrouter');
 app.use('/api', login);
 
+const adminLogin= require('./Routers/adminrouter');
+app.use('/api', adminLogin);
 
 // Start server
 const PORT = 8000;

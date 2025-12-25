@@ -1,10 +1,11 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'dart:convert';
+import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:app_frontend/Component/student_dashboard.dart';
 
+import 'package:app_frontend/Component_Student/student_dashboard.dart';
+// ignore: duplicate_import
+import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
 import 'register.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -29,13 +30,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // 🔥 Attractive Popup Dialog
+  // 🔥 Popup Dialog
   void showPopup({
     required String title,
     required String message,
     required IconData icon,
     required Color color,
-    bool success = false,
+    required VoidCallback onOk,
   }) {
     showDialog(
       context: context,
@@ -49,50 +50,24 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             Text(
               title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.deepPurple,
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14),
-            ),
+            Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: color,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  foregroundColor: Colors.white,
                 ),
-
-                onPressed: () {
-                  Navigator.pop(context); // close popup
-
-                  if (success) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const StudentDashboard(),
-                      ),
-                    );
-                  }
-                },
-
-                child: const Text(
-                  "OK",
-                  style: TextStyle(
-                    color: Colors.white, // 👈 change text color here
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
+                onPressed: onOk,
+                child: const Text("OK"),
               ),
             ),
           ],
@@ -101,14 +76,23 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // 🔐 Login Function (STUDENT / ADMIN)
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
 
     try {
+      // 🔥 ROLE BASED API URL
+      final bool isAdmin =
+          emailController.text.trim() == "admin@smartqueue.com";
+
+      final String apiUrl = isAdmin
+          ? "http://localhost:8000/api/adminLogin"
+          : "http://localhost:8000/api/login";
+
       final response = await http.post(
-        Uri.parse("http://localhost:8000/api/login"),
+        Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": emailController.text.trim(),
@@ -121,26 +105,44 @@ class _LoginScreenState extends State<LoginScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        String role = data['role'];
+
         showPopup(
           title: "Login Successful 🎉",
-          message: "Welcome back to Smart Queue System!",
+          message: "Welcome to Smart Queue System",
           icon: Icons.check_circle,
           color: Colors.deepPurple,
-          success: true,
-        );
-      } else if (response.statusCode == 401) {
-        showPopup(
-          title: "Wrong Password",
-          message: "The password you entered is incorrect.",
-          icon: Icons.lock_outline,
-          color: Colors.deepPurple,
+          onOk: () {
+            Navigator.pop(context);
+
+            if (role == "student") {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const StudentDashboard()),
+              );
+            } else if (role == "admin") {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => AdminDashboard()),
+              );
+            }
+          },
         );
       } else if (response.statusCode == 404) {
         showPopup(
           title: "Email Not Found",
           message: "No account found with this email.",
           icon: Icons.email_outlined,
-          color: Colors.deepPurple,
+          color: Colors.red,
+          onOk: () => Navigator.pop(context),
+        );
+      } else if (response.statusCode == 401) {
+        showPopup(
+          title: "Wrong Password",
+          message: "The password you entered is incorrect.",
+          icon: Icons.lock_outline,
+          color: Colors.red,
+          onOk: () => Navigator.pop(context),
         );
       } else {
         showPopup(
@@ -148,19 +150,22 @@ class _LoginScreenState extends State<LoginScreen> {
           message: data["message"] ?? "Something went wrong",
           icon: Icons.error_outline,
           color: Colors.red,
+          onOk: () => Navigator.pop(context),
         );
       }
     } catch (e) {
       setState(() => isLoading = false);
       showPopup(
-        title: "Error",
+        title: "Server Error",
         message: "Unable to connect to server.",
         icon: Icons.wifi_off,
         color: Colors.red,
+        onOk: () => Navigator.pop(context),
       );
     }
   }
 
+  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,37 +202,20 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          "Please sign in to continue",
-                          style: TextStyle(color: Colors.grey),
-                        ),
                         const SizedBox(height: 24),
 
-                        // Email
                         TextFormField(
                           controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
                             labelText: "Email",
                             prefixIcon: Icon(Icons.email_outlined),
                             border: OutlineInputBorder(),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return "Enter email";
-                            }
-                            if (!RegExp(
-                              r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$",
-                            ).hasMatch(value)) {
-                              return "Enter valid email";
-                            }
-                            return null;
-                          },
+                          validator: (v) =>
+                              v == null || v.isEmpty ? "Enter email" : null,
                         ),
                         const SizedBox(height: 16),
 
-                        // Password
                         TextFormField(
                           controller: passwordController,
                           obscureText: hidePassword,
@@ -240,27 +228,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ? Icons.visibility_off
                                     : Icons.visibility,
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  hidePassword = !hidePassword;
-                                });
-                              },
+                              onPressed: () =>
+                                  setState(() => hidePassword = !hidePassword),
                             ),
                             border: const OutlineInputBorder(),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return "Enter password";
-                            }
-                            if (value.length < 6) {
-                              return "Minimum 6 characters";
-                            }
-                            return null;
-                          },
+                          validator: (v) => v == null || v.length < 6
+                              ? "Minimum 6 characters"
+                              : null,
                         ),
                         const SizedBox(height: 24),
 
-                        // Login Button
                         SizedBox(
                           width: double.infinity,
                           height: 48,
@@ -268,9 +246,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: isLoading ? null : login,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
                             ),
                             child: isLoading
                                 ? const CircularProgressIndicator(
@@ -278,24 +253,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                   )
                                 : const Text(
                                     "LOGIN",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
+                                    style: TextStyle(color: Colors.white),
                                   ),
                           ),
                         ),
-
                         const SizedBox(height: 16),
 
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text(
-                              "Don’t have an account? ",
-                              style: TextStyle(color: Colors.grey),
-                            ),
+                            const Text("Don’t have an account? "),
                             GestureDetector(
                               onTap: () {
                                 Navigator.push(

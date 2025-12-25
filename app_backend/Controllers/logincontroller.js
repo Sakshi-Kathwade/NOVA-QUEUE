@@ -16,7 +16,7 @@ const loginStudent = async (req, res) => {
     // 2️⃣ Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({
+      return res.status(404).json({
         success: false,
         message: "Invalid email",
       });
@@ -46,5 +46,8 @@ const loginStudent = async (req, res) => {
     });
   }
 };
+
+
+
 
 module.exports = { loginStudent };
