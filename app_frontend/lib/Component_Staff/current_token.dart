@@ -10,7 +10,8 @@ class CurrentTokenScreen extends StatelessWidget {
     double progress = completed / total;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       appBar: AppBar(
         title: const Text("Current Token"),
         backgroundColor: Colors.deepPurple,

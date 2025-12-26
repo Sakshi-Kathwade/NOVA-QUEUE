@@ -1,7 +1,7 @@
+import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
 import 'package:flutter/material.dart';
-
-// ✅ Global Dark Mode notifier
-ValueNotifier<bool> isDarkMode = ValueNotifier(false);
+import '../main.dart' show isDarkMode;
+import 'theme_pref.dart';
 
 class AdminSettingScreen extends StatefulWidget {
   const AdminSettingScreen({super.key});
@@ -13,7 +13,6 @@ class AdminSettingScreen extends StatefulWidget {
 class _AdminSettingScreenState extends State<AdminSettingScreen> {
   bool notificationsEnabled = true;
 
-  // 🔹 Change Password Dialog
   void changePasswordDialog() {
     showDialog(
       context: context,
@@ -42,12 +41,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             child: const Text("Cancel"),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Password changed successfully")),
-              );
-            },
+            onPressed: () => Navigator.pop(context),
             child: const Text("Update"),
           ),
         ],
@@ -55,7 +49,6 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     );
   }
 
-  // 🔹 Logout Confirmation
   void logoutDialog() {
     showDialog(
       context: context,
@@ -69,13 +62,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.pop(context);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Logged out successfully")),
-              );
-            },
+            onPressed: () => Navigator.pop(context),
             child: const Text("Logout"),
           ),
         ],
@@ -83,7 +70,6 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     );
   }
 
-  // 🔹 Clear Cache (Demo)
   void clearCache() {
     ScaffoldMessenger.of(
       context,
@@ -94,21 +80,30 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => AdminDashboard()),
+            );
+          },
+        ),
         title: const Text("Settings"),
         backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
         centerTitle: true,
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 🔹 Account Section
           _sectionTitle("Account"),
           _infoTile("Admin Email", "admin@college.com"),
           _infoTile("Role", "Administrator"),
 
           const SizedBox(height: 16),
 
-          // 🔹 Security Section
           _sectionTitle("Security"),
           _settingTile(
             icon: Icons.lock,
@@ -118,56 +113,43 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
 
           const SizedBox(height: 16),
 
-          // 🔹 Preferences Section
           _sectionTitle("Preferences"),
-          ValueListenableBuilder(
+
+          ValueListenableBuilder<bool>(
             valueListenable: isDarkMode,
-            builder: (context, bool value, _) {
+            builder: (context, value, _) {
               return SwitchListTile(
                 value: value,
                 title: const Text("Dark Mode"),
                 secondary: const Icon(Icons.dark_mode),
                 onChanged: (val) {
                   isDarkMode.value = val;
+                  ThemePref.save(val);
                 },
               );
             },
           ),
+
           SwitchListTile(
             value: notificationsEnabled,
             title: const Text("Notifications"),
             secondary: const Icon(Icons.notifications),
             onChanged: (value) {
-              setState(() {
-                notificationsEnabled = value;
-              });
+              setState(() => notificationsEnabled = value);
             },
           ),
 
           const SizedBox(height: 16),
 
-          // 🔹 System Section
           _sectionTitle("System"),
           _settingTile(
             icon: Icons.delete,
             title: "Clear Cache",
             onTap: clearCache,
           ),
-          _settingTile(
-            icon: Icons.help_outline,
-            title: "Help & Support",
-            onTap: () {},
-          ),
-
-          const SizedBox(height: 16),
-
-          // 🔹 App Info
-          _sectionTitle("About"),
-          _infoTile("App Version", "1.0.0"),
 
           const SizedBox(height: 30),
 
-          // 🔹 Logout Button
           ElevatedButton.icon(
             onPressed: logoutDialog,
             icon: const Icon(Icons.logout),
@@ -182,18 +164,13 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     );
   }
 
-  // 🔹 Section Title Widget
   Widget _sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
     );
   }
 
-  // 🔹 Setting Tile Widget
   Widget _settingTile({
     required IconData icon,
     required String title,
@@ -201,7 +178,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
   }) {
     return Card(
       child: ListTile(
-        leading: Icon(icon, color: Colors.deepPurple),
+        leading: Icon(icon),
         title: Text(title),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
@@ -209,7 +186,6 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     );
   }
 
-  // 🔹 Info Tile Widget
   Widget _infoTile(String title, String value) {
     return Card(
       child: ListTile(

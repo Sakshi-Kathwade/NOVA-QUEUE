@@ -8,7 +8,8 @@ class CompletedTodayScreen extends StatelessWidget {
     final completedCount = 38;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       appBar: AppBar(
         title: const Text("Completed Today"),
         backgroundColor: Colors.deepPurple,

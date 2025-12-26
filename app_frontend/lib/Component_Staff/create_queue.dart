@@ -20,7 +20,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text("Create Queue"),
         backgroundColor: Colors.deepPurple,

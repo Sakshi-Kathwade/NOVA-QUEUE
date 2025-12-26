@@ -53,6 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
+
                 color: Colors.deepPurple,
               ),
             ),
@@ -169,7 +170,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

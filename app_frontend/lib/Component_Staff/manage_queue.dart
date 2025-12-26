@@ -68,6 +68,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       appBar: AppBar(
         title: const Text("Manage Queue"),
         backgroundColor: Colors.deepPurple,
+
         foregroundColor: Colors.white,
         actions: [
           IconButton(
