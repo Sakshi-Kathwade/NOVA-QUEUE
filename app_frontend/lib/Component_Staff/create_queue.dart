@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class CreateQueueScreen extends StatefulWidget {
   const CreateQueueScreen({super.key});
@@ -16,6 +18,79 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
   String department = "Admission";
   TimeOfDay? startTime;
   TimeOfDay? endTime;
+
+  bool isLoading = false;
+
+  // 🔹 API CALL
+  Future<void> createQueueApi() async {
+    if (startTime == null || endTime == null) {
+      _showError("Please select start and end time");
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final response = await http.post(
+        Uri.parse("http://localhost:8000/api/createqueue"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "queueName": queueName.text.trim(),
+          "department": department,
+          "maxStudents": int.parse(maxStudents.text),
+          "startTime": startTime!.format(context),
+          "endTime": endTime!.format(context),
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        _showSuccessPopup();
+        _formKey.currentState!.reset();
+        queueName.clear();
+        maxStudents.clear();
+        startTime = null;
+        endTime = null;
+        setState(() {});
+      } else {
+        _showError(data["message"] ?? "Failed to create queue");
+      }
+    } catch (e) {
+      _showError("Server not reachable");
+    }
+
+    setState(() => isLoading = false);
+  }
+
+  // 🔹 SUCCESS POPUP
+  void _showSuccessPopup() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
+        content: const Text(
+          "Queue Created Successfully 🎉",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 ERROR SNACKBAR
+  void _showError(String msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +129,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
 
                   // Department
                   DropdownButtonFormField(
-                    // ignore: deprecated_member_use
-                    value: department,
+                    initialValue: department,
                     decoration: const InputDecoration(
                       labelText: "Department",
                       prefixIcon: Icon(Icons.apartment),
@@ -69,9 +143,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                       DropdownMenuItem(value: "Exam", child: Text("Exam")),
                       DropdownMenuItem(value: "Fee", child: Text("Fee")),
                     ],
-                    onChanged: (value) {
-                      setState(() => department = value!);
-                    },
+                    onChanged: (value) => setState(() => department = value!),
                   ),
                   const SizedBox(height: 16),
 
@@ -89,7 +161,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Start & End Time
+                  // Time Pickers
                   Row(
                     children: [
                       Expanded(
@@ -121,7 +193,6 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 24),
 
                   // Create Button
@@ -129,21 +200,28 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.add),
-                      label: const Text("Create Queue"),
+                      icon: isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.add),
+                      label: Text(isLoading ? "Creating..." : "Create Queue"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Queue Created Successfully"),
-                            ),
-                          );
-                        }
-                      },
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              if (_formKey.currentState!.validate()) {
+                                createQueueApi();
+                              }
+                            },
                     ),
                   ),
                 ],
@@ -155,7 +233,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
     );
   }
 
-  // -------- TIME PICKER UI --------
+  // 🔹 TIME PICKER WIDGET
   Widget _timePicker({
     required String label,
     required TimeOfDay? time,

@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const registerController = require('../Controllers/registercontroller');
 
-// POST /api/register
-router.post('/register', registerController.addstudent);
+// Import controller correctly
+const { addstudent, deleteStudent } = require('../Controllers/registercontroller');
+
+// REGISTER USER
+router.post('/register', addstudent);
+
+// DELETE USER BY ID
+router.delete('/logout/:id', deleteStudent);
 
 module.exports = router;

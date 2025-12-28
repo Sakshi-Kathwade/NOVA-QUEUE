@@ -1,0 +1,16 @@
+const express = require("express");
+const router = express.Router();
+
+const { createQueue } = require("../controllers/create_queue_controller");
+const { getAllQueues } = require("../Controllers/create_queue_controller"); 
+const { updateQueueStatus } = require("../Controllers/create_queue_controller");
+
+
+// Routes
+
+router.post("/createqueue", createQueue);
+router.get("/queue", getAllQueues);    
+router.put("/queuestatus/:id", updateQueueStatus);
+  
+
+module.exports = router;

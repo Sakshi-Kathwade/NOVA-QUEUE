@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
             if (role == "student") {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const StudentDashboard()),
+                MaterialPageRoute(builder: (_) => const QueueStatusScreen()),
               );
             } else if (role == "admin") {
               Navigator.pushReplacement(

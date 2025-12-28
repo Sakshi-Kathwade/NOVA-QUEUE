@@ -68,4 +68,45 @@ const addstudent = async (req, res) => {
   }
 };
 
-module.exports = { addstudent };
+const deleteStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1️⃣ Check ID
+    if (!id) {
+      return res.status(400).json({
+        error: "User ID is required",
+      });
+    }
+
+    // 2️⃣ Find & Delete User
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    // 3️⃣ User not found
+    if (!deletedUser) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
+
+    // 4️⃣ Success response
+    return res.status(200).json({
+      message: "User deleted successfully",
+      user: {
+        id: deletedUser._id,
+        name: deletedUser.name,
+        email: deletedUser.email,
+        role: deletedUser.role,
+      },
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      error: "Server error",
+      details: err.message,
+    });
+  }
+};
+
+
+module.exports = { addstudent ,deleteStudent};

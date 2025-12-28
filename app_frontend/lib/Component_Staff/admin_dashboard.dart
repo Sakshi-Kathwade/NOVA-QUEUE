@@ -9,6 +9,8 @@ import 'manage_queue.dart';
 import 'current_token.dart';
 import 'report.dart';
 import 'admin_setting.dart';
+import 'waiting_card.dart';
+import 'queue_preview.dart';
 
 class AdminDashboard extends StatelessWidget {
   AdminDashboard({super.key});
@@ -24,7 +26,6 @@ class AdminDashboard extends StatelessWidget {
       // ---------------- APP BAR ----------------
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
-
         elevation: 2,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.white),
@@ -36,7 +37,7 @@ class AdminDashboard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
             Text(
-              "SmartQueue – Staff",
+              "QueueNova",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -52,11 +53,19 @@ class AdminDashboard extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.white),
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Colors.white,
+              size: 30,
+            ),
             onPressed: () {},
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.account_circle, color: Colors.white),
+            icon: const Icon(
+              Icons.account_circle,
+              size: 35,
+              color: Colors.white,
+            ),
             onSelected: (value) {
               if (value == 'logout') {
                 Navigator.pop(context);
@@ -66,17 +75,42 @@ class AdminDashboard extends StatelessWidget {
               PopupMenuItem(
                 value: 'profile',
                 child: ListTile(
-                  leading: Icon(Icons.person),
-                  title: Text("John Doe"),
-                  subtitle: Text("Staff"),
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.deepPurple,
+                    child: Icon(Icons.person, color: Colors.white),
+                  ),
+                  title: Text(
+                    "John Doe",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text("Staff Member"),
+                  trailing: Icon(Icons.edit, size: 18),
                 ),
               ),
+
+              PopupMenuItem(
+                value: 'edit_picture',
+                child: ListTile(
+                  leading: Icon(Icons.camera_alt, color: Colors.deepPurple),
+                  title: Text("Edit Profile Picture"),
+                ),
+              ),
+
+              PopupMenuItem(
+                value: 'edit_profile',
+                child: ListTile(
+                  leading: Icon(Icons.edit, color: Colors.deepPurple),
+                  title: Text("Edit Profile"),
+                ),
+              ),
+
               PopupMenuDivider(),
+
               PopupMenuItem(
                 value: 'logout',
                 child: ListTile(
-                  leading: Icon(Icons.logout),
-                  title: Text("Logout"),
+                  leading: Icon(Icons.logout, color: Colors.red),
+                  title: Text("Logout", style: TextStyle(color: Colors.red)),
                 ),
               ),
             ],
@@ -88,28 +122,58 @@ class AdminDashboard extends StatelessWidget {
       drawer: Drawer(
         child: Column(
           children: [
+            // ---------- HEADER ----------
             DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.deepPurple),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person,
-                      size: 30,
-                      color: Colors.deepPurple,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF4A148C), // Dark Purple
+                    Color(0xFF7B1FA2), // Medium Purple
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Profile Avatar
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.person,
+                        size: 36,
+                        color: Colors.deepPurple,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 12),
-                  Text(
-                    "John Doe",
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                  Text(
-                    "Staff Member",
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  const SizedBox(width: 14),
+
+                  // Name + Role
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "John Doe",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Staff Member",
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -146,8 +210,6 @@ class AdminDashboard extends StatelessWidget {
               "Settings",
               screen: AdminSettingScreen(),
             ),
-
-            _drawerItem(context, Icons.logout, "Logout"),
           ],
         ),
       ),
@@ -192,6 +254,31 @@ class AdminDashboard extends StatelessWidget {
               icon: Icons.check_circle,
               color: Colors.purple,
               navigateTo: CompletedTodayScreen(),
+            ),
+            _dashboardCard(
+              context: context,
+              title: "Student Live Queue",
+              value: "38",
+              icon: Icons.people_alt,
+              color: Colors.deepPurple,
+              navigateTo: LiveQueuePreviewScreen(
+                queueData: [
+                  {"name": "Student 1", "token": "A-01"},
+                  {"name": "Student 2", "token": "A-02"},
+                  {"name": "Student 3", "token": "A-03"},
+                ],
+              ),
+            ),
+            _dashboardCard(
+              context: context,
+              title: "Estimated waiting time",
+              value: "38",
+              icon: Icons.people_alt,
+              color: Colors.deepPurple,
+              navigateTo: WaitingCardScreen(
+                remainingStudents: 5,
+                avgTimePerStudent: 5,
+              ),
             ),
           ],
         ),

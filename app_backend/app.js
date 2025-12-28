@@ -21,14 +21,27 @@ app.get('/', (req, res) => {
 });
 
 // Routes
-const register = require('./Routers/registerrouter'); // Correct path based on your structure
-app.use('/api', register); // All routes start with /api
+const registerRouter = require('./Routers/registerrouter');
+
+app.use('/api', registerRouter);
+
 
 const login = require('./Routers/loginrouter');
 app.use('/api', login);
 
 const adminLogin= require('./Routers/adminrouter');
 app.use('/api', adminLogin);
+
+const createqueue = require('./Routers/create_queue_router');
+app.use('/api', createqueue);
+
+const queue = require('./Routers/create_queue_router'); 
+app.use('/api', queue);
+
+const queuestatus = require('./Routers/create_queue_router');
+app.use('/api', queuestatus);   
+
+
 
 // Start server
 const PORT = 8000;
