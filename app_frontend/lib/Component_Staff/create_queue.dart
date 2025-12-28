@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -21,10 +23,18 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
 
   bool isLoading = false;
 
-  // 🔹 API CALL
+  // 🔹 Convert TimeOfDay → DateTime
+  DateTime _convertToDateTime(TimeOfDay time) {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, time.hour, time.minute);
+  }
+
+  // 🔹 CREATE QUEUE API
   Future<void> createQueueApi() async {
     if (startTime == null || endTime == null) {
-      _showError("Please select start and end time");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Select start & end time")));
       return;
     }
 
@@ -38,15 +48,16 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
           "queueName": queueName.text.trim(),
           "department": department,
           "maxStudents": int.parse(maxStudents.text),
-          "startTime": startTime!.format(context),
-          "endTime": endTime!.format(context),
+          "startTime": _convertToDateTime(startTime!).toIso8601String(),
+          "endTime": _convertToDateTime(endTime!).toIso8601String(),
         }),
       );
 
-      final data = jsonDecode(response.body);
-
       if (response.statusCode == 201) {
-        _showSuccessPopup();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Queue Created Successfully")),
+        );
+
         _formKey.currentState!.reset();
         queueName.clear();
         maxStudents.clear();
@@ -54,86 +65,73 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
         endTime = null;
         setState(() {});
       } else {
-        _showError(data["message"] ?? "Failed to create queue");
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Failed to create queue")));
       }
     } catch (e) {
-      _showError("Server not reachable");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Server Error")));
     }
 
     setState(() => isLoading = false);
   }
 
-  // 🔹 SUCCESS POPUP
-  void _showSuccessPopup() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-        content: const Text(
-          "Queue Created Successfully 🎉",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 🔹 ERROR SNACKBAR
-  void _showError(String msg) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFFF4F6FA),
       appBar: AppBar(
-        title: const Text("Create Queue"),
+        title: const Text(
+          "Create Queue",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Card(
-          elevation: 5,
+          elevation: 8,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Form(
               key: _formKey,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text(
+                    "Queue Details",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
                   // Queue Name
                   TextFormField(
                     controller: queueName,
-                    decoration: const InputDecoration(
-                      labelText: "Queue Name",
-                      prefixIcon: Icon(Icons.queue),
-                      border: OutlineInputBorder(),
+                    decoration: _inputDecoration(
+                      label: "Queue Name",
+                      icon: Icons.queue,
                     ),
-                    validator: (v) =>
-                        v == null || v.isEmpty ? "Enter queue name" : null,
+                    validator: (v) => v!.isEmpty ? "Required" : null,
                   ),
                   const SizedBox(height: 16),
 
                   // Department
                   DropdownButtonFormField(
-                    initialValue: department,
-                    decoration: const InputDecoration(
-                      labelText: "Department",
-                      prefixIcon: Icon(Icons.apartment),
-                      border: OutlineInputBorder(),
+                    value: department,
+                    decoration: _inputDecoration(
+                      label: "Department",
+                      icon: Icons.apartment,
                     ),
                     items: const [
                       DropdownMenuItem(
@@ -143,7 +141,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                       DropdownMenuItem(value: "Exam", child: Text("Exam")),
                       DropdownMenuItem(value: "Fee", child: Text("Fee")),
                     ],
-                    onChanged: (value) => setState(() => department = value!),
+                    onChanged: (v) => department = v!,
                   ),
                   const SizedBox(height: 16),
 
@@ -151,21 +149,19 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                   TextFormField(
                     controller: maxStudents,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: "Max Students",
-                      prefixIcon: Icon(Icons.people),
-                      border: OutlineInputBorder(),
+                    decoration: _inputDecoration(
+                      label: "Max Students",
+                      icon: Icons.people,
                     ),
-                    validator: (v) =>
-                        v == null || v.isEmpty ? "Enter max students" : null,
+                    validator: (v) => v!.isEmpty ? "Required" : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // Time Pickers
                   Row(
                     children: [
                       Expanded(
-                        child: _timePicker(
+                        child: _timeButton(
                           label: "Start Time",
                           time: startTime,
                           onTap: () async {
@@ -179,7 +175,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _timePicker(
+                        child: _timeButton(
                           label: "End Time",
                           time: endTime,
                           onTap: () async {
@@ -193,27 +189,18 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 30),
 
-                  // Create Button
+                  // Submit Button
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      icon: isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add),
-                      label: Text(isLoading ? "Creating..." : "Create Queue"),
+                    height: 50,
+                    child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
-                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       onPressed: isLoading
                           ? null
@@ -222,6 +209,16 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                                 createQueueApi();
                               }
                             },
+                      child: isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Create Queue",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -233,20 +230,45 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
     );
   }
 
-  // 🔹 TIME PICKER WIDGET
-  Widget _timePicker({
+  // 🔹 INPUT DECORATION
+  InputDecoration _inputDecoration({
+    required String label,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+    );
+  }
+
+  // 🔹 TIME BUTTON
+  Widget _timeButton({
     required String label,
     required TimeOfDay? time,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.grey.shade100,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Colors.grey),
         ),
-        child: Text(time == null ? "Select" : time.format(context)),
+      ),
+      onPressed: onTap,
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 4),
+          Text(
+            time == null ? "Select Time" : time.format(context),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }

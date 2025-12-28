@@ -46,7 +46,7 @@ class AdminDashboard extends StatelessWidget {
             ),
             SizedBox(height: 2),
             Text(
-              "Counter 2 – Admin Office",
+              "Counter 1 – Admin Office",
               style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],

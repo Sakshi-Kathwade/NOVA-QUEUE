@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, duplicate_ignore
+// ignore_for_file: deprecated_member_use
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -61,9 +61,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       );
 
       if (response.statusCode == 200) {
-        setState(() {
-          isActive = value;
-        });
+        setState(() => isActive = value);
 
         _showCenterPopup(
           value ? "Queue Activated" : "Queue Deactivated",
@@ -80,45 +78,33 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   void _showCenterPopup(String message, IconData icon, Color color) {
     showDialog(
       context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 36,
-                // ignore: deprecated_member_use
-                backgroundColor: color.withOpacity(0.15),
-                child: Icon(icon, size: 40, color: color),
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 36,
+              backgroundColor: color.withOpacity(0.15),
+              child: Icon(icon, size: 40, color: color),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
               ),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text("OK"),
-              ),
-            ],
-          ),
-        );
-      },
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -129,10 +115,6 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         title: const Text("Queue Status"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -142,36 +124,109 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
+                  // ✅ PROFESSIONAL QUEUE + STATUS CARD
                   Card(
-                    elevation: 6,
+                    elevation: 8,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(20),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            isActive ? Icons.lock_open : Icons.lock_outline,
-                            color: isActive ? Colors.green : Colors.red,
+                          // 🔹 Queue Name + Status Badge
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  queueData?["queueName"] ?? "Queue Name",
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? Colors.green.withOpacity(0.15)
+                                      : Colors.red.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  isActive ? "ACTIVE" : "INACTIVE",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive ? Colors.green : Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            isActive ? "Status: Active" : "Status: Inactive",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+
+                          const SizedBox(height: 16),
+
+                          // 🔹 Time & Students
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _infoItem(
+                                Icons.access_time,
+                                "Start",
+                                queueData?["startTime"] ?? "--",
+                              ),
+                              _infoItem(
+                                Icons.timer_off,
+                                "End",
+                                queueData?["endTime"] ?? "--",
+                              ),
+                              _infoItem(
+                                Icons.people,
+                                "Students",
+                                "${queueData?["totalStudents"] ?? 0}",
+                              ),
+                            ],
                           ),
-                          const Spacer(),
-                          Switch(value: isActive, onChanged: updateQueueStatus),
+
+                          const Divider(height: 30),
+
+                          // 🔹 Toggle Status
+                          Row(
+                            children: [
+                              Icon(
+                                isActive ? Icons.lock_open : Icons.lock_outline,
+                                color: isActive ? Colors.green : Colors.red,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                isActive
+                                    ? "Queue is Active"
+                                    : "Queue is Inactive",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Spacer(),
+                              Switch(
+                                value: isActive,
+                                onChanged: updateQueueStatus,
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
+                  // 🔹 GRID INFO (UNCHANGED)
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -210,9 +265,24 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             ),
     );
   }
+
+  // 🔹 Small Info Item Widget
+  Widget _infoItem(IconData icon, String label, String value) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.deepPurple),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+      ],
+    );
+  }
 }
 
-// 🔹 INFO CARD (OUTSIDE STATE CLASS)
+// 🔹 INFO CARD
 class InfoCard extends StatelessWidget {
   final String title;
   final String value;
