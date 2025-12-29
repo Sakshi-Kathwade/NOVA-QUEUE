@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:app_frontend/Component_Student/student_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import 'join_queue.dart';
 import 'my_current_queue.dart';
 import 'queue_history.dart';
@@ -35,7 +37,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
 
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && data["data"].isNotEmpty) {
+      if (response.statusCode == 200 &&
+          data["data"] != null &&
+          data["data"].isNotEmpty) {
         setState(() {
           queueData = data["data"][0];
           isLoading = false;
@@ -127,7 +131,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             _drawerItem(
               Icons.add_circle_outline,
               "Join Queue",
-              screen: const JoinQueueScreen(),
+              screen: const JoinQueueScreen(queues: []),
             ),
             _drawerItem(
               Icons.access_time,
@@ -163,7 +167,8 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const StudentWaitingScreen(),
+                        builder: (context) =>
+                            const StudentWaitingScreen(queueName: ""),
                       ),
                     );
                   },
@@ -174,20 +179,30 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     color: Colors.orange,
                   ),
                 ),
-
-                _InfoCard(
-                  title: "Current Token",
-                  value: "--",
-                  icon: Icons.confirmation_number,
-                  color: Colors.blue,
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyCurrentQueueScreen(),
+                      ),
+                    );
+                  },
+                  child: const _InfoCard(
+                    title: "Current Token",
+                    value: "--",
+                    icon: Icons.confirmation_number,
+                    color: Colors.blue,
+                  ),
                 ),
-                _InfoCard(
+                const _InfoCard(
                   title: "Completed Today",
                   value: "0",
                   icon: Icons.check_circle,
                   color: Colors.purple,
                 ),
-                _InfoCard(
+                const _InfoCard(
                   title: "Pending Today",
                   value: "0",
                   icon: Icons.pending_actions,
@@ -229,13 +244,13 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     );
   }
 
-  // 🔹 DRAWER ITEM (FIXED)
+  // 🔹 DRAWER ITEM
   ListTile _drawerItem(IconData icon, String title, {Widget? screen}) {
     return ListTile(
       leading: Icon(icon, color: Colors.deepPurple),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       onTap: () {
-        Navigator.pop(context); // close drawer
+        Navigator.pop(context);
         if (screen != null) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
         }

@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
+import 'package:app_frontend/Component_Staff/queue_status.dart'
+    hide QueueStatusScreen;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 

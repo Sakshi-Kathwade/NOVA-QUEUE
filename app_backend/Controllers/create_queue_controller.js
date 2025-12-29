@@ -1,4 +1,4 @@
-const Queue = require("../Models/create_queue_model");
+const Queue = require("../Models/create_queue_model.js");
 
 // CREATE QUEUE CONTROLLER
 const createQueue = async (req, res) => {

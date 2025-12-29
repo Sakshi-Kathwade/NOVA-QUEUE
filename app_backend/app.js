@@ -13,18 +13,16 @@ mongoose.connect("mongodb://localhost:27017/smart_queue_management_application")
 .then(() => console.log("Database connected"))
 .catch((err) => console.log("DB connection error:", err));
 
-
-
 // Test route
 app.get('/', (req, res) => {
     res.send('Server is running on localhost:8000');
 });
-
 // Routes
-const registerRouter = require('./Routers/registerrouter');
+const register = require('./Routers/registerrouter');
+app.use('/api', register);
 
-app.use('/api', registerRouter);
-
+const logout = require('./Routers/registerrouter');
+app.use('/api', logout);    
 
 const login = require('./Routers/loginrouter');
 app.use('/api', login);
@@ -40,6 +38,15 @@ app.use('/api', queue);
 
 const queuestatus = require('./Routers/create_queue_router');
 app.use('/api', queuestatus);   
+
+const token = require('./Routers/tokenrouter');
+app.use('/api', token);
+
+const tokenget= require('./Routers/tokenrouter');
+app.use('/api', tokenget);
+
+const tokendelete= require('./Routers/tokenrouter');
+app.use('/api', tokendelete);
 
 
 

@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 
-const { createQueue } = require("../controllers/create_queue_controller");
-const { getAllQueues } = require("../Controllers/create_queue_controller"); 
-const { updateQueueStatus } = require("../Controllers/create_queue_controller");
+const { createQueue } = require("../Controllers/create_queue_controller.js");
+const { getAllQueues } = require("../Controllers/create_queue_controller.js"); 
+const { updateQueueStatus } = require("../Controllers/create_queue_controller.js");
 
 
 // Routes

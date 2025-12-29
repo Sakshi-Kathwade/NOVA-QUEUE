@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class StudentWaitingScreen extends StatelessWidget {
-  const StudentWaitingScreen({super.key});
+  const StudentWaitingScreen({super.key, required String queueName});
 
   // 🔹 SAMPLE DATA (Later connect with backend)
   final int studentsAhead = 4;
@@ -17,7 +17,7 @@ class StudentWaitingScreen extends StatelessWidget {
         (totalStudents - studentsAhead) / totalStudents; // graph logic
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
@@ -163,7 +163,7 @@ class StudentWaitingScreen extends StatelessWidget {
                 icon: const Icon(Icons.notifications_active),
                 label: const Text(
                   "Enable Notifications",
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 16, color: Colors.white),
                 ),
                 onPressed: () {},
               ),
