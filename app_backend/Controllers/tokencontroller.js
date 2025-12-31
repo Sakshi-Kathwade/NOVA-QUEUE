@@ -12,17 +12,14 @@ exports.createToken = async (req, res) => {
       });
     }
 
-    // Count waiting students
     const studentsAhead = await Token.countDocuments({
       queueName,
       status: "waiting",
     });
 
-    // Generate token number
     const lastToken = await Token.findOne({ queueName }).sort({ tokenNumber: -1 });
     const tokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
 
-    // Calculate waiting time
     const estimatedWaitingTime = studentsAhead * 5;
 
     const token = await Token.create({
@@ -79,14 +76,17 @@ exports.getTokensByQueue = async (req, res) => {
     });
   }
 };
-// ❌ DELETE TOKEN
+
+// ❌ DELETE TOKEN (UPDATED LOGIC)
 exports.deleteToken = async (req, res) => {
   try {
     const { queueName, tokenNumber } = req.params;
 
+    // 1️⃣ Find token to delete
     const deletedToken = await Token.findOneAndDelete({
       queueName,
       tokenNumber,
+      status: "waiting",
     });
 
     if (!deletedToken) {
@@ -96,22 +96,23 @@ exports.deleteToken = async (req, res) => {
       });
     }
 
-    // Recalculate remaining tokens
-    const tokens = await Token.find({
+    // 2️⃣ Update ONLY tokens AFTER the deleted token
+    const tokensAfter = await Token.find({
       queueName,
       status: "waiting",
-    }).sort({ tokenNumber: 1 });
+      tokenNumber: { $gt: tokenNumber },
+    });
 
-    for (let i = 0; i < tokens.length; i++) {
-      await Token.findByIdAndUpdate(tokens[i]._id, {
-        studentsAhead: i,
-        estimatedWaitingTime: i * 5,
+    for (const token of tokensAfter) {
+      await Token.findByIdAndUpdate(token._id, {
+        studentsAhead: token.studentsAhead - 1,
+        estimatedWaitingTime: token.estimatedWaitingTime - 5,
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "Token deleted & queue updated",
+      message: "Token cancelled successfully. Queue updated.",
     });
   } catch (error) {
     res.status(500).json({
@@ -120,6 +121,3 @@ exports.deleteToken = async (req, res) => {
     });
   }
 };
-
-
-
