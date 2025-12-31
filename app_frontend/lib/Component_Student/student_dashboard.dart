@@ -136,7 +136,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             _drawerItem(
               Icons.access_time,
               "My Current Queue",
-              screen: const MyCurrentQueueScreen(),
+              screen: const MyCurrentQueueScreen(queueName: ''),
             ),
             _drawerItem(
               Icons.history,
@@ -167,8 +167,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            const StudentWaitingScreen(queueName: ""),
+                        builder: (context) => const StudentWaitingScreen(
+                          queueName: 'selectedQueue!',
+                        ),
                       ),
                     );
                   },
@@ -185,7 +186,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const MyCurrentQueueScreen(),
+                        builder: (context) => const MyCurrentQueueScreen(
+                          queueName: 'Addmission queue',
+                        ),
                       ),
                     );
                   },

@@ -2,10 +2,10 @@
 
 import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
 import 'package:flutter/material.dart';
-import '../Component_Staff/queue_status.dart';
+import '../Component_Staff/queue_status.dart' hide QueueStatusScreen;
 import '../main.dart' show isDarkMode;
 import 'package:app_frontend/Component_Staff/theme_pref.dart';
-import 'student_dashboard.dart' hide QueueStatusScreen;
+import 'student_dashboard.dart';
 
 class AdminSettingScreen extends StatefulWidget {
   const AdminSettingScreen({super.key});

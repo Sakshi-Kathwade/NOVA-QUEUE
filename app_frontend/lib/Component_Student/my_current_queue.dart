@@ -1,9 +1,13 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class MyCurrentQueueScreen extends StatefulWidget {
-  const MyCurrentQueueScreen({super.key});
+  final String queueName;
+
+  const MyCurrentQueueScreen({super.key, required this.queueName});
 
   @override
   State<MyCurrentQueueScreen> createState() => _MyCurrentQueueScreenState();
@@ -11,22 +15,95 @@ class MyCurrentQueueScreen extends StatefulWidget {
 
 class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
   bool notificationEnabled = true;
+  bool isLoading = true;
 
-  // 🔹 SAMPLE DATA (Later connect with backend API)
-  final String tokenNumber = "A-12";
-  final String queueName = "Admission Queue";
-  final int studentsAhead = 6;
-  final int estimatedWaitMinutes = 30;
-  final String status = "Waiting"; // Waiting / In Progress
+  // 🔹 API DATA VARIABLES
+  int tokenNumber = 0;
+  String queueName = "";
+  int studentsAhead = 0;
+  int estimatedWaitMinutes = 0;
+  String status = "";
 
+  @override
+  void initState() {
+    super.initState();
+    fetchQueueData();
+  }
+
+  // 🔹 FETCH QUEUE DATA
+  Future<void> fetchQueueData() async {
+    final encodedQueue = Uri.encodeComponent(widget.queueName);
+    final apiUrl = "http://localhost:8000/api/tokenget/$encodedQueue";
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data["success"] == true) {
+          setState(() {
+            tokenNumber = data["tokenNumber"];
+            queueName = data["queueName"];
+            studentsAhead = data["studentsAhead"];
+            estimatedWaitMinutes = data["estimatedWaitingTime"];
+            status = data["status"];
+            isLoading = false;
+          });
+        } else {
+          showError("No token found");
+        }
+      } else {
+        showError("Failed to load data");
+      }
+    } catch (e) {
+      showError("Server not reachable");
+    }
+  }
+
+  // 🔹 DELETE TOKEN API
+  Future<void> cancelTokenApi() async {
+    final encodedQueue = Uri.encodeComponent(widget.queueName);
+
+    final deleteUrl =
+        "http://localhost:8000/api/tokendelete/$encodedQueue/$tokenNumber";
+
+    try {
+      final response = await http.delete(Uri.parse(deleteUrl));
+
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && decoded["success"] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Token cancelled successfully"),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pop(context); // go back after cancel
+      } else {
+        showError("Failed to cancel token");
+      }
+    } catch (e) {
+      showError("Server not responding");
+    }
+  }
+
+  void showError(String message) {
+    setState(() => isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  // 🔹 CONFIRM DIALOG
   void _cancelToken() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text("Cancel Token"),
-        content: const Text(
-          "Are you sure you want to cancel your token?\nThis action cannot be undone.",
-        ),
+        content: const Text("Are you sure you want to cancel your token?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -36,12 +113,7 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Token cancelled successfully"),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              cancelTokenApi();
             },
             child: const Text("Yes, Cancel"),
           ),
@@ -53,130 +125,121 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
-      // 🔹 APP BAR
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         title: const Text("My Current Queue"),
         centerTitle: true,
       ),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // 🔹 TOKEN CARD
-            Card(
-              elevation: 6,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.confirmation_number,
-                      size: 50,
-                      color: Colors.deepPurple,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // 🔹 TOKEN CARD
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      tokenNumber,
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.confirmation_number,
+                            size: 50,
+                            color: Colors.deepPurple,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            tokenNumber.toString(),
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            "Your Token Number",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  _infoTile(
+                    icon: Icons.queue,
+                    label: "Queue Name",
+                    value: queueName,
+                  ),
+                  _infoTile(
+                    icon: Icons.people,
+                    label: "Students Ahead",
+                    value: studentsAhead.toString(),
+                  ),
+                  _infoTile(
+                    icon: Icons.timer,
+                    label: "Estimated Waiting Time",
+                    value: "$estimatedWaitMinutes minutes",
+                  ),
+                  _infoTile(
+                    icon: Icons.info_outline,
+                    label: "Status",
+                    value: status,
+                    valueColor: status == "waiting"
+                        ? Colors.orange
+                        : Colors.green,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SwitchListTile(
+                      activeColor: Colors.deepPurple,
+                      title: const Text(
+                        "Receive Notifications",
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      value: notificationEnabled,
+                      onChanged: (v) {
+                        setState(() => notificationEnabled = v);
+                      },
+                      secondary: const Icon(
+                        Icons.notifications_active,
                         color: Colors.deepPurple,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      "Your Token Number",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // 🔹 QUEUE DETAILS
-            _infoTile(icon: Icons.queue, label: "Queue Name", value: queueName),
-            _infoTile(
-              icon: Icons.people,
-              label: "Students Ahead",
-              value: studentsAhead.toString(),
-            ),
-            _infoTile(
-              icon: Icons.timer,
-              label: "Estimated Waiting Time",
-              value: "$estimatedWaitMinutes minutes",
-            ),
-            _infoTile(
-              icon: Icons.info_outline,
-              label: "Status",
-              value: status,
-              valueColor: status == "Waiting" ? Colors.orange : Colors.green,
-            ),
-
-            const SizedBox(height: 24),
-
-            // 🔹 NOTIFICATION TOGGLE
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: SwitchListTile(
-                activeColor: Colors.deepPurple,
-                title: const Text(
-                  "Receive Notifications",
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: const Text("Get notified when your turn is near"),
-                value: notificationEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    notificationEnabled = value;
-                  });
-                },
-                secondary: const Icon(
-                  Icons.notifications_active,
-                  color: Colors.deepPurple,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // 🔹 CANCEL TOKEN BUTTON
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                icon: const Icon(Icons.cancel),
-                label: const Text(
-                  "Cancel Token",
-                  style: TextStyle(fontSize: 16),
-                ),
-                onPressed: _cancelToken,
+
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.cancel),
+                      label: const Text("Cancel Token"),
+                      onPressed: _cancelToken,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 
-  // 🔹 REUSABLE INFO TILE
   Widget _infoTile({
     required IconData icon,
     required String label,
@@ -185,10 +248,9 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: Icon(icon, color: Colors.deepPurple),
-        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(label),
         trailing: Text(
           value,
           style: TextStyle(fontWeight: FontWeight.bold, color: valueColor),
