@@ -4,6 +4,7 @@ exports.createToken = async (req, res) => {
   try {
     const { queueName, department, purpose, studentId } = req.body;
 
+    // 1️⃣ Validation
     if (!queueName || !purpose || !studentId) {
       return res.status(400).json({
         success: false,
@@ -11,28 +12,56 @@ exports.createToken = async (req, res) => {
       });
     }
 
+    // 2️⃣ 🔴 CHECK: Student already has token in SAME queue
+    const existingToken = await Token.findOne({
+      queueName,
+      studentId,
+      status: "waiting",
+    });
+
+    if (existingToken) {
+      return res.status(409).json({
+        success: false,
+        message: "You already have a token for this queue",
+      });
+    }
+
+    // 3️⃣ Count students ahead in SAME queue
     const studentsAhead = await Token.countDocuments({
       queueName,
       status: "waiting",
     });
 
-    const lastToken = await Token.findOne({ queueName }).sort({ tokenNumber: -1 });
+    // 4️⃣ Generate next token number
+    const lastToken = await Token.findOne({ queueName })
+      .sort({ tokenNumber: -1 });
+
     const tokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
 
+    // 5️⃣ Create new token
     const token = await Token.create({
       queueName,
       department,
       purpose,
-      studentId, // ✅ LINK TO STUDENT
+      studentId,
       tokenNumber,
       studentsAhead,
       estimatedWaitingTime: studentsAhead * 5,
       status: "waiting",
     });
 
-    res.status(201).json({ success: true, data: token });
+    // 6️⃣ Success response
+    res.status(201).json({
+      success: true,
+      message: "Token generated successfully",
+      data: token,
+    });
+
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
