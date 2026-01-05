@@ -229,7 +229,7 @@ class AdminDashboard extends StatelessWidget {
               value: "Open",
               icon: Icons.lock_open,
               color: Colors.green,
-              navigateTo: QueueStatusScreen(),
+              navigateTo: QueueStatus(studentId: 'studentID'),
             ),
             _dashboardCard(
               context: context,

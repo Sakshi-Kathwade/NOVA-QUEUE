@@ -6,8 +6,13 @@ import 'package:http/http.dart' as http;
 
 class MyCurrentQueueScreen extends StatefulWidget {
   final String queueName;
+  final String studentId; // ✅ REQUIRED
 
-  const MyCurrentQueueScreen({super.key, required this.queueName});
+  const MyCurrentQueueScreen({
+    super.key,
+    required this.queueName,
+    required this.studentId,
+  });
 
   @override
   State<MyCurrentQueueScreen> createState() => _MyCurrentQueueScreenState();
@@ -17,7 +22,6 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
   bool notificationEnabled = true;
   bool isLoading = true;
 
-  // 🔹 API DATA VARIABLES
   int tokenNumber = 0;
   String queueName = "";
   int studentsAhead = 0;
@@ -33,7 +37,9 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
   // 🔹 FETCH QUEUE DATA
   Future<void> fetchQueueData() async {
     final encodedQueue = Uri.encodeComponent(widget.queueName);
-    final apiUrl = "http://localhost:8000/api/tokenget/$encodedQueue";
+
+    final apiUrl =
+        "http://localhost:8000/api/tokenget/$encodedQueue/${widget.studentId}";
 
     try {
       final response = await http.get(Uri.parse(apiUrl));
@@ -70,7 +76,6 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
 
     try {
       final response = await http.delete(Uri.parse(deleteUrl));
-
       final decoded = jsonDecode(response.body);
 
       if (response.statusCode == 200 && decoded["success"] == true) {
@@ -80,8 +85,7 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
             backgroundColor: Colors.green,
           ),
         );
-
-        Navigator.pop(context); // go back after cancel
+        Navigator.pop(context);
       } else {
         showError("Failed to cancel token");
       }
@@ -97,8 +101,8 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
     );
   }
 
-  // 🔹 CONFIRM DIALOG
-  void _cancelToken() {
+  // 🔹 CONFIRM CANCEL
+  void confirmCancel() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -199,6 +203,7 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
 
                   const SizedBox(height: 24),
 
+                  // 🔔 NOTIFICATION SWITCH
                   Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -222,6 +227,7 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
 
                   const SizedBox(height: 20),
 
+                  // ❌ CANCEL TOKEN BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -231,7 +237,7 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
                       ),
                       icon: const Icon(Icons.cancel),
                       label: const Text("Cancel Token"),
-                      onPressed: _cancelToken,
+                      onPressed: confirmCancel,
                     ),
                   ),
                 ],

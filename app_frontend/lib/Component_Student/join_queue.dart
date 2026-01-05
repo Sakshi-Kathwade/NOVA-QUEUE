@@ -1,11 +1,13 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
-
+// obscureText: true,
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class JoinQueueScreen extends StatefulWidget {
-  const JoinQueueScreen({super.key, required List<String> queues});
+  final String studentId; // ✅ Auto-filled from login (userId from backend)
+
+  const JoinQueueScreen({super.key, required this.studentId});
 
   @override
   State<JoinQueueScreen> createState() => _JoinQueueScreenState();
@@ -30,24 +32,29 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
     "Electronics",
   ];
 
+  late TextEditingController studentIdController;
+
   @override
   void initState() {
     super.initState();
+    // ✅ Auto-fill studentId from login
+    studentIdController = TextEditingController(text: widget.studentId);
     fetchQueues();
   }
 
-  /// 🔹 FETCH QUEUE NAMES
+  @override
+  void dispose() {
+    studentIdController.dispose();
+    super.dispose();
+  }
+
+  // 🔹 FETCH QUEUES
   Future<void> fetchQueues() async {
     try {
-      final response = await http.get(
-        Uri.parse("http://localhost:8000/api/queue"),
-      );
+      final res = await http.get(Uri.parse("http://localhost:8000/api/queue"));
+      final decoded = jsonDecode(res.body);
 
-      final decoded = jsonDecode(response.body);
-
-      if (response.statusCode == 200 &&
-          decoded["data"] != null &&
-          decoded["data"] is List) {
+      if (res.statusCode == 200 && decoded["data"] != null) {
         setState(() {
           queues = (decoded["data"] as List)
               .map((q) => q["queueName"].toString())
@@ -55,15 +62,15 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
           isLoadingQueues = false;
         });
       } else {
-        isLoadingQueues = false;
+        setState(() => isLoadingQueues = false);
       }
-    } catch (_) {
-      isLoadingQueues = false;
+    } catch (e) {
+      setState(() => isLoadingQueues = false);
     }
   }
 
-  /// 🔹 SUBMIT TOKEN (POST API)
-  Future<void> _submitForm() async {
+  // 🔹 SUBMIT TOKEN
+  Future<void> submitToken() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isSubmitting = true);
@@ -76,77 +83,60 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
           "queueName": selectedQueue,
           "department": selectedDepartment,
           "purpose": purpose,
+          "studentId": widget.studentId, // ✅ Use login userId
         }),
       );
 
       final decoded = jsonDecode(response.body);
 
-      if (response.statusCode == 201 && decoded["data"] != null) {
+      if ((response.statusCode == 201 || response.statusCode == 200) &&
+          decoded["success"] == true &&
+          decoded["data"] != null) {
         final int tokenNumber = decoded["data"]["tokenNumber"];
-
-        _showTokenDialog(tokenNumber);
+        showTokenDialog(tokenNumber);
 
         _formKey.currentState!.reset();
         setState(() {
           selectedQueue = null;
           selectedDepartment = null;
+          purpose = "";
         });
       } else {
-        _showError("Failed to generate token");
+        showError(decoded["message"] ?? "Failed to generate token");
       }
     } catch (e) {
-      _showError("Server not responding");
+      showError("Server not responding");
     }
 
     setState(() => isSubmitting = false);
   }
 
-  /// 🎉 SUCCESS POPUP
-  void _showTokenDialog(int tokenNumber) {
+  // 🔹 SUCCESS POPUP
+  void showTokenDialog(int tokenNumber) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Center(
-          child: Text(
-            "🎫 Token Generated",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
-            ),
-          ),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Center(child: Text("🎫 Token Generated")),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
               Icons.confirmation_number,
               size: 60,
-              color: Colors.deepPurple,
+              color: Colors.green,
             ),
             const SizedBox(height: 12),
-            const Text("Your Token Number", style: TextStyle(fontSize: 16)),
-            const SizedBox(height: 8),
             Text(
               tokenNumber.toString(),
-              style: const TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
+              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         actions: [
           Center(
             child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
               onPressed: () => Navigator.pop(context),
               child: const Text("OK"),
             ),
@@ -156,20 +146,20 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
     );
   }
 
-  /// ❌ ERROR SNACKBAR
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+  // 🔹 ERROR SNACKBAR
+  void showError(String msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(backgroundColor: Colors.red, content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Join Queue"),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        title: const Text("Join Queue / Take Token"),
         centerTitle: true,
       ),
       body: isLoadingQueues
@@ -187,6 +177,20 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
                     key: _formKey,
                     child: Column(
                       children: [
+                        // ✅ Auto-filled Student ID (read-only)
+                        TextFormField(
+                          controller: studentIdController,
+                          readOnly: true,
+                          // obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: "Student ID",
+                            prefixIcon: Icon(Icons.badge),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
                         DropdownButtonFormField<String>(
                           value: selectedQueue,
                           items: queues
@@ -203,7 +207,9 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
                           validator: (v) => v == null ? "Select queue" : null,
                           onChanged: (v) => setState(() => selectedQueue = v),
                         ),
+
                         const SizedBox(height: 16),
+
                         DropdownButtonFormField<String>(
                           value: selectedDepartment,
                           items: departments
@@ -220,29 +226,30 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
                           onChanged: (v) =>
                               setState(() => selectedDepartment = v),
                         ),
+
                         const SizedBox(height: 16),
+
                         TextFormField(
                           maxLines: 3,
                           decoration: const InputDecoration(
                             labelText: "Purpose *",
-                            prefixIcon: Icon(Icons.edit_note),
+                            prefixIcon: Icon(Icons.edit),
                             border: OutlineInputBorder(),
                           ),
                           validator: (v) =>
                               v == null || v.isEmpty ? "Required" : null,
                           onChanged: (v) => purpose = v,
                         ),
-                        const SizedBox(height: 20),
+
+                        const SizedBox(height: 24),
+
                         SizedBox(
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: isSubmitting ? null : _submitForm,
+                            onPressed: isSubmitting ? null : submitToken,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
                             ),
                             child: isSubmitting
                                 ? const CircularProgressIndicator(
@@ -252,7 +259,7 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
                                     "Take Token",
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 20,
+                                      fontSize: 18,
                                     ),
                                   ),
                           ),

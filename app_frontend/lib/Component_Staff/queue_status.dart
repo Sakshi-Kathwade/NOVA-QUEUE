@@ -4,14 +4,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-class QueueStatusScreen extends StatefulWidget {
-  const QueueStatusScreen({super.key});
+class QueueStatus extends StatefulWidget {
+  const QueueStatus({super.key, required String studentId});
 
   @override
-  State<QueueStatusScreen> createState() => _QueueStatusScreenState();
+  State<QueueStatus> createState() => _QueueStatusState();
 }
 
-class _QueueStatusScreenState extends State<QueueStatusScreen> {
+class _QueueStatusState extends State<QueueStatus> {
   bool isLoading = true;
   Map<String, dynamic>? queueData;
   String errorMsg = "";

@@ -1,13 +1,9 @@
 import 'dart:convert';
 import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
-import 'package:app_frontend/Component_Staff/queue_status.dart'
-    hide QueueStatusScreen;
+import 'package:app_frontend/Component_Staff/queue_status.dart';
+import 'package:app_frontend/Component_Student/student_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
-import 'package:app_frontend/Component_Student/student_dashboard.dart';
-// ignore: duplicate_import
-import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
 import 'register.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -32,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // 🔥 Popup Dialog
+  // 🔹 Popup Dialog
   void showPopup({
     required String title,
     required String message,
@@ -55,7 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-
                 color: Colors.deepPurple,
               ),
             ),
@@ -79,14 +74,14 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 🔐 Login Function (STUDENT / ADMIN)
+  // 🔹 Login Function
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
 
     try {
-      // 🔥 ROLE BASED API URL
+      // Determine API URL based on email
       final bool isAdmin =
           emailController.text.trim() == "admin@smartqueue.com";
 
@@ -107,8 +102,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && data['success'] == true) {
         String role = data['role'];
+        String studentId = data['userId']; // ✅ MongoDB _id for student
 
         showPopup(
           title: "Login Successful 🎉",
@@ -119,9 +115,12 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pop(context);
 
             if (role == "student") {
+              // Navigate to QueueStatusScreen with studentId
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const QueueStatusScreen()),
+                MaterialPageRoute(
+                  builder: (_) => QueueStatusScreen(studentId: studentId),
+                ),
               );
             } else if (role == "admin") {
               Navigator.pushReplacement(
@@ -168,12 +167,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -186,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 32),
-
               Card(
                 elevation: 6,
                 shape: RoundedRectangleBorder(
@@ -207,7 +203,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-
                         TextFormField(
                           controller: emailController,
                           decoration: const InputDecoration(
@@ -219,7 +214,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               v == null || v.isEmpty ? "Enter email" : null,
                         ),
                         const SizedBox(height: 16),
-
                         TextFormField(
                           controller: passwordController,
                           obscureText: hidePassword,
@@ -242,7 +236,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               : null,
                         ),
                         const SizedBox(height: 24),
-
                         SizedBox(
                           width: double.infinity,
                           height: 48,
@@ -262,7 +255,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

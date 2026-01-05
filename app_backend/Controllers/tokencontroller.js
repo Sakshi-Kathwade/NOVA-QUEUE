@@ -1,14 +1,13 @@
 const Token = require("../Models/tokenmodel");
 
-// 🎫 CREATE TOKEN
 exports.createToken = async (req, res) => {
   try {
-    const { queueName, department, purpose } = req.body;
+    const { queueName, department, purpose, studentId } = req.body;
 
-    if (!queueName || !purpose) {
+    if (!queueName || !purpose || !studentId) {
       return res.status(400).json({
         success: false,
-        message: "Queue name and purpose are required",
+        message: "Queue name, purpose and studentId are required",
       });
     }
 
@@ -20,44 +19,38 @@ exports.createToken = async (req, res) => {
     const lastToken = await Token.findOne({ queueName }).sort({ tokenNumber: -1 });
     const tokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
 
-    const estimatedWaitingTime = studentsAhead * 5;
-
     const token = await Token.create({
       queueName,
       department,
       purpose,
+      studentId, // ✅ LINK TO STUDENT
       tokenNumber,
       studentsAhead,
-      estimatedWaitingTime,
+      estimatedWaitingTime: studentsAhead * 5,
       status: "waiting",
     });
 
-    res.status(201).json({
-      success: true,
-      data: token,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(201).json({ success: true, data: token });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// 📄 GET CURRENT TOKEN BY QUEUE
-exports.getTokensByQueue = async (req, res) => {
+exports.getTokenByQueueAndStudent = async (req, res) => {
   try {
-    const { queueName } = req.params;
+    const { queueName, studentId } = req.params;
 
+    // Find token for this student in this queue
     const token = await Token.findOne({
       queueName,
+      studentId,
       status: "waiting",
-    }).sort({ tokenNumber: -1 });
+    });
 
     if (!token) {
       return res.status(404).json({
         success: false,
-        message: "No active token found",
+        message: "No token found for this student",
       });
     }
 
@@ -69,20 +62,16 @@ exports.getTokensByQueue = async (req, res) => {
       estimatedWaitingTime: token.estimatedWaitingTime,
       status: token.status,
     });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// ❌ DELETE TOKEN (UPDATED LOGIC)
+// ✅ Delete Token
 exports.deleteToken = async (req, res) => {
   try {
     const { queueName, tokenNumber } = req.params;
 
-    // 1️⃣ Find token to delete
     const deletedToken = await Token.findOneAndDelete({
       queueName,
       tokenNumber,
@@ -96,7 +85,7 @@ exports.deleteToken = async (req, res) => {
       });
     }
 
-    // 2️⃣ Update ONLY tokens AFTER the deleted token
+    // Update tokens after the deleted one
     const tokensAfter = await Token.find({
       queueName,
       status: "waiting",
@@ -114,10 +103,7 @@ exports.deleteToken = async (req, res) => {
       success: true,
       message: "Token cancelled successfully. Queue updated.",
     });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };

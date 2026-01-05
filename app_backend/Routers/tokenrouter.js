@@ -1,14 +1,14 @@
 const express = require("express");
 const router = express.Router();
+const tokenController = require("../Controllers/tokencontroller");
 
-const {
-  createToken,
-  getTokensByQueue,
-  deleteToken,
-} = require("../Controllers/tokencontroller");
+// Create Token
+router.post("/token", tokenController.createToken);
 
-router.post("/token", createToken);
-router.get("/tokenget/:queueName", getTokensByQueue);
-router.delete("/tokendelete/:queueName/:tokenNumber", deleteToken);
+// Get token by queueName & studentId
+router.get("/tokenget/:queueName/:studentId", tokenController.getTokenByQueueAndStudent);
+
+// Delete token
+router.delete("/tokendelete/:queueName/:tokenNumber", tokenController.deleteToken);
 
 module.exports = router;

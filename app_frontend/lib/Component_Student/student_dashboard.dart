@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:app_frontend/Component_Student/student_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -10,7 +9,9 @@ import 'student_setting.dart';
 import 'student_waiting.dart';
 
 class QueueStatusScreen extends StatefulWidget {
-  const QueueStatusScreen({super.key});
+  final String studentId; // ✅ COMES FROM LOGIN RESPONSE
+
+  const QueueStatusScreen({super.key, required this.studentId});
 
   @override
   State<QueueStatusScreen> createState() => _QueueStatusScreenState();
@@ -62,7 +63,6 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       // 🔹 APP BAR
       appBar: AppBar(
@@ -74,47 +74,6 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
           icon: const Icon(Icons.menu),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.account_circle, size: 30),
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                enabled: false,
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.deepPurple,
-                    child: Icon(Icons.person, color: Colors.white),
-                  ),
-                  title: Text(
-                    "Sakshi Kathawde",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text("Student"),
-                ),
-              ),
-              PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'edit_profile',
-                child: ListTile(
-                  leading: Icon(Icons.edit, color: Colors.deepPurple),
-                  title: Text("Edit Profile"),
-                ),
-              ),
-              PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'logout',
-                child: ListTile(
-                  leading: Icon(Icons.logout, color: Colors.red),
-                  title: Text("Logout", style: TextStyle(color: Colors.red)),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
 
       // 🔹 DRAWER
@@ -123,26 +82,43 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
           padding: EdgeInsets.zero,
           children: [
             _drawerHeader(),
+
             _drawerItem(
               Icons.home,
               "Dashboard",
-              screen: const QueueStatusScreen(),
+              screen: QueueStatusScreen(studentId: widget.studentId),
             ),
+
             _drawerItem(
               Icons.add_circle_outline,
               "Join Queue",
-              screen: const JoinQueueScreen(queues: []),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        JoinQueueScreen(studentId: widget.studentId),
+                  ),
+                );
+              },
             ),
+
             _drawerItem(
               Icons.access_time,
               "My Current Queue",
-              screen: const MyCurrentQueueScreen(queueName: ''),
+              screen: MyCurrentQueueScreen(
+                queueName: "",
+                studentId: widget.studentId,
+              ),
             ),
+
             _drawerItem(
               Icons.history,
               "Queue History",
               screen: const QueueHistoryScreen(),
             ),
+
             _drawerItem(
               Icons.settings,
               "Settings",
@@ -162,13 +138,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               mainAxisSpacing: 16,
               children: [
                 InkWell(
-                  borderRadius: BorderRadius.circular(16),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const StudentWaitingScreen(
-                          queueName: 'selectedQueue!',
+                        builder: (_) => StudentWaitingScreen(
+                          queueName: queueData?["queueName"] ?? "",
                         ),
                       ),
                     );
@@ -180,14 +155,15 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     color: Colors.orange,
                   ),
                 ),
+
                 InkWell(
-                  borderRadius: BorderRadius.circular(16),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const MyCurrentQueueScreen(
-                          queueName: 'Addmission queue',
+                        builder: (_) => MyCurrentQueueScreen(
+                          queueName: queueData?["queueName"] ?? "",
+                          studentId: widget.studentId,
                         ),
                       ),
                     );
@@ -199,12 +175,14 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     color: Colors.blue,
                   ),
                 ),
+
                 const _InfoCard(
                   title: "Completed Today",
                   value: "0",
                   icon: Icons.check_circle,
                   color: Colors.purple,
                 ),
+
                 const _InfoCard(
                   title: "Pending Today",
                   value: "0",
@@ -229,7 +207,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Sakshi Kathawde",
+                "Student",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -247,17 +225,27 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     );
   }
 
-  // 🔹 DRAWER ITEM
-  ListTile _drawerItem(IconData icon, String title, {Widget? screen}) {
+  // 🔹 DRAWER ITEM (FIXED)
+  ListTile _drawerItem(
+    IconData icon,
+    String title, {
+    Widget? screen,
+    VoidCallback? onTap,
+  }) {
     return ListTile(
       leading: Icon(icon, color: Colors.deepPurple),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      onTap: () {
-        Navigator.pop(context);
-        if (screen != null) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-        }
-      },
+      onTap:
+          onTap ??
+          () {
+            Navigator.pop(context);
+            if (screen != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => screen),
+              );
+            }
+          },
     );
   }
 }

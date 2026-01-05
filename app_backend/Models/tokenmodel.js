@@ -1,48 +1,23 @@
 const mongoose = require("mongoose");
 
-const tokenSchema = new mongoose.Schema(
-  {
-    queueName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+const tokenSchema = new mongoose.Schema({
+  queueName: { type: String, required: true },
+  department: String,
+  purpose: { type: String, required: true },
 
-    department: {
-      type: String,
-      default: null,
-    },
-
-    purpose: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    tokenNumber: {
-      type: Number,
-      required: true,
-    },
-
-    // ✅ Students ahead of current student
-    studentsAhead: {
-      type: Number,
-      default: 0,
-    },
-
-    // ✅ Estimated waiting time (in minutes)
-    estimatedWaitingTime: {
-      type: Number,
-      default: 0,
-    },
-
-    status: {
-      type: String,
-      enum: ["waiting", "skipped", "hold", "completed"],
-      default: "waiting",
-    },
+  studentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Student",
+    required: true, // ✅ MUST
   },
-  { timestamps: true }
-);
+
+  tokenNumber: Number,
+  studentsAhead: Number,
+  estimatedWaitingTime: Number,
+  status: {
+    type: String,
+    default: "waiting",
+  },
+});
 
 module.exports = mongoose.model("Token", tokenSchema);
