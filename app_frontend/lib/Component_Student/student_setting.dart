@@ -90,8 +90,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) =>
-                    const MyCurrentQueueScreen(studentId: '', queueName: ''),
+                builder: (context) => const QueueStatusScreen(studentId: ''),
               ),
             );
           },

@@ -119,8 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      MyCurrentQueueScreen(studentId: studentId, queueName: ''),
+                  builder: (_) => QueueStatusScreen(studentId: studentId),
                 ),
               );
             } else if (role == "admin") {
