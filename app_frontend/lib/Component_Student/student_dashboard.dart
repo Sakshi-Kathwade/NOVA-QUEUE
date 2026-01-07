@@ -228,30 +228,82 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              children: const [
-                _InfoCard(
-                  title: "Students Waiting",
-                  value: "0",
-                  icon: Icons.people,
-                  color: Colors.orange,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StudentWaitingScreen(
+                          queueName: queueData?["queueName"] ?? "",
+                          studentId: widget.studentId,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const _InfoCard(
+                    title: "Student Waiting",
+                    value: "--",
+                    icon: Icons.people,
+                    color: Colors.orange,
+                  ),
                 ),
-                _InfoCard(
-                  title: "Current Token",
-                  value: "--",
-                  icon: Icons.confirmation_number,
-                  color: Colors.blue,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyCurrentQueueScreen(
+                          queueName: queueData?["queueName"] ?? "",
+                          studentId: widget.studentId,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const _InfoCard(
+                    title: "Current Token",
+                    value: "--",
+                    icon: Icons.confirmation_number,
+                    color: Colors.blue,
+                  ),
                 ),
-                _InfoCard(
-                  title: "Completed Today",
-                  value: "0",
-                  icon: Icons.check_circle,
-                  color: Colors.purple,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyCurrentQueueScreen(
+                          queueName: queueData?["queueName"] ?? "",
+                          studentId: widget.studentId,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const _InfoCard(
+                    title: "Completed Today",
+                    value: "--",
+                    icon: Icons.check_circle,
+                    color: Colors.purple,
+                  ),
                 ),
-                _InfoCard(
-                  title: "Pending Today",
-                  value: "0",
-                  icon: Icons.pending_actions,
-                  color: Colors.red,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyCurrentQueueScreen(
+                          queueName: queueData?["queueName"] ?? "",
+                          studentId: widget.studentId,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const _InfoCard(
+                    title: "Pending Today",
+                    value: "--",
+                    icon: Icons.pending_actions,
+                    color: Colors.red,
+                  ),
                 ),
               ],
             ),

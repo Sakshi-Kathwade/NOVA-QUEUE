@@ -154,6 +154,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: const Text("Register"),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
       ),
       body: Center(
         child: SingleChildScrollView(
