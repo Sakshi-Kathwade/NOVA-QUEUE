@@ -1,171 +1,221 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-class StudentWaitingScreen extends StatelessWidget {
-  const StudentWaitingScreen({super.key, required String queueName});
+class StudentWaitingScreen extends StatefulWidget {
+  final String studentId;
+  final String queueName; // ✅ SAME AS MyCurrentQueueScreen
 
-  // 🔹 SAMPLE DATA (Later connect with backend)
-  final int studentsAhead = 4;
-  final int totalStudents = 20;
-  final int estimatedMinutes = 20;
-  final String tokenNumber = "A-12";
-  final String queueName = "Admission Queue";
-  final String status = "Waiting";
+  const StudentWaitingScreen({
+    super.key,
+    required this.studentId,
+    required this.queueName,
+  });
+
+  @override
+  State<StudentWaitingScreen> createState() => _StudentWaitingScreenState();
+}
+
+class _StudentWaitingScreenState extends State<StudentWaitingScreen> {
+  // 🔹 BACKEND VARIABLES
+  String queueName = "";
+  int totalStudentsWaiting = 0;
+  int currentTokenServing = 0;
+  int averageWaitingTime = 0;
+  bool isQueueOpen = true;
+
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchQueueData();
+  }
+
+  // 🔹 FETCH DATA (SAME STYLE AS MyCurrentQueueScreen)
+  Future<void> fetchQueueData() async {
+    final encodedQueue = Uri.encodeComponent(widget.queueName);
+
+    final apiUrl =
+        "http://localhost:8000/api/tokenget/$encodedQueue/${widget.studentId}";
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data["success"] == true) {
+          setState(() {
+            queueName = data["queueName"];
+            totalStudentsWaiting = data["studentsAhead"];
+            averageWaitingTime = data["estimatedWaitingTime"];
+            currentTokenServing = data["tokenNumber"];
+            isQueueOpen = data["status"] == "waiting";
+            isLoading = false;
+          });
+        } else {
+          showError("No token found");
+        }
+      } else {
+        showError("Failed to load queue data");
+      }
+    } catch (e) {
+      showError("Server not reachable");
+    }
+  }
+
+  void showError(String message) {
+    setState(() => isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     double progress =
-        (totalStudents - studentsAhead) / totalStudents; // graph logic
+        currentTokenServing / (currentTokenServing + totalStudentsWaiting);
+
+    int estimatedTotalWait = totalStudentsWaiting * averageWaitingTime;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        title: const Text("Queue Overview"),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        title: const Text("My Queue Status"),
         centerTitle: true,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🔹 TOKEN INFO CARD
+            // 🔹 HEADER
             Card(
-              elevation: 4,
+              elevation: 6,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+                padding: const EdgeInsets.all(20),
+                child: Row(
                   children: [
-                    Text(
-                      queueName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Token Number: $tokenNumber",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.deepPurple,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    const Icon(Icons.queue, size: 40, color: Colors.deepPurple),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          queueName,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.circle,
+                              size: 10,
+                              color: isQueueOpen ? Colors.green : Colors.red,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isQueueOpen ? "Queue Open" : "Queue Closed",
+                              style: TextStyle(
+                                color: isQueueOpen ? Colors.green : Colors.red,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // 🔹 STATUS CARDS
             Row(
               children: [
-                _statusCard(
-                  title: "Students Ahead",
-                  value: "$studentsAhead",
-                  icon: Icons.people,
-                  color: Colors.orange,
+                Expanded(
+                  child: _infoCard(
+                    icon: Icons.people,
+                    title: "Students Ahead",
+                    value: totalStudentsWaiting.toString(),
+                    color: Colors.orange,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                _statusCard(
-                  title: "Est. Time",
-                  value: "$estimatedMinutes min",
-                  icon: Icons.access_time,
-                  color: Colors.blue,
+                Expanded(
+                  child: _infoCard(
+                    icon: Icons.timer,
+                    title: "Avg. Waiting",
+                    value: "$averageWaitingTime min",
+                    color: Colors.blue,
+                  ),
                 ),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // 🔹 QUEUE STATUS
-            Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info, color: Colors.deepPurple),
-                    const SizedBox(width: 12),
-                    Text(
-                      "Status: $status",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            _infoCard(
+              icon: Icons.play_circle_fill,
+              title: "Your Token Number",
+              value: currentTokenServing.toString(),
+              color: Colors.deepPurple,
             ),
 
             const SizedBox(height: 24),
 
-            // 🔹 STUDENT LINE GRAPH
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Queue Progress",
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+            const Text(
+              "Queue Progress",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+
+            const SizedBox(height: 10),
 
             Card(
-              elevation: 3,
+              elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Queue Completion"),
+                        Text("${(progress * 100).toStringAsFixed(0)}%"),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     LinearProgressIndicator(
                       value: progress,
-                      minHeight: 12,
+                      minHeight: 14,
                       backgroundColor: Colors.grey.shade300,
-                      color: Colors.deepPurple,
+                      valueColor: const AlwaysStoppedAnimation(
+                        Colors.deepPurple,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "Your position in line",
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      "Estimated waiting time: $estimatedTotalWait minutes",
+                      style: TextStyle(color: Colors.grey.shade700),
                     ),
                   ],
                 ),
-              ),
-            ),
-
-            const Spacer(),
-
-            // 🔹 ACTION BUTTON
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.notifications_active),
-                label: const Text(
-                  "Enable Notifications",
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
-                onPressed: () {},
               ),
             ),
           ],
@@ -174,35 +224,36 @@ class StudentWaitingScreen extends StatelessWidget {
     );
   }
 
-  // 🔹 STATUS CARD WIDGET
-  Widget _statusCard({
+  Widget _infoCard({
+    required IconData icon,
     required String title,
     required String value,
-    required IconData icon,
     required Color color,
   }) {
-    return Expanded(
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 30),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
-              const SizedBox(height: 4),
-              Text(title),
-            ],
-          ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ],
         ),
       ),
     );

@@ -101,10 +101,8 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => isLoading = false);
 
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200 && data['success'] == true) {
         String role = data['role'];
-        String studentId = data['userId']; // ✅ MongoDB _id for student
 
         showPopup(
           title: "Login Successful 🎉",
@@ -115,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pop(context);
 
             if (role == "student") {
-              // Navigate to QueueStatusScreen with studentId
+              String studentId = data['userId']; // ONLY for student
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(

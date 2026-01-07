@@ -9,7 +9,7 @@ import 'student_setting.dart';
 import 'student_waiting.dart';
 
 class QueueStatusScreen extends StatefulWidget {
-  final String studentId; // ✅ COMES FROM LOGIN RESPONSE
+  final String studentId;
 
   const QueueStatusScreen({super.key, required this.studentId});
 
@@ -35,7 +35,6 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       final response = await http.get(
         Uri.parse("http://localhost:8000/api/queue"),
       );
-
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 &&
@@ -74,6 +73,73 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
           icon: const Icon(Icons.menu),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("No new notifications")),
+              );
+            },
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(
+              Icons.account_circle,
+              size: 35,
+              color: Colors.white,
+            ),
+            onSelected: (value) {
+              if (value == 'profile') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        StudentProfileScreen(studentId: widget.studentId),
+                  ),
+                );
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'profile',
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.deepPurple,
+                    child: Icon(Icons.person, color: Colors.white),
+                  ),
+                  title: Text(
+                    "Student",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text("View Profile"),
+                  trailing: Icon(Icons.edit, size: 18),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'edit_picture',
+                child: ListTile(
+                  leading: Icon(Icons.camera_alt, color: Colors.deepPurple),
+                  title: Text("Edit Profile Picture"),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'edit_profile',
+                child: ListTile(
+                  leading: Icon(Icons.edit, color: Colors.deepPurple),
+                  title: Text("Edit Profile"),
+                ),
+              ),
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'logout',
+                child: ListTile(
+                  leading: Icon(Icons.logout, color: Colors.red),
+                  title: Text("Logout", style: TextStyle(color: Colors.red)),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
 
       // 🔹 DRAWER
@@ -82,13 +148,11 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
           padding: EdgeInsets.zero,
           children: [
             _drawerHeader(),
-
             _drawerItem(
               Icons.home,
               "Dashboard",
               screen: QueueStatusScreen(studentId: widget.studentId),
             ),
-
             _drawerItem(
               Icons.add_circle_outline,
               "Join Queue",
@@ -103,22 +167,19 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 );
               },
             ),
-
             _drawerItem(
               Icons.access_time,
               "My Current Queue",
               screen: MyCurrentQueueScreen(
-                queueName: "",
+                queueName: queueData?["queueName"] ?? "",
                 studentId: widget.studentId,
               ),
             ),
-
             _drawerItem(
               Icons.history,
               "Queue History",
               screen: const QueueHistoryScreen(),
             ),
-
             _drawerItem(
               Icons.settings,
               "Settings",
@@ -128,7 +189,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         ),
       ),
 
-      // 🔹 BODY
+      // 🔹 BODY (INFO CARDS ADDED)
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : GridView.count(
@@ -144,6 +205,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                       MaterialPageRoute(
                         builder: (_) => StudentWaitingScreen(
                           queueName: queueData?["queueName"] ?? "",
+                          studentId: widget.studentId,
                         ),
                       ),
                     );
@@ -155,7 +217,6 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     color: Colors.orange,
                   ),
                 ),
-
                 InkWell(
                   onTap: () {
                     Navigator.push(
@@ -175,14 +236,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     color: Colors.blue,
                   ),
                 ),
-
                 const _InfoCard(
                   title: "Completed Today",
                   value: "0",
                   icon: Icons.check_circle,
                   color: Colors.purple,
                 ),
-
                 const _InfoCard(
                   title: "Pending Today",
                   value: "0",
@@ -194,7 +253,6 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     );
   }
 
-  // 🔹 DRAWER HEADER
   Widget _drawerHeader() {
     return const DrawerHeader(
       decoration: BoxDecoration(color: Colors.deepPurple),
@@ -225,7 +283,6 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     );
   }
 
-  // 🔹 DRAWER ITEM (FIXED)
   ListTile _drawerItem(
     IconData icon,
     String title, {
@@ -285,6 +342,30 @@ class _InfoCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(title, textAlign: TextAlign.center),
         ],
+      ),
+    );
+  }
+}
+
+// 🔹 PROFILE SCREEN
+class StudentProfileScreen extends StatelessWidget {
+  final String studentId;
+
+  const StudentProfileScreen({super.key, required this.studentId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("My Profile"),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Text(
+          "Student ID: $studentId",
+          style: const TextStyle(fontSize: 18),
+        ),
       ),
     );
   }
