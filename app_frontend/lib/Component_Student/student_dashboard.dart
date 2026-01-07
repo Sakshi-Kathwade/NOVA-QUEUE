@@ -214,7 +214,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             _drawerItem(
               Icons.settings,
               "Settings",
-              screen: const AdminSettingScreen(),
+              screen: StudentSettingScreen(studentId: widget.studentId),
             ),
           ],
         ),

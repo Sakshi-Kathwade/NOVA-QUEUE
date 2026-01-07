@@ -48,6 +48,9 @@ app.use('/api', tokenget);
 const tokendelete= require('./Routers/tokenrouter');
 app.use('/api', tokendelete);
 
+const changepassword = require('./Routers/registerrouter');
+app.use('/api', changepassword)
+
 
 
 // Start server

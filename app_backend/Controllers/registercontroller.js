@@ -107,10 +107,79 @@ const deleteStudent = async (req, res) => {
   }
 };
 
-// ===============================
-// EXPORT
-// ===============================
+// 🔐 CHANGE PASSWORD API
+const changePassword = async (req, res) => {
+  try {
+    const { studentID } = req.params;
+    const { currentPassword, password, confirmPassword } = req.body;
+
+    // 🔴 Validation
+    if (!studentID || !currentPassword || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // 🔎 Find student by ID
+    const student = await User.findById(studentID);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // 🔐 Check current password
+    if (student.password !== currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    // 🔁 New password match check
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password and confirm password do not match",
+      });
+    }
+
+    // 💪 Strong password validation
+    const strongPasswordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    if (!strongPasswordRegex.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and special character",
+      });
+    }
+
+    // ✅ Update password
+    student.password = password;
+    student.confirmPassword = password;
+    await student.save();
+
+    // 🎉 Success
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   addstudent,
   deleteStudent,
+  changePassword,
 };
