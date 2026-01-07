@@ -22,7 +22,7 @@ const register = require('./Routers/registerrouter');
 app.use('/api', register);
 
 const logout = require('./Routers/registerrouter');
-app.use('/api', logout);    
+app.use('/api',logout);    
 
 const login = require('./Routers/loginrouter');
 app.use('/api', login);

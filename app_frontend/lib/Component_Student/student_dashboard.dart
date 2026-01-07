@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -35,6 +37,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       final response = await http.get(
         Uri.parse("http://localhost:8000/api/queue"),
       );
+
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 &&
@@ -55,6 +58,32 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         errorMsg = "Server not reachable";
         isLoading = false;
       });
+    }
+  }
+
+  // 🔴 LOGOUT FUNCTION (ADDED)
+  Future<void> logoutStudent() async {
+    try {
+      final response = await http.delete(
+        Uri.parse("http://localhost:8000/api/logout/${widget.studentId}"),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Logout successfully")));
+
+        // ⏩ Go back to Login/Home screen
+        Navigator.popUntil(context, (route) => route.isFirst);
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Logout failed")));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Server error during logout")),
+      );
     }
   }
 
@@ -97,6 +126,8 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                         StudentProfileScreen(studentId: widget.studentId),
                   ),
                 );
+              } else if (value == 'logout') {
+                logoutStudent(); // 🔴 LOGOUT CALLED HERE
               }
             },
             itemBuilder: (context) => const [
@@ -189,7 +220,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         ),
       ),
 
-      // 🔹 BODY (INFO CARDS ADDED)
+      // 🔹 BODY
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : GridView.count(
@@ -197,52 +228,26 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              children: [
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => StudentWaitingScreen(
-                          queueName: queueData?["queueName"] ?? "",
-                          studentId: widget.studentId,
-                        ),
-                      ),
-                    );
-                  },
-                  child: const _InfoCard(
-                    title: "Students Waiting",
-                    value: "0",
-                    icon: Icons.people,
-                    color: Colors.orange,
-                  ),
+              children: const [
+                _InfoCard(
+                  title: "Students Waiting",
+                  value: "0",
+                  icon: Icons.people,
+                  color: Colors.orange,
                 ),
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MyCurrentQueueScreen(
-                          queueName: queueData?["queueName"] ?? "",
-                          studentId: widget.studentId,
-                        ),
-                      ),
-                    );
-                  },
-                  child: const _InfoCard(
-                    title: "Current Token",
-                    value: "--",
-                    icon: Icons.confirmation_number,
-                    color: Colors.blue,
-                  ),
+                _InfoCard(
+                  title: "Current Token",
+                  value: "--",
+                  icon: Icons.confirmation_number,
+                  color: Colors.blue,
                 ),
-                const _InfoCard(
+                _InfoCard(
                   title: "Completed Today",
                   value: "0",
                   icon: Icons.check_circle,
                   color: Colors.purple,
                 ),
-                const _InfoCard(
+                _InfoCard(
                   title: "Pending Today",
                   value: "0",
                   icon: Icons.pending_actions,

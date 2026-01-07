@@ -53,7 +53,7 @@ const addstudent = async (req, res) => {
     return res.status(201).json({
       message: "Registration successful",
       user: {
-        id: user._id,
+           studentID: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -70,43 +70,47 @@ const addstudent = async (req, res) => {
 
 const deleteStudent = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { studentID } = req.params;
 
-    // 1️⃣ Check ID
-    if (!id) {
+    // 🔴 Validation
+    if (!studentID) {
       return res.status(400).json({
-        error: "User ID is required",
+        success: false,
+        message: "Student ID is required",
       });
     }
 
-    // 2️⃣ Find & Delete User
-    const deletedUser = await User.findByIdAndDelete(id);
+    // ✅ Delete student by MongoDB _id
+    const deletedStudent = await User.findByIdAndDelete(studentID);
 
-    // 3️⃣ User not found
-    if (!deletedUser) {
+    if (!deletedStudent) {
       return res.status(404).json({
-        error: "User not found",
+        success: false,
+        message: "Student not found",
       });
     }
 
-    // 4️⃣ Success response
     return res.status(200).json({
-      message: "User deleted successfully",
-      user: {
-        id: deletedUser._id,
-        name: deletedUser.name,
-        email: deletedUser.email,
-        role: deletedUser.role,
+      success: true,
+      message: "Student deleted successfully",
+      data: {
+        studentID: deletedStudent._id,
+        name: deletedStudent.name,
       },
     });
 
-  } catch (err) {
+  } catch (error) {
     return res.status(500).json({
-      error: "Server error",
-      details: err.message,
+      success: false,
+      error: error.message,
     });
   }
 };
 
-
-module.exports = { addstudent ,deleteStudent};
+// ===============================
+// EXPORT
+// ===============================
+module.exports = {
+  addstudent,
+  deleteStudent,
+};

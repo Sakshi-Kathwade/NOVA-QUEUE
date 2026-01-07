@@ -113,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pop(context);
 
             if (role == "student") {
-              String studentId = data['userId']; // ONLY for student
+              String studentId = data['userId'];
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Icon(Icons.queue, size: 72, color: Colors.deepPurple),
               const SizedBox(height: 12),
               const Text(
-                "Smart Queue System",
+                "QueueNova",
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 32),

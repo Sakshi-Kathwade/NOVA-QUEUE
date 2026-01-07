@@ -9,6 +9,6 @@ const { deleteStudent } = require('../Controllers/registercontroller');
 router.post('/register', addstudent);
 
 // DELETE USER BY ID
-router.delete('/logout/:id', deleteStudent);
+router.delete('/logout/:studentID', deleteStudent);
 
 module.exports = router;
