@@ -178,8 +178,55 @@ const changePassword = async (req, res) => {
   }
 };
 
+// 📥 GET STUDENT DETAILS BY ID
+const getStudentById = async (req, res) => {
+  try {
+    const { studentID } = req.params;
+
+    // 🔴 Validation
+    if (!studentID) {
+      return res.status(400).json({
+        success: false,
+        message: "Student ID is required",
+      });
+    }
+
+    // 🔎 Find student
+    const student = await User.findById(studentID).select(
+      "-password -confirmPassword"
+    );
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // ✅ Success response
+    return res.status(200).json({
+      success: true,
+      data: {
+        studentID: student._id,
+        name: student.name,
+        email: student.email,
+        role: student.role,
+      },
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
 module.exports = {
   addstudent,
   deleteStudent,
   changePassword,
+  getStudentById
 };

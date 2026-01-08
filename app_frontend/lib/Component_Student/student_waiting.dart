@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class StudentWaitingScreen extends StatefulWidget {
   final String studentId;
-  final String queueName; // ✅ SAME AS MyCurrentQueueScreen
+  final String queueName;
 
   const StudentWaitingScreen({
     super.key,
@@ -17,7 +17,6 @@ class StudentWaitingScreen extends StatefulWidget {
 }
 
 class _StudentWaitingScreenState extends State<StudentWaitingScreen> {
-  // 🔹 BACKEND VARIABLES
   String queueName = "";
   int totalStudentsWaiting = 0;
   int currentTokenServing = 0;
@@ -32,10 +31,8 @@ class _StudentWaitingScreenState extends State<StudentWaitingScreen> {
     fetchQueueData();
   }
 
-  // 🔹 FETCH DATA (SAME STYLE AS MyCurrentQueueScreen)
   Future<void> fetchQueueData() async {
     final encodedQueue = Uri.encodeComponent(widget.queueName);
-
     final apiUrl =
         "http://localhost:8000/api/tokenget/$encodedQueue/${widget.studentId}";
 
@@ -78,8 +75,9 @@ class _StudentWaitingScreenState extends State<StudentWaitingScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    double progress =
-        currentTokenServing / (currentTokenServing + totalStudentsWaiting);
+    // ✅ FIXED NaN ISSUE
+    int total = currentTokenServing + totalStudentsWaiting;
+    double progress = total > 0 ? currentTokenServing / total : 0.0;
 
     int estimatedTotalWait = totalStudentsWaiting * averageWaitingTime;
 
@@ -95,7 +93,6 @@ class _StudentWaitingScreenState extends State<StudentWaitingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🔹 HEADER
             Card(
               elevation: 6,
               shape: RoundedRectangleBorder(
@@ -111,12 +108,15 @@ class _StudentWaitingScreenState extends State<StudentWaitingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          queueName,
+                          queueName.isNotEmpty
+                              ? queueName
+                              : "Not Joined Any Queue",
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+
                         const SizedBox(height: 6),
                         Row(
                           children: [

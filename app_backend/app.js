@@ -49,7 +49,11 @@ const tokendelete= require('./Routers/tokenrouter');
 app.use('/api', tokendelete);
 
 const changepassword = require('./Routers/registerrouter');
-app.use('/api', changepassword)
+app.use('/api', changepassword);
+
+const studentget = require('./Routers/registerrouter');
+app.use('/api', studentget);    
+
 
 
 

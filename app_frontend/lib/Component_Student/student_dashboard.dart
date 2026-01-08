@@ -26,10 +26,35 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   Map<String, dynamic>? queueData;
   String errorMsg = "";
 
+  // ✅ FETCHED STUDENT DATA
+  String studentName = "";
+  String studentEmail = "";
+
   @override
   void initState() {
     super.initState();
     fetchQueueStatus();
+    fetchStudentDetails();
+  }
+
+  // 🔵 FETCH STUDENT DETAILS
+  Future<void> fetchStudentDetails() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://localhost:8000/api/studentget/${widget.studentId}"),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)["data"];
+        setState(() {
+          studentName = data["name"] ?? "";
+          studentEmail = data["email"] ?? "";
+        });
+      }
+    } catch (e) {
+      debugPrint("Student fetch error: $e");
+    }
   }
 
   Future<void> fetchQueueStatus() async {
@@ -130,38 +155,38 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 logoutStudent(); // 🔴 LOGOUT CALLED HERE
               }
             },
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'profile',
                 child: ListTile(
-                  leading: CircleAvatar(
+                  leading: const CircleAvatar(
                     backgroundColor: Colors.deepPurple,
                     child: Icon(Icons.person, color: Colors.white),
                   ),
                   title: Text(
-                    "Student",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    studentName.isNotEmpty ? studentName : "Student",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text("View Profile"),
-                  trailing: Icon(Icons.edit, size: 18),
+                  subtitle: const Text("View Profile"),
+                  trailing: const Icon(Icons.edit, size: 18),
                 ),
               ),
-              PopupMenuItem(
+              const PopupMenuItem(
                 value: 'edit_picture',
                 child: ListTile(
                   leading: Icon(Icons.camera_alt, color: Colors.deepPurple),
                   title: Text("Edit Profile Picture"),
                 ),
               ),
-              PopupMenuItem(
+              const PopupMenuItem(
                 value: 'edit_profile',
                 child: ListTile(
                   leading: Icon(Icons.edit, color: Colors.deepPurple),
                   title: Text("Edit Profile"),
                 ),
               ),
-              PopupMenuDivider(),
-              PopupMenuItem(
+              const PopupMenuDivider(),
+              const PopupMenuItem(
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: Colors.red),
@@ -311,27 +336,27 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   }
 
   Widget _drawerHeader() {
-    return const DrawerHeader(
-      decoration: BoxDecoration(color: Colors.deepPurple),
+    return DrawerHeader(
+      decoration: const BoxDecoration(color: Colors.deepPurple),
       child: Row(
         children: [
-          CircleAvatar(radius: 30, child: Icon(Icons.person)),
-          SizedBox(width: 12),
+          const CircleAvatar(radius: 30, child: Icon(Icons.person)),
+          const SizedBox(width: 12),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Student",
-                style: TextStyle(
+                studentName.isNotEmpty ? studentName : "Student",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                "queue@university.com",
-                style: TextStyle(color: Colors.white70),
+                studentEmail.isNotEmpty ? studentEmail : "email@university.com",
+                style: const TextStyle(color: Colors.white70),
               ),
             ],
           ),
