@@ -54,6 +54,9 @@ app.use('/api', changepassword);
 const studentget = require('./Routers/registerrouter');
 app.use('/api', studentget);    
 
+const createAdmin = require('./Routers/adminrouter');
+app.use('/api', createAdmin);
+
 
 
 

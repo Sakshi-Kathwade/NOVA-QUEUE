@@ -74,23 +74,15 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 🔹 Login Function
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
 
     try {
-      // Determine API URL based on email
-      final bool isAdmin =
-          emailController.text.trim() == "admin@smartqueue.com";
-
-      final String apiUrl = isAdmin
-          ? "http://localhost:8000/api/adminLogin"
-          : "http://localhost:8000/api/login";
-
-      final response = await http.post(
-        Uri.parse(apiUrl),
+      // 1️⃣ Try ADMIN login first
+      http.Response response = await http.post(
+        Uri.parse("http://localhost:8000/api/adminLogin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": emailController.text.trim(),
@@ -98,9 +90,22 @@ class _LoginScreenState extends State<LoginScreen> {
         }),
       );
 
+      // 2️⃣ If admin NOT found, try STUDENT login
+      if (response.statusCode == 404) {
+        response = await http.post(
+          Uri.parse("http://localhost:8000/api/login"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "email": emailController.text.trim(),
+            "password": passwordController.text,
+          }),
+        );
+      }
+
       setState(() => isLoading = false);
 
       final data = jsonDecode(response.body);
+
       if (response.statusCode == 200 && data['success'] == true) {
         String role = data['role'];
 
@@ -113,11 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pop(context);
 
             if (role == "student") {
-              String studentId = data['userId'];
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => QueueStatusScreen(studentId: studentId),
+                  builder: (_) => QueueStatusScreen(studentId: data['userId']),
                 ),
               );
             } else if (role == "admin") {
@@ -127,14 +131,6 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             }
           },
-        );
-      } else if (response.statusCode == 404) {
-        showPopup(
-          title: "Email Not Found",
-          message: "No account found with this email.",
-          icon: Icons.email_outlined,
-          color: Colors.red,
-          onOk: () => Navigator.pop(context),
         );
       } else if (response.statusCode == 401) {
         showPopup(
