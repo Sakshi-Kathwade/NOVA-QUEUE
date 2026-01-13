@@ -15,6 +15,7 @@ class CurrentTokenScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Current Token"),
         backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
       ),
 
       body: Padding(

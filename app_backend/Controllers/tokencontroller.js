@@ -69,32 +69,47 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
   try {
     const { queueName, studentId } = req.params;
 
-    // Find token for this student in this queue
+    // 🔹 Find student's token in THIS queue only
     const token = await Token.findOne({
-      queueName,
-      studentId,
+      studentId: studentId,
       status: "waiting",
     });
 
     if (!token) {
       return res.status(404).json({
         success: false,
-        message: "No token found for this student",
+        message: "No token found for this student in this queue",
       });
     }
+
+    // 🔹 Count students ahead in SAME queue
+    const studentsAhead = await Token.countDocuments({
+      queueName: queueName,
+      status: "waiting",
+      tokenNumber: { $lt: token.tokenNumber },
+    });
+
+    // 🔹 Calculate estimated waiting time
+    const AVG_TIME_PER_STUDENT = 5; // minutes (adjust if needed)
+    const estimatedWaitingTime = studentsAhead * AVG_TIME_PER_STUDENT;
 
     res.status(200).json({
       success: true,
       tokenNumber: token.tokenNumber,
       queueName: token.queueName,
-      studentsAhead: token.studentsAhead,
-      estimatedWaitingTime: token.estimatedWaitingTime,
+      studentsAhead: studentsAhead,
+      estimatedWaitingTime: estimatedWaitingTime,
       status: token.status,
     });
+
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
+
 
 // ✅ Delete Token
 exports.deleteToken = async (req, res) => {
@@ -134,5 +149,50 @@ exports.deleteToken = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ✅ Get All Students / Tokens
+exports.getAllTokens = async (req, res) => {
+  try {
+    // 🔹 Get queueName from URL params
+    const { queueName } = req.params;
+
+    // 🔹 Optional status from query
+    const { status } = req.query;
+
+    // 🔹 Build filter
+    let filter = {};
+
+    if (queueName) {
+      filter.queueName = queueName;
+    }
+
+    if (status) {
+      filter.status = status;
+    }
+
+    // 🔹 Fetch tokens of ONLY that queue
+    const tokens = await Token.find(filter)
+      .sort({ tokenNumber: 1 });
+
+    if (!tokens || tokens.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No tokens found for this queue",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      totalStudents: tokens.length,
+      data: tokens,
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };

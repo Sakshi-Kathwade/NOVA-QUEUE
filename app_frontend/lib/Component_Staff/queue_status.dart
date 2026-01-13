@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, empty_catches
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -23,7 +23,6 @@ class _QueueStatusState extends State<QueueStatus> {
     fetchQueueStatus();
   }
 
-  // 🔹 FETCH QUEUE
   Future<void> fetchQueueStatus() async {
     try {
       final response = await http.get(
@@ -51,7 +50,6 @@ class _QueueStatusState extends State<QueueStatus> {
     }
   }
 
-  // 🔹 UPDATE STATUS
   Future<void> updateQueueStatus(bool value) async {
     try {
       final response = await http.put(
@@ -62,59 +60,17 @@ class _QueueStatusState extends State<QueueStatus> {
 
       if (response.statusCode == 200) {
         setState(() => isActive = value);
-
-        _showCenterPopup(
-          value ? "Queue Activated" : "Queue Deactivated",
-          value ? Icons.check_circle : Icons.cancel,
-          value ? Colors.green : Colors.red,
-        );
       }
-    } catch (e) {
-      _showCenterPopup("Failed to update queue", Icons.error, Colors.red);
-    }
-  }
-
-  // 🔹 CENTER POPUP
-  void _showCenterPopup(String message, IconData icon, Color color) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: color.withOpacity(0.15),
-              child: Icon(icon, size: 40, color: color),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-              ),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
-      ),
-    );
+    } catch (e) {}
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Queue Status"),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        title: const Text("Queue Status"),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -124,93 +80,67 @@ class _QueueStatusState extends State<QueueStatus> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // ✅ PROFESSIONAL QUEUE + STATUS CARD
+                  // MAIN QUEUE CARD
                   Card(
-                    elevation: 8,
+                    elevation: 4,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 🔹 Queue Name + Status Badge
                           Row(
                             children: [
                               Expanded(
                                 child: Text(
-                                  queueData?["queueName"] ?? "Queue Name",
+                                  queueData?["queueName"] ?? "Queue",
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isActive
-                                      ? Colors.green.withOpacity(0.15)
-                                      : Colors.red.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
+                              Chip(
+                                label: Text(
                                   isActive ? "ACTIVE" : "INACTIVE",
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: isActive ? Colors.green : Colors.red,
                                   ),
                                 ),
+                                backgroundColor: isActive
+                                    ? Colors.green.shade100
+                                    : Colors.red.shade100,
                               ),
                             ],
                           ),
 
                           const SizedBox(height: 16),
 
-                          // 🔹 Time & Students
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _infoItem(
-                                Icons.access_time,
-                                "Start",
-                                queueData?["startTime"] ?? "--",
-                              ),
-                              _infoItem(
-                                Icons.timer_off,
-                                "End",
-                                queueData?["endTime"] ?? "--",
-                              ),
-                              _infoItem(
-                                Icons.people,
-                                "Students",
-                                "${queueData?["totalStudents"] ?? 0}",
-                              ),
-                            ],
+                          _detailRow(
+                            Icons.access_time,
+                            "Start Time",
+                            queueData?["startTime"] ?? "--",
+                          ),
+                          _detailRow(
+                            Icons.timer_off,
+                            "End Time",
+                            queueData?["endTime"] ?? "--",
+                          ),
+                          _detailRow(
+                            Icons.people,
+                            "Total Students",
+                            "${queueData?["totalStudents"] ?? 0}",
                           ),
 
                           const Divider(height: 30),
 
-                          // 🔹 Toggle Status
                           Row(
                             children: [
-                              Icon(
-                                isActive ? Icons.lock_open : Icons.lock_outline,
-                                color: isActive ? Colors.green : Colors.red,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                isActive
-                                    ? "Queue is Active"
-                                    : "Queue is Inactive",
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              const Text(
+                                "Queue Status",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                               const Spacer(),
                               Switch(
@@ -224,9 +154,11 @@ class _QueueStatusState extends State<QueueStatus> {
                     ),
                   ),
 
+                  const SizedBox(height: 20),
+
                   const SizedBox(height: 24),
 
-                  // 🔹 GRID INFO (UNCHANGED)
+                  // INFO CARDS
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -266,23 +198,22 @@ class _QueueStatusState extends State<QueueStatus> {
     );
   }
 
-  // 🔹 Small Info Item Widget
-  Widget _infoItem(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.deepPurple),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-      ],
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.deepPurple),
+          const SizedBox(width: 10),
+          Text("$label:", style: const TextStyle(color: Colors.grey)),
+          const SizedBox(width: 6),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
 
-// 🔹 INFO CARD
 class InfoCard extends StatelessWidget {
   final String title;
   final String value;

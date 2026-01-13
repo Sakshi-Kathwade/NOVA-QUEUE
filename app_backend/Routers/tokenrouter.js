@@ -11,4 +11,6 @@ router.get("/tokenget/:queueName/:studentId", tokenController.getTokenByQueueAnd
 // Delete token
 router.delete("/tokendelete/:queueName/:tokenNumber", tokenController.deleteToken);
 
+router.get("/getAlltoken/:queueName", tokenController.getAllTokens);
+
 module.exports = router;

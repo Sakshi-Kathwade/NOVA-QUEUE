@@ -1,199 +1,173 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-class WaitingCardScreen extends StatelessWidget {
-  final int remainingStudents;
-  final int avgTimePerStudent; // in minutes
-
+class WaitingCardScreen extends StatefulWidget {
   const WaitingCardScreen({
     super.key,
-    required this.remainingStudents,
-    required this.avgTimePerStudent,
+    required int remainingStudents,
+    required int avgTimePerStudent,
   });
 
   @override
-  Widget build(BuildContext context) {
-    int totalWaitTime = remainingStudents * avgTimePerStudent;
+  State<WaitingCardScreen> createState() => _WaitingCardScreenState();
+}
 
-    // Status calculation
-    String status;
-    Color statusColor;
+class _WaitingCardScreenState extends State<WaitingCardScreen> {
+  List students = [];
+  bool isLoading = true;
 
-    if (totalWaitTime <= 20) {
-      status = "Low Waiting";
-      statusColor = Colors.green;
-    } else if (totalWaitTime <= 45) {
-      status = "Medium Waiting";
-      statusColor = Colors.orange;
-    } else {
-      status = "High Waiting";
-      statusColor = Colors.red;
+  // 🔹 CHANGE QUEUE NAME HERE
+  final String queueName = "ss";
+
+  @override
+  void initState() {
+    super.initState();
+    fetchStudents();
+  }
+
+  Future<void> fetchStudents() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://localhost:8000/api/getAlltoken/$queueName"),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+
+        setState(() {
+          students = decoded["data"];
+          isLoading = false;
+        });
+      } else {
+        isLoading = false;
+        setState(() {});
+      }
+    } catch (e) {
+      isLoading = false;
+      setState(() {});
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
+        title: const Text("Waiting Card"),
         backgroundColor: Colors.deepPurple,
-        elevation: 3,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: const Text(
-          "Estimated Waiting Time",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-            color: Colors.white,
-            letterSpacing: 0.5,
-          ),
-        ),
-        centerTitle: true,
+        foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // 🔹 Gradient Card
-            Container(
-              padding: const EdgeInsets.all(27),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6A11CB), Colors.deepPurple],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 15,
-                    offset: Offset(0, 8),
-                  ),
-                ],
+
+      body: Column(
+        children: [
+          // -------- WAITING CARD --------
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 🔹 Header
-                  Row(
-                    children: const [
-                      Icon(Icons.timer, color: Colors.white, size: 30),
-                      SizedBox(width: 12),
-                      Text(
-                        "Smart Queue Status",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-
-                  // 🔹 Average Time
-                  Text(
-                    "Average Time per Student: $avgTimePerStudent min",
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 🔹 Remaining Students
-                  Text(
-                    "Students Waiting: $remainingStudents",
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // 🔹 Total Time
-                  Text(
-                    "Total Estimated Wait: ~ $totalWaitTime minutes",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // 🔹 Status Indicator
-                  Row(
-                    children: [
-                      Icon(Icons.circle, color: statusColor, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        status,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // 🔹 Tips / Info Box
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "Tips for Accurate Queue Management:",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 17,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: const [
+                    Icon(
+                      Icons.confirmation_number,
+                      size: 40,
                       color: Colors.deepPurple,
-                      letterSpacing: 0.2,
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    "• Keep the queue updated for accurate waiting time.\n"
-                    "• Average time is auto-calculated from token intervals.\n"
-                    "• Green = Low, Orange = Medium, Red = High wait time.\n"
-                    "• Refresh dashboard regularly for real-time updates.",
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.black87,
-                      height: 1.5,
+                    SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Your Waiting Card",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          "Waiting",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.deepPurple,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+
+          // -------- STUDENTS WAITING LIST --------
+          Expanded(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: const [
+                      Text(
+                        "Students Waiting",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Expanded(
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : students.isEmpty
+                      ? const Center(child: Text("No students waiting"))
+                      : ListView.builder(
+                          itemCount: students.length,
+                          itemBuilder: (context, index) {
+                            final student = students[index];
+
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.deepPurple.shade100,
+                                  child: Text(
+                                    "A${student["tokenNumber"]}",
+                                    style: const TextStyle(
+                                      color: Colors.deepPurple,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                title: Text("Student ${index + 1}"),
+                                subtitle: Text(
+                                  student["status"], // 🔹 BACKEND STATUS
+                                ),
+                                trailing: const Icon(
+                                  Icons.hourglass_bottom,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, prefer_typing_uninitialized_variables
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -228,6 +228,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               "My Current Queue",
               screen: MyCurrentQueueScreen(
                 queueName: queueData?["queueName"] ?? "",
+
                 studentId: widget.studentId,
               ),
             ),
@@ -340,25 +341,40 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       decoration: const BoxDecoration(color: Colors.deepPurple),
       child: Row(
         children: [
-          const CircleAvatar(radius: 30, child: Icon(Icons.person)),
+          const CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person, color: Colors.deepPurple),
+          ),
           const SizedBox(width: 12),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                studentName.isNotEmpty ? studentName : "Student",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+
+          // ✅ FIX: Expanded added to prevent overflow
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  studentName.isNotEmpty ? studentName : "Student",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              Text(
-                studentEmail.isNotEmpty ? studentEmail : "email@university.com",
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  studentEmail.isNotEmpty
+                      ? studentEmail
+                      : "email@university.com",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
           ),
         ],
       ),

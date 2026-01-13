@@ -11,6 +11,7 @@ class StudentsWaitingScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Students Waiting"),
         backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
       ),
 
       body: Column(
