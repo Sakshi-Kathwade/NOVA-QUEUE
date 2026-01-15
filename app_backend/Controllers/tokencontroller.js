@@ -152,44 +152,96 @@ exports.deleteToken = async (req, res) => {
   }
 };
 
-// ✅ Get All Students / Tokens
-exports.getAllTokens = async (req, res) => {
+exports.getCurrentToken = async (req, res) => {
   try {
-    // 🔹 Get queueName from URL params
     const { queueName } = req.params;
 
-    // 🔹 Optional status from query
-    const { status } = req.query;
-
-    // 🔹 Build filter
-    let filter = {};
-
-    if (queueName) {
-      filter.queueName = queueName;
-    }
-
-    if (status) {
-      filter.status = status;
-    }
-
-    // 🔹 Fetch tokens of ONLY that queue
-    const tokens = await Token.find(filter)
-      .sort({ tokenNumber: 1 });
-
-    if (!tokens || tokens.length === 0) {
-      return res.status(404).json({
+    if (!queueName) {
+      return res.status(400).json({
         success: false,
-        message: "No tokens found for this queue",
+        message: "queueName missing",
       });
     }
 
-    res.status(200).json({
-      success: true,
-      totalStudents: tokens.length,
-      data: tokens,
+    const token = await Token.findOne({
+     
+      status: "waiting",
+    }).sort({ tokenNumber: 1 });
+
+    if (!token) {
+      return res.status(404).json({
+        success: false,
+        message: "No active token",
+      });
+    }
+
+    const totalCount = await Token.countDocuments({ queueName });
+    const completedCount = await Token.countDocuments({
+      queueName,
+      status: "completed",
     });
 
+    res.status(200).json({
+      success: true,
+      data: {
+        tokenNumber: token.tokenNumber,
+        purpose: token.purpose,          // ✅ exists
+        completedCount,
+        totalCount,
+      },
+    });
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+
+
+// ✅ Get all remaining waiting students in a queue
+exports.getRemainingStudents = async (req, res) => {
+  try {
+    const { queueName } = req.params;
+
+    if (!queueName) {
+      return res.status(400).json({
+        success: false,
+        message: "queueName is required",
+      });
+    }
+
+    // 1️⃣ Find the first token being served (current token)
+    const currentToken = await Token.findOne({
+      queueName,
+      status: "waiting",
+    }).sort({ tokenNumber: 1 });
+
+    // 2️⃣ Get all remaining waiting students after current token
+    const remainingStudents = await Token.find({
+      queueName,
+      status: "waiting",
+      tokenNumber: { $gt: currentToken ? currentToken.tokenNumber : 0 },
+    }).sort({ tokenNumber: 1 });
+
+    // 3️⃣ Map data to return only needed fields
+    const waitingList = remainingStudents.map((s) => ({
+      tokenNumber: s.tokenNumber,
+      studentId: s.studentId,
+      studentName: s.studentName,
+      purpose: s.purpose,
+      department: s.department,
+    }));
+
+    res.status(200).json({
+      success: true,
+      queueName,
+      waitingCount: waitingList.length,
+      waiting: waitingList,
+    });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({
       success: false,
       error: err.message,

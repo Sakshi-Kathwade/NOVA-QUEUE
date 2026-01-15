@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import 'queue_status.dart';
 import 'students_waiting.dart';
-import 'current_student.dart';
 import 'completed_today.dart';
 import 'create_queue.dart';
 import 'manage_queue.dart';
@@ -12,10 +13,42 @@ import 'admin_setting.dart';
 import 'waiting_card.dart';
 import 'queue_preview.dart';
 
-class AdminDashboard extends StatelessWidget {
-  AdminDashboard({super.key});
+class AdminDashboard extends StatefulWidget {
+  const AdminDashboard({super.key});
 
+  @override
+  State<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// ✅ dynamic queue name
+  String queueName = "ss";
+
+  @override
+  void initState() {
+    super.initState();
+    fetchQueueName();
+  }
+
+  /// 🔹 FETCH QUEUE NAME FROM BACKEND
+  Future<void> fetchQueueName() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://localhost:8000/api/queue"),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        setState(() {
+          queueName = jsonData["queueName"] ?? queueName;
+        });
+      }
+    } catch (e) {
+      // silent fail – dashboard still works
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,16 +56,16 @@ class AdminDashboard extends StatelessWidget {
       key: _scaffoldKey,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-      // ---------------- APP BAR ----------------
+      // ================= APP BAR =================
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         elevation: 2,
+
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () {
-            _scaffoldKey.currentState?.openDrawer();
-          },
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
+
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
@@ -51,19 +84,22 @@ class AdminDashboard extends StatelessWidget {
             ),
           ],
         ),
+
+        /// ✅ ADDED: NOTIFICATION + PROFILE (ONLY UI ADDITION)
         actions: [
           IconButton(
             icon: const Icon(
               Icons.notifications_none,
               color: Colors.white,
-              size: 30,
+              size: 28,
             ),
             onPressed: () {},
           ),
+
           PopupMenuButton<String>(
             icon: const Icon(
               Icons.account_circle,
-              size: 35,
+              size: 34,
               color: Colors.white,
             ),
             onSelected: (value) {
@@ -80,14 +116,12 @@ class AdminDashboard extends StatelessWidget {
                     child: Icon(Icons.person, color: Colors.white),
                   ),
                   title: Text(
-                    "John Doe",
+                    "Admin",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text("Staff Member"),
-                  trailing: Icon(Icons.edit, size: 18),
                 ),
               ),
-
               PopupMenuItem(
                 value: 'edit_picture',
                 child: ListTile(
@@ -105,7 +139,6 @@ class AdminDashboard extends StatelessWidget {
               ),
 
               PopupMenuDivider(),
-
               PopupMenuItem(
                 value: 'logout',
                 child: ListTile(
@@ -118,62 +151,23 @@ class AdminDashboard extends StatelessWidget {
         ],
       ),
 
-      // ---------------- DRAWER ----------------
+      // ================= DRAWER =================
       drawer: Drawer(
         child: Column(
           children: [
-            // ---------- HEADER ----------
             DrawerHeader(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF4A148C), // Dark Purple
-                    Color(0xFF7B1FA2), // Medium Purple
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
                 ),
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Profile Avatar
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const CircleAvatar(
-                      radius: 32,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.person,
-                        size: 36,
-                        color: Colors.deepPurple,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-
-                  // Name + Role
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "John Doe",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Staff Member",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                    ],
+                children: const [
+                  CircleAvatar(radius: 30, child: Icon(Icons.person, size: 35)),
+                  SizedBox(width: 12),
+                  Text(
+                    "Admin",
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ],
               ),
@@ -182,21 +176,21 @@ class AdminDashboard extends StatelessWidget {
             _drawerItem(context, Icons.dashboard, "Dashboard"),
             _drawerItem(
               context,
-              Icons.add_circle_outline,
+              Icons.add,
               "Create Queue",
               screen: CreateQueueScreen(),
             ),
             _drawerItem(
               context,
-              Icons.list_alt,
+              Icons.list,
               "Manage Queue",
               screen: ManageQueueScreen(),
             ),
             _drawerItem(
               context,
-              Icons.person_pin_circle,
-              "Current Student",
-              screen: CurrentStudentScreen(),
+              Icons.person,
+              "Current Token",
+              screen: CurrentTokenScreen(queueName: queueName),
             ),
             _drawerItem(
               context,
@@ -214,7 +208,7 @@ class AdminDashboard extends StatelessWidget {
         ),
       ),
 
-      // ---------------- BODY ----------------
+      // ================= BODY =================
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: GridView.count(
@@ -229,7 +223,7 @@ class AdminDashboard extends StatelessWidget {
               value: "Open",
               icon: Icons.lock_open,
               color: Colors.green,
-              navigateTo: QueueStatus(studentId: 'studentID'),
+              navigateTo: QueueStatus(studentId: "studentID"),
             ),
             _dashboardCard(
               context: context,
@@ -237,16 +231,19 @@ class AdminDashboard extends StatelessWidget {
               value: "12",
               icon: Icons.people,
               color: Colors.orange,
-              navigateTo: StudentsWaitingScreen(),
+              navigateTo: WaitingCardScreen(queueName: queueName),
             ),
+
+            /// ✅ dynamic queueName used correctly
             _dashboardCard(
               context: context,
               title: "Current Token",
               value: "A-07",
               icon: Icons.confirmation_number,
               color: Colors.blue,
-              navigateTo: CurrentTokenScreen(),
+              navigateTo: CurrentTokenScreen(queueName: queueName),
             ),
+
             _dashboardCard(
               context: context,
               title: "Completed Today",
@@ -257,28 +254,24 @@ class AdminDashboard extends StatelessWidget {
             ),
             _dashboardCard(
               context: context,
-              title: "Student Live Queue",
-              value: "38",
+              title: "Live Queue",
+              value: "Live",
               icon: Icons.people_alt,
               color: Colors.deepPurple,
               navigateTo: LiveQueuePreviewScreen(
-                queueData: [
+                queueData: const [
                   {"name": "Student 1", "token": "A-01"},
                   {"name": "Student 2", "token": "A-02"},
-                  {"name": "Student 3", "token": "A-03"},
                 ],
               ),
             ),
             _dashboardCard(
               context: context,
-              title: "Estimated waiting time",
-              value: "38",
-              icon: Icons.people_alt,
-              color: Colors.deepPurple,
-              navigateTo: WaitingCardScreen(
-                remainingStudents: 5,
-                avgTimePerStudent: 5,
-              ),
+              title: "Waiting Time",
+              value: "10 min",
+              icon: Icons.timer,
+              color: Colors.teal,
+              navigateTo: WaitingCardScreen(queueName: 'queueName'),
             ),
           ],
         ),
@@ -286,7 +279,7 @@ class AdminDashboard extends StatelessWidget {
     );
   }
 
-  // ---------------- DRAWER ITEM ----------------
+  // ================= DRAWER ITEM =================
   Widget _drawerItem(
     BuildContext context,
     IconData icon,
@@ -305,7 +298,7 @@ class AdminDashboard extends StatelessWidget {
     );
   }
 
-  // ---------------- DASHBOARD CARD ----------------
+  // ================= DASHBOARD CARD =================
   Widget _dashboardCard({
     required BuildContext context,
     required String title,
@@ -315,14 +308,14 @@ class AdminDashboard extends StatelessWidget {
     Widget? navigateTo,
   }) {
     return InkWell(
-      onTap: () {
-        if (navigateTo != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => navigateTo),
-          );
-        }
-      },
+      onTap: navigateTo == null
+          ? null
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => navigateTo),
+              );
+            },
       borderRadius: BorderRadius.circular(12),
       child: Card(
         elevation: 4,
@@ -343,11 +336,7 @@ class AdminDashboard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text(title, textAlign: TextAlign.center),
             ],
           ),
         ),

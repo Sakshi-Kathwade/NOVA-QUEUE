@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class WaitingCardScreen extends StatefulWidget {
-  const WaitingCardScreen({
-    super.key,
-    required int remainingStudents,
-    required int avgTimePerStudent,
-  });
+  const WaitingCardScreen({super.key, required this.queueName});
+
+  final String queueName;
 
   @override
   State<WaitingCardScreen> createState() => _WaitingCardScreenState();
@@ -17,8 +15,8 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
   List students = [];
   bool isLoading = true;
 
-  // 🔹 CHANGE QUEUE NAME HERE
-  final String queueName = "ss";
+  // ✅ ANDROID EMULATOR SAFE URL
+  final String baseUrl = "http://localhost:8000";
 
   @override
   void initState() {
@@ -29,40 +27,42 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
   Future<void> fetchStudents() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/getAlltoken/$queueName"),
+        Uri.parse("$baseUrl/api/remainingtoken/${widget.queueName}"),
       );
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
 
         setState(() {
-          students = decoded["data"];
+          students = decoded["waiting"] ?? [];
           isLoading = false;
         });
       } else {
-        isLoading = false;
-        setState(() {});
+        setState(() {
+          students = [];
+          isLoading = false;
+        });
       }
     } catch (e) {
-      isLoading = false;
-      setState(() {});
+      setState(() {
+        students = [];
+        isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
       appBar: AppBar(
-        title: const Text("Waiting Card"),
+        title: Text("Student Waiting "),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
 
       body: Column(
         children: [
-          // -------- WAITING CARD --------
+          // 🔹 TOP SUMMARY CARD (NEW & CLEAN UI)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Card(
@@ -71,29 +71,48 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
                 child: Row(
-                  children: const [
-                    Icon(
-                      Icons.confirmation_number,
-                      size: 40,
-                      color: Colors.deepPurple,
-                    ),
-                    SizedBox(width: 16),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Queue Name
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "Your Waiting Card",
-                          style: TextStyle(fontSize: 16),
+                        const Text(
+                          "Queue Name",
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          "Waiting",
-                          style: TextStyle(
-                            fontSize: 20,
+                          widget.queueName,
+                          style: const TextStyle(
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.deepPurple,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Waiting Count
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          "Students Waiting",
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          students.length.toString(),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
                           ),
                         ),
                       ],
@@ -104,68 +123,45 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
             ),
           ),
 
-          // -------- STUDENTS WAITING LIST --------
+          // 🔹 WAITING LIST
           Expanded(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: const [
-                      Text(
-                        "Students Waiting",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : students.isEmpty
+                ? const Center(child: Text("No students waiting"))
+                : ListView.builder(
+                    itemCount: students.length,
+                    itemBuilder: (context, index) {
+                      final student = students[index];
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                      ),
-                    ],
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.deepPurple.shade100,
+                            child: Text(
+                              "A-${student["tokenNumber"]}",
+                              style: const TextStyle(
+                                color: Colors.deepPurple,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: const Text("Waiting"),
+                          subtitle: Text(
+                            student["purpose"] ?? "Purpose not available",
+                          ),
+                          trailing: const Icon(
+                            Icons.hourglass_bottom,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Expanded(
-                  child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : students.isEmpty
-                      ? const Center(child: Text("No students waiting"))
-                      : ListView.builder(
-                          itemCount: students.length,
-                          itemBuilder: (context, index) {
-                            final student = students[index];
-
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.deepPurple.shade100,
-                                  child: Text(
-                                    "A${student["tokenNumber"]}",
-                                    style: const TextStyle(
-                                      color: Colors.deepPurple,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                title: Text("Student ${index + 1}"),
-                                subtitle: Text(
-                                  student["status"], // 🔹 BACKEND STATUS
-                                ),
-                                trailing: const Icon(
-                                  Icons.hourglass_bottom,
-                                  color: Colors.orange,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
           ),
         ],
       ),

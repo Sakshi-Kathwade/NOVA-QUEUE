@@ -57,8 +57,11 @@ app.use('/api', studentget);
 const createAdmin = require('./Routers/adminrouter');
 app.use('/api', createAdmin);
 
-const getAlltoken = require('./Routers/tokenrouter');
-app.use('/api', getAlltoken);   
+const currenttoken = require('./Routers/tokenrouter');
+app.use('/api',currenttoken);
+   
+const remainingtoken = require('./Routers/tokenrouter');
+app.use('/api',remainingtoken); 
 
 
 

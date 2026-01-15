@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class StudentsWaitingScreen extends StatelessWidget {
-  const StudentsWaitingScreen({super.key});
+  const StudentsWaitingScreen({super.key, required String queueName});
 
   @override
   Widget build(BuildContext context) {

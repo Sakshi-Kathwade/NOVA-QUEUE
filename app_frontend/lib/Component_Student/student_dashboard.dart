@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
+import '';
 import 'join_queue.dart';
 import 'my_current_queue.dart';
 import 'queue_history.dart';
@@ -260,7 +260,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => StudentWaitingScreen(
+                        builder: (context) => StudentsWaitingScreen(
                           queueName: queueData?["queueName"] ?? "",
                           studentId: widget.studentId,
                         ),

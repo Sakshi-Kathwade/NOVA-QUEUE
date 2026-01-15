@@ -36,6 +36,7 @@ const createQueue = async (req, res) => {
     });
   }
 };
+
 const getAllQueues = async (req, res) => {
   try {
     const queues = await Queue.find().sort({ createdAt: -1 });
