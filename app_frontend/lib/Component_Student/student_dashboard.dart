@@ -260,7 +260,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => StudentsWaitingScreen(
+                        builder: (context) => StudentWaiting(
                           queueName: queueData?["queueName"] ?? "",
                           studentId: widget.studentId,
                         ),

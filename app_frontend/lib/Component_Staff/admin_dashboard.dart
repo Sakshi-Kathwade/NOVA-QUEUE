@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'queue_status.dart';
-import 'students_waiting.dart';
 import 'completed_today.dart';
 import 'create_queue.dart';
 import 'manage_queue.dart';
@@ -24,7 +23,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// ✅ dynamic queue name
-  String queueName = "ss";
+  String queueName = "-";
 
   @override
   void initState() {

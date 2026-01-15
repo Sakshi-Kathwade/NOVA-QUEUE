@@ -164,7 +164,7 @@ exports.getCurrentToken = async (req, res) => {
     }
 
     const token = await Token.findOne({
-     
+      queueName,
       status: "waiting",
     }).sort({ tokenNumber: 1 });
 
