@@ -33,6 +33,7 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+<<<<<<< HEAD
   /// ✅ dynamic queue name - no hardcoded fallback
   String? queueName;
   String? queueId; // ✅ Queue ID for status updates
@@ -50,6 +51,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<dynamic> liveQueueData = []; // ✅ Live queue data from backend
   String currentLanguage =
       'english'; // ✅ Current language (english/hindi/marathi)
+=======
+  /// ✅ dynamic queue name
+  String queueName = "Addmission Queue";
+>>>>>>> 7e09a914aaa43274979fea730905669a12a495de
 
   @override
   void initState() {
