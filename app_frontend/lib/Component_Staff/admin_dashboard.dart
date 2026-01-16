@@ -23,7 +23,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// ✅ dynamic queue name
-  String queueName = "-";
+  String queueName = "Addmission Queue";
 
   @override
   void initState() {
