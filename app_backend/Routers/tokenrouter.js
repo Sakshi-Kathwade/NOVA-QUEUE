@@ -21,4 +21,11 @@ router.get(
   tokenController.getRemainingStudents
 );
 
+// ✅ Token Actions
+router.put("/completetoken", tokenController.completeToken);
+router.put("/holdtoken", tokenController.holdToken);
+router.put("/unholdtoken", tokenController.unholdToken);
+router.put("/nexttoken", tokenController.nextToken);
+router.get("/heldtokens/:queueName", tokenController.getHeldTokens);
+
 module.exports = router;

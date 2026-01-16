@@ -1,8 +1,10 @@
 // ignore_for_file: deprecated_member_use, empty_catches
 
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 class QueueStatus extends StatefulWidget {
   const QueueStatus({super.key, required String studentId});
@@ -16,26 +18,57 @@ class _QueueStatusState extends State<QueueStatus> {
   Map<String, dynamic>? queueData;
   String errorMsg = "";
   bool isActive = false;
+  Timer? _dateTimer; // ✅ Timer for real-time date update
+  Timer? _dataTimer; // ✅ Timer for real-time data updates
+  
+  // ✅ Real-time data
+  int waitingCount = 0;
+  String currentToken = "--";
+  int completedToday = 0;
+  int pendingToday = 0;
 
   @override
   void initState() {
     super.initState();
     fetchQueueStatus();
+    // ✅ Start timer to update date every minute
+    _dateTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      setState(() {}); // Refresh to update date
+    });
+    // ✅ Start timer to update data every 3 seconds
+    _dataTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (queueData != null && queueData!["queueName"] != null) {
+        fetchQueueData();
+      }
+    });
   }
 
+  @override
+  void dispose() {
+    _dateTimer?.cancel();
+    _dataTimer?.cancel();
+    super.dispose();
+  }
+
+  // ✅ Fetch active queue status
   Future<void> fetchQueueStatus() async {
     try {
+      // ✅ Fetch active queue instead of all queues
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/queue"),
+        Uri.parse("http://localhost:8000/api/activequeue"),
       );
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && data["data"].isNotEmpty) {
+      if (response.statusCode == 200 && data["success"] == true && data["data"] != null) {
         setState(() {
-          queueData = data["data"][0];
+          queueData = data["data"];
           isActive = queueData!["status"] == "Active";
           isLoading = false;
         });
+        // ✅ Fetch queue data after queue is loaded
+        if (queueData!["queueName"] != null) {
+          fetchQueueData();
+        }
       } else {
         setState(() {
           errorMsg = "No queue available";
@@ -50,6 +83,72 @@ class _QueueStatusState extends State<QueueStatus> {
     }
   }
 
+  // ✅ Fetch real-time queue data (waiting count, current token, completed count)
+  Future<void> fetchQueueData() async {
+    if (queueData == null || queueData!["queueName"] == null) return;
+
+    final queueName = queueData!["queueName"] as String;
+
+    try {
+      // Fetch waiting students count
+      final waitingResponse = await http.get(
+        Uri.parse("http://localhost:8000/api/remainingtoken/$queueName"),
+      );
+
+      if (waitingResponse.statusCode == 200) {
+        final waitingData = json.decode(waitingResponse.body);
+        final waitingList = (waitingData["waiting"] as List?) ?? [];
+        setState(() {
+          waitingCount = waitingList.length;
+        });
+      }
+
+      // Fetch current token and completed count
+      final tokenResponse = await http.get(
+        Uri.parse("http://localhost:8000/api/currenttoken/$queueName"),
+      );
+
+      if (tokenResponse.statusCode == 200) {
+        final tokenData = json.decode(tokenResponse.body);
+        if (tokenData["data"] != null) {
+          final tokenNumber = tokenData["data"]["tokenNumber"] ?? 0;
+          final completedCount = tokenData["data"]["completedCount"] ?? 0;
+          final totalCount = tokenData["data"]["totalCount"] ?? 0;
+          setState(() {
+            currentToken = tokenNumber > 0 ? "A-$tokenNumber" : "--";
+            completedToday = completedCount;
+            pendingToday = totalCount - completedCount;
+          });
+        } else {
+          setState(() {
+            currentToken = "--";
+            completedToday = 0;
+            pendingToday = 0;
+          });
+        }
+      }
+    } catch (e) {
+      // Silent fail - will retry on next poll
+    }
+  }
+
+  // ✅ Format time from ISO string to readable format
+  String _formatTime(String? isoTime) {
+    if (isoTime == null || isoTime.isEmpty) return "--";
+    try {
+      final dateTime = DateTime.parse(isoTime);
+      return DateFormat('hh:mm a').format(dateTime); // Format: 09:30 AM
+    } catch (e) {
+      return isoTime; // Return as is if parsing fails
+    }
+  }
+
+  // ✅ Get today's date in readable format
+  String _getTodayDate() {
+    return DateFormat('EEEE, MMMM dd, yyyy').format(DateTime.now());
+    // Format: Monday, January 15, 2024
+  }
+
   Future<void> updateQueueStatus(bool value) async {
     try {
       final response = await http.put(
@@ -60,6 +159,8 @@ class _QueueStatusState extends State<QueueStatus> {
 
       if (response.statusCode == 200) {
         setState(() => isActive = value);
+        // ✅ Refresh queue status after update
+        fetchQueueStatus();
       }
     } catch (e) {}
   }
@@ -68,7 +169,19 @@ class _QueueStatusState extends State<QueueStatus> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Queue Status"),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Queue Status",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              _getTodayDate(), // ✅ Real-time date display
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
@@ -121,17 +234,17 @@ class _QueueStatusState extends State<QueueStatus> {
                           _detailRow(
                             Icons.access_time,
                             "Start Time",
-                            queueData?["startTime"] ?? "--",
+                            _formatTime(queueData?["startTime"]),
                           ),
                           _detailRow(
                             Icons.timer_off,
                             "End Time",
-                            queueData?["endTime"] ?? "--",
+                            _formatTime(queueData?["endTime"]),
                           ),
                           _detailRow(
                             Icons.people,
                             "Total Students",
-                            "${queueData?["totalStudents"] ?? 0}",
+                            "${queueData?["maxStudents"] ?? queueData?["totalStudents"] ?? 0}",
                           ),
 
                           const Divider(height: 30),
@@ -165,28 +278,28 @@ class _QueueStatusState extends State<QueueStatus> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
-                    children: const [
+                    children: [
                       InfoCard(
                         title: "Students Waiting",
-                        value: "0",
+                        value: waitingCount.toString(),
                         icon: Icons.people,
                         color: Colors.orange,
                       ),
                       InfoCard(
                         title: "Current Token",
-                        value: "--",
+                        value: currentToken,
                         icon: Icons.confirmation_number,
                         color: Colors.blue,
                       ),
                       InfoCard(
                         title: "Completed Today",
-                        value: "0",
+                        value: completedToday.toString(),
                         icon: Icons.check_circle,
                         color: Colors.purple,
                       ),
                       InfoCard(
                         title: "Pending Today",
-                        value: "0",
+                        value: pendingToday.toString(),
                         icon: Icons.pending_actions,
                         color: Colors.red,
                       ),

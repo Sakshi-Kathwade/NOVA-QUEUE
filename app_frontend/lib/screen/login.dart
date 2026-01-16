@@ -127,7 +127,12 @@ class _LoginScreenState extends State<LoginScreen> {
             } else if (role == "admin") {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => AdminDashboard()),
+                MaterialPageRoute(
+                  builder: (_) => AdminDashboard(
+                    adminEmail: data['email'], // ✅ Pass admin email
+                    adminId: data['adminId'], // ✅ Pass admin ID
+                  ),
+                ),
               );
             }
           },

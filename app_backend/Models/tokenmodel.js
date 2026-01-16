@@ -16,6 +16,7 @@ const tokenSchema = new mongoose.Schema({
   estimatedWaitingTime: Number,
   status: {
     type: String,
+    enum: ["waiting", "serving", "completed", "hold", "skipped"],
     default: "waiting",
   },
 });

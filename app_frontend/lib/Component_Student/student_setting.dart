@@ -9,11 +9,18 @@ import 'package:app_frontend/Component_Staff/theme_pref.dart';
 import 'student_dashboard.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../services/language_service.dart';
+import '../services/translations.dart';
 
 class StudentSettingScreen extends StatefulWidget {
   final String studentId;
+  final VoidCallback? onLanguageChanged; // ✅ Callback when language changes
 
-  const StudentSettingScreen({super.key, required this.studentId});
+  const StudentSettingScreen({
+    super.key,
+    required this.studentId,
+    this.onLanguageChanged,
+  });
 
   @override
   State<StudentSettingScreen> createState() => _StudentSettingScreenState();
@@ -21,6 +28,7 @@ class StudentSettingScreen extends StatefulWidget {
 
 class _StudentSettingScreenState extends State<StudentSettingScreen> {
   bool notificationsEnabled = true;
+  String currentLanguage = 'english';
 
   // ✅ FETCHED DATA
   String studentEmail = "";
@@ -36,7 +44,74 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
   @override
   void initState() {
     super.initState();
+    _loadLanguage();
     fetchStudentDetails();
+  }
+
+  // ✅ Load user's language preference
+  Future<void> _loadLanguage() async {
+    final lang = await LanguageService.getLanguage(widget.studentId);
+    setState(() {
+      currentLanguage = lang;
+    });
+  }
+
+  // ✅ Show language selection dialog
+  void _showLanguageDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(Translations.translate('select_language', currentLanguage)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _languageOption('english', 'English', '🇬🇧'),
+            _languageOption('hindi', 'हिंदी', '🇮🇳'),
+            _languageOption('marathi', 'मराठी', '🇮🇳'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(Translations.translate('cancel', currentLanguage)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Language option widget
+  Widget _languageOption(String langCode, String langName, String flag) {
+    final isSelected = currentLanguage == langCode;
+    return ListTile(
+      leading: Text(flag, style: const TextStyle(fontSize: 24)),
+      title: Text(langName),
+      trailing: isSelected
+          ? const Icon(Icons.check, color: Colors.deepPurple)
+          : null,
+      onTap: () async {
+        await LanguageService.setLanguage(widget.studentId, langCode);
+        setState(() {
+          currentLanguage = langCode;
+        });
+        Navigator.pop(context);
+        // ✅ Refresh parent screen
+        if (widget.onLanguageChanged != null) {
+          widget.onLanguageChanged!();
+        }
+        // ✅ Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${Translations.translate('language', currentLanguage)} ${Translations.translate('save', currentLanguage)}',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      },
+    );
   }
 
   // 🔵 GET STUDENT DETAILS API
@@ -191,7 +266,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Settings"),
+        title: Text(Translations.translate('settings', currentLanguage)),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -199,28 +274,40 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _sectionTitle("Account"),
-          _infoTile("Admin Email", studentEmail),
-          _infoTile("Role", studentRole),
+          _sectionTitle(Translations.translate('account', currentLanguage)),
+          _infoTile(
+            Translations.translate('admin_email', currentLanguage),
+            studentEmail,
+          ),
+          _infoTile(
+            Translations.translate('role', currentLanguage),
+            studentRole,
+          ),
 
           const SizedBox(height: 16),
 
-          _sectionTitle("Security"),
+          _sectionTitle(Translations.translate('security', currentLanguage)),
           _settingTile(
             icon: Icons.lock,
-            title: "Change Password",
+            title: Translations.translate('change_password', currentLanguage),
             onTap: changePasswordDialog,
           ),
 
           const SizedBox(height: 16),
 
-          _sectionTitle("Preferences"),
+          _sectionTitle(Translations.translate('preferences', currentLanguage)),
+          // ✅ Language Selection
+          _settingTile(
+            icon: Icons.language,
+            title: Translations.translate('language', currentLanguage),
+            onTap: _showLanguageDialog,
+          ),
           ValueListenableBuilder<bool>(
             valueListenable: isDarkMode,
             builder: (context, value, _) {
               return SwitchListTile(
                 value: value,
-                title: const Text("Dark Mode"),
+                title: Text(Translations.translate('dark_mode', currentLanguage)),
                 secondary: const Icon(Icons.dark_mode),
                 onChanged: (val) {
                   isDarkMode.value = val;
@@ -232,17 +319,17 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
 
           SwitchListTile(
             value: notificationsEnabled,
-            title: const Text("Notifications"),
+            title: Text(Translations.translate('notifications', currentLanguage)),
             secondary: const Icon(Icons.notifications),
             onChanged: (value) => setState(() => notificationsEnabled = value),
           ),
 
           const SizedBox(height: 16),
 
-          _sectionTitle("System"),
+          _sectionTitle(Translations.translate('system', currentLanguage)),
           _settingTile(
             icon: Icons.delete,
-            title: "Clear Cache",
+            title: Translations.translate('clear_cache', currentLanguage),
             onTap: clearCache,
           ),
 
@@ -251,7 +338,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
           ElevatedButton.icon(
             onPressed: logoutDialog,
             icon: const Icon(Icons.logout),
-            label: const Text("Logout"),
+            label: Text(Translations.translate('logout', currentLanguage)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               padding: const EdgeInsets.symmetric(vertical: 14),

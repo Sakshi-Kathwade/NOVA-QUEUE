@@ -55,6 +55,41 @@ const getAllQueues = async (req, res) => {
   }
 };
 
+// ✅ GET ACTIVE QUEUE (latest active queue or latest created queue)
+const getActiveQueue = async (req, res) => {
+  try {
+    // First, try to find the latest Active queue
+    let activeQueue = await Queue.findOne({ status: "Active" })
+      .sort({ createdAt: -1 });
+
+    // If no Active queue exists, get the latest created queue (regardless of status)
+    if (!activeQueue) {
+      activeQueue = await Queue.findOne().sort({ createdAt: -1 });
+    }
+
+    if (!activeQueue) {
+      return res.status(404).json({
+        success: false,
+        message: "No queue found",
+        data: null,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Active queue fetched successfully",
+      queueName: activeQueue.queueName,
+      data: activeQueue,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching active queue",
+    });
+  }
+};
+
 
 
 // UPDATE QUEUE STATUS
@@ -107,4 +142,5 @@ module.exports = {
   createQueue,
   getAllQueues,
   updateQueueStatus,
+  getActiveQueue,
 };

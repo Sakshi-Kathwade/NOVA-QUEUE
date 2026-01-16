@@ -57,6 +57,9 @@ app.use('/api', studentget);
 const createAdmin = require('./Routers/adminrouter');
 app.use('/api', createAdmin);
 
+const adminChangePassword = require('./Routers/adminrouter');
+app.use('/api', adminChangePassword);
+
 const currenttoken = require('./Routers/tokenrouter');
 app.use('/api',currenttoken);
    

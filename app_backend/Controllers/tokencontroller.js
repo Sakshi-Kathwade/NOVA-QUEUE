@@ -163,10 +163,19 @@ exports.getCurrentToken = async (req, res) => {
       });
     }
 
-    const token = await Token.findOne({
+    // ✅ Get current token (serving status or first waiting token)
+    let token = await Token.findOne({
       queueName,
-      status: "waiting",
-    }).sort({ tokenNumber: 1 });
+      status: "serving",
+    });
+
+    // If no serving token, get first waiting token (skip hold tokens)
+    if (!token) {
+      token = await Token.findOne({
+        queueName,
+        status: "waiting",
+      }).sort({ tokenNumber: 1 });
+    }
 
     if (!token) {
       return res.status(404).json({
@@ -174,6 +183,11 @@ exports.getCurrentToken = async (req, res) => {
         message: "No active token",
       });
     }
+
+    // ✅ Get student name from studentId
+    const Student = require("../Models/registermodel");
+    const student = await Student.findById(token.studentId);
+    const studentName = student ? student.name : "Unknown";
 
     const totalCount = await Token.countDocuments({ queueName });
     const completedCount = await Token.countDocuments({
@@ -184,10 +198,253 @@ exports.getCurrentToken = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
+        tokenId: token._id,
         tokenNumber: token.tokenNumber,
-        purpose: token.purpose,          // ✅ exists
+        studentName: studentName,
+        purpose: token.purpose,
         completedCount,
         totalCount,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ COMPLETE TOKEN
+exports.completeToken = async (req, res) => {
+  try {
+    const { queueName, tokenId } = req.body;
+
+    if (!queueName || !tokenId) {
+      return res.status(400).json({
+        success: false,
+        message: "Queue name and token ID are required",
+      });
+    }
+
+    // Update token status to completed
+    const token = await Token.findByIdAndUpdate(
+      tokenId,
+      { status: "completed" },
+      { new: true }
+    );
+
+    if (!token) {
+      return res.status(404).json({
+        success: false,
+        message: "Token not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Token completed successfully",
+      data: token,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ HOLD TOKEN
+exports.holdToken = async (req, res) => {
+  try {
+    const { queueName, tokenId } = req.body;
+
+    if (!queueName || !tokenId) {
+      return res.status(400).json({
+        success: false,
+        message: "Queue name and token ID are required",
+      });
+    }
+
+    // Update token status to hold
+    const token = await Token.findByIdAndUpdate(
+      tokenId,
+      { status: "hold" },
+      { new: true }
+    );
+
+    if (!token) {
+      return res.status(404).json({
+        success: false,
+        message: "Token not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Token put on hold successfully",
+      data: token,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ UNHOLD TOKEN (resume held token)
+exports.unholdToken = async (req, res) => {
+  try {
+    const { queueName, tokenId } = req.body;
+
+    if (!queueName || !tokenId) {
+      return res.status(400).json({
+        success: false,
+        message: "Queue name and token ID are required",
+      });
+    }
+
+    // Find the token
+    const token = await Token.findById(tokenId);
+
+    if (!token) {
+      return res.status(404).json({
+        success: false,
+        message: "Token not found",
+      });
+    }
+
+    // Check if token is on hold
+    if (token.status !== "hold") {
+      return res.status(400).json({
+        success: false,
+        message: "Token is not on hold",
+      });
+    }
+
+    // Update token status back to waiting
+    const updatedToken = await Token.findByIdAndUpdate(
+      tokenId,
+      { status: "waiting" },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Token unheld successfully and returned to waiting queue",
+      data: updatedToken,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ GET HELD TOKENS
+exports.getHeldTokens = async (req, res) => {
+  try {
+    const { queueName } = req.params;
+
+    if (!queueName) {
+      return res.status(400).json({
+        success: false,
+        message: "Queue name is required",
+      });
+    }
+
+    // Find all held tokens
+    const heldTokens = await Token.find({
+      queueName,
+      status: "hold",
+    }).sort({ tokenNumber: 1 });
+
+    // Get student names
+    const Student = require("../Models/registermodel");
+    const tokensWithNames = await Promise.all(
+      heldTokens.map(async (token) => {
+        const student = await Student.findById(token.studentId);
+        return {
+          tokenId: token._id,
+          tokenNumber: token.tokenNumber,
+          studentName: student ? student.name : "Unknown",
+          purpose: token.purpose,
+          department: token.department,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      count: tokensWithNames.length,
+      heldTokens: tokensWithNames,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ NEXT TOKEN (skip hold tokens)
+exports.nextToken = async (req, res) => {
+  try {
+    const { queueName, currentTokenId } = req.body;
+
+    if (!queueName) {
+      return res.status(400).json({
+        success: false,
+        message: "Queue name is required",
+      });
+    }
+
+    let currentTokenNumber = 0;
+
+    // If current token exists, mark it as completed
+    if (currentTokenId) {
+      const currentToken = await Token.findById(currentTokenId);
+      if (currentToken) {
+        currentTokenNumber = currentToken.tokenNumber;
+        if (currentToken.status === "serving" || currentToken.status === "waiting") {
+          await Token.findByIdAndUpdate(currentTokenId, {
+            status: "completed",
+          });
+        }
+      }
+    }
+
+    // Find next waiting token (skip hold tokens and completed tokens)
+    const nextToken = await Token.findOne({
+      queueName,
+      status: "waiting",
+      tokenNumber: { $gt: currentTokenNumber },
+    }).sort({ tokenNumber: 1 });
+
+    if (!nextToken) {
+      return res.status(404).json({
+        success: false,
+        message: "No more tokens in queue",
+      });
+    }
+
+    // Mark next token as serving
+    await Token.findByIdAndUpdate(nextToken._id, { status: "serving" });
+
+    // Get student name
+    const Student = require("../Models/registermodel");
+    const student = await Student.findById(nextToken.studentId);
+    const studentName = student ? student.name : "Unknown";
+
+    res.status(200).json({
+      success: true,
+      message: "Next token loaded successfully",
+      data: {
+        tokenId: nextToken._id,
+        tokenNumber: nextToken.tokenNumber,
+        studentName: studentName,
+        purpose: nextToken.purpose,
       },
     });
   } catch (err) {

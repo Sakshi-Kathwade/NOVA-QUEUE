@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -14,6 +15,7 @@ class WaitingCardScreen extends StatefulWidget {
 class _WaitingCardScreenState extends State<WaitingCardScreen> {
   List students = [];
   bool isLoading = true;
+  Timer? _pollTimer; // ✅ Timer for real-time updates
 
   // ✅ ANDROID EMULATOR SAFE URL
   final String baseUrl = "http://localhost:8000";
@@ -22,6 +24,20 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
   void initState() {
     super.initState();
     fetchStudents();
+    startPolling(); // ✅ Start real-time polling
+  }
+  
+  @override
+  void dispose() {
+    _pollTimer?.cancel(); // ✅ Clean up timer
+    super.dispose();
+  }
+  
+  // ✅ REAL-TIME: Start polling for updates every 3 seconds
+  void startPolling() {
+    _pollTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      fetchStudents();
+    });
   }
 
   Future<void> fetchStudents() async {

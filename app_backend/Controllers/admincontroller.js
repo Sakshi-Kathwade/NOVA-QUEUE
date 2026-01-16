@@ -105,4 +105,108 @@ const createAdmin = async (req, res) => {
   }
 };
 
-module.exports = { adminLogin ,createAdmin};
+// 🔐 CHANGE ADMIN PASSWORD
+const changeAdminPassword = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const { currentPassword, password, confirmPassword } = req.body;
+
+    // 1️⃣ Validation
+    if (!adminId || !currentPassword || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // 2️⃣ Find admin by ID
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    // 3️⃣ Check current password
+    if (admin.password !== currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    // 4️⃣ New password match check
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password and confirm password do not match",
+      });
+    }
+
+    // 5️⃣ Strong password validation
+    const strongPasswordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    if (!strongPasswordRegex.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and special character",
+      });
+    }
+
+    // 6️⃣ Update password
+    admin.password = password;
+    await admin.save();
+
+    // 7️⃣ Success response
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ✅ DELETE ADMIN ACCOUNT
+const deleteAdmin = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    // 1️⃣ Validation
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin ID is required",
+      });
+    }
+
+    // 2️⃣ Find and delete admin by ID
+    const deletedAdmin = await Admin.findByIdAndDelete(adminId);
+
+    if (!deletedAdmin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    // 3️⃣ Success response
+    return res.status(200).json({
+      success: true,
+      message: "Admin account deleted successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+module.exports = { adminLogin, createAdmin, changeAdminPassword, deleteAdmin };
