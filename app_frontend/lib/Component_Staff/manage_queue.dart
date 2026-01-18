@@ -578,367 +578,210 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
     );
   }
 
-  // ✅ CURRENT TOKEN CARD - Modern Android Material Design 3
+  // ✅ CURRENT TOKEN CARD - Enhanced & Professional
   Widget _buildCurrentTokenCard() {
     return Card(
-      elevation: 2,
+      elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      margin: EdgeInsets.zero,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.deepPurple.shade50, Colors.deepPurple.shade100],
+          ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ Header Section
+              // ✅ Header with Status
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: Colors.deepPurple.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.confirmation_number_rounded,
-                      color: Colors.deepPurple.shade700,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Current Token",
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.deepPurple,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          currentTokenNumber > 0
-                              ? "A-$currentTokenNumber"
-                              : "No Token",
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple.shade700,
-                            letterSpacing: 0.5,
+                        child: const Icon(
+                          Icons.confirmation_number,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Current Token",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            currentTokenNumber > 0
+                                ? "A-$currentTokenNumber"
+                                : "N/A",
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isQueueActive ? Colors.green : Colors.grey,
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isQueueActive ? Colors.green : Colors.grey)
+                              .withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-
-              if (currentTokenNumber > 0) ...[
-                const SizedBox(height: 24),
-
-                // ✅ Student Info Section - Material Design 3 style
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      _infoRowMaterial(
-                        Icons.person_outline_rounded,
-                        "Student",
-                        currentStudentName,
-                      ),
-                      const SizedBox(height: 16),
-                      _infoRowMaterial(
-                        Icons.description_outlined,
-                        "Purpose",
-                        currentPurpose,
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ✅ Stats Row - Compact Material Design
-                Row(
-                  children: [
-                    Expanded(
-                      child: _statCardMaterial(
-                        Icons.people_outline_rounded,
-                        waitingTokens.length.toString(),
-                        "Waiting",
-                        Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _statCardMaterial(
-                        Icons.check_circle_outline_rounded,
-                        completedToday.toString(),
-                        "Completed",
-                        Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                // ✅ Action Buttons - Material Design 3 Filled Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: _actionButtonMaterial(
-                        "Next",
-                        Icons.skip_next_rounded,
-                        Colors.deepPurple,
-                        isProcessing ? null : nextToken,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _actionButtonMaterial(
-                        "Complete",
-                        Icons.check_circle_rounded,
-                        Colors.green,
-                        isProcessing ? null : completeToken,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _actionButtonMaterial(
-                        "Skip",
-                        Icons.skip_next_outlined,
-                        Colors.orange,
-                        isProcessing ? null : skipToken,
-                      ),
-                    ),
-                  ],
-                ),
-              ] else ...[
-                const SizedBox(height: 20),
-                Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.queue_outlined,
-                        size: 48,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        "No active token",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ✅ WAITING TOKENS SECTION - Material Design 3
-  Widget _buildWaitingTokensSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      margin: EdgeInsets.zero,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.queue_rounded,
-                    color: Colors.orange.shade700,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    "Waiting Queue",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      "${waitingTokens.length}",
-                      style: TextStyle(
-                        color: Colors.orange.shade700,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (waitingTokens.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.inbox_outlined,
-                          size: 48,
-                          color: Colors.grey.shade400,
+                          isQueueActive
+                              ? Icons.play_circle
+                              : Icons.pause_circle,
+                          color: Colors.white,
+                          size: 16,
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(width: 6),
                         Text(
-                          "No tokens waiting",
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
+                          isQueueActive ? "ACTIVE" : "PAUSED",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 1,
                           ),
                         ),
                       ],
                     ),
                   ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: waitingTokens.length > 10
-                      ? 10
-                      : waitingTokens.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final token = waitingTokens[index];
-                    return _tokenListItemMaterial(
-                      token: token,
-                      isWaiting: true,
-                      onHold: () => holdToken(token["_id"] ?? ""),
-                    );
-                  },
-                ),
-              if (waitingTokens.length > 10)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Center(
-                    child: Text(
-                      "+${waitingTokens.length - 10} more",
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+                ],
+              ),
 
-  // ✅ HELD TOKENS SECTION - Material Design 3
-  Widget _buildHeldTokensSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      margin: EdgeInsets.zero,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+              const SizedBox(height: 24),
+
+              // ✅ Student Info Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    _infoRowEnhanced(
+                      "Student Name",
+                      currentStudentName,
+                      Icons.person,
+                    ),
+                    const Divider(height: 24),
+                    _infoRowEnhanced(
+                      "Purpose",
+                      currentPurpose,
+                      Icons.description,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ✅ Stats Row
               Row(
                 children: [
-                  Icon(
-                    Icons.pause_circle_outline_rounded,
-                    color: Colors.amber.shade700,
-                    size: 24,
+                  Expanded(
+                    child: _statCardEnhanced(
+                      "Waiting",
+                      waitingTokens.length.toString(),
+                      Colors.orange,
+                      Icons.people,
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    "Held Tokens",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      "${holdTokens.length}",
-                      style: TextStyle(
-                        color: Colors.amber.shade700,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                  Expanded(
+                    child: _statCardEnhanced(
+                      "Completed",
+                      completedToday.toString(),
+                      Colors.green,
+                      Icons.check_circle,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: holdTokens.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final token = holdTokens[index];
-                  return _tokenListItemMaterial(
-                    token: token,
-                    isWaiting: false,
-                    onUnhold: () => unholdToken(token["_id"] ?? ""),
-                  );
-                },
+
+              const SizedBox(height: 20),
+
+              // ✅ Action Buttons Row (Next, Complete, Skip)
+              Row(
+                children: [
+                  Expanded(
+                    child: _actionButtonEnhanced(
+                      "Next",
+                      Icons.skip_next,
+                      Colors.deepPurple,
+                      isProcessing || currentTokenNumber == 0
+                          ? null
+                          : nextToken,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _actionButtonEnhanced(
+                      "Complete",
+                      Icons.check_circle,
+                      Colors.green,
+                      isProcessing || currentTokenNumber == 0
+                          ? null
+                          : completeToken,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _actionButtonEnhanced(
+                      "Skip",
+                      Icons.skip_next_outlined,
+                      Colors.orange,
+                      isProcessing || currentTokenNumber == 0
+                          ? null
+                          : skipToken,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -947,99 +790,118 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
     );
   }
 
-  // ✅ TOKEN LIST ITEM - Material Design 3
-  Widget _tokenListItemMaterial({
+  // ✅ HELD TOKENS SECTION
+  Widget _buildHeldTokensSection() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Held Tokens",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                  ),
+                ),
+                Chip(
+                  label: Text("${holdTokens.length}"),
+                  backgroundColor: Colors.amber.shade100,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: holdTokens.length,
+              itemBuilder: (context, index) {
+                final token = holdTokens[index];
+                return _tokenListItem(
+                  token: token,
+                  isWaiting: false,
+                  onUnhold: () => unholdToken(token["_id"] ?? ""),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ TOKEN LIST ITEM
+  Widget _tokenListItem({
     required Map<String, dynamic> token,
     required bool isWaiting,
     VoidCallback? onHold,
     VoidCallback? onUnhold,
+    VoidCallback? onPriority,
   }) {
     final tokenNumber = token["tokenNumber"] ?? 0;
     final studentName = token["studentName"] ?? "Unknown";
     final purpose = token["purpose"] ?? "N/A";
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200, width: 1),
-      ),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: isWaiting ? Colors.orange.shade100 : Colors.amber.shade100,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Center(
-            child: Text(
-              "A-$tokenNumber",
-              style: TextStyle(
-                color: isWaiting
-                    ? Colors.orange.shade700
-                    : Colors.amber.shade700,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
+        leading: CircleAvatar(
+          backgroundColor: isWaiting ? Colors.orange : Colors.amber,
+          child: Text(
+            "A-$tokenNumber",
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
         title: Text(
           studentName,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            purpose,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-          ),
+        subtitle: Text(purpose),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onPriority != null)
+              IconButton(
+                icon: const Icon(Icons.star, color: Colors.amber),
+                onPressed: onPriority,
+                tooltip: "Set Priority",
+              ),
+            if (onHold != null)
+              IconButton(
+                icon: const Icon(Icons.pause_circle, color: Colors.amber),
+                onPressed: onHold,
+                tooltip: "Hold Token",
+              ),
+            if (onUnhold != null)
+              IconButton(
+                icon: const Icon(Icons.play_circle, color: Colors.green),
+                onPressed: onUnhold,
+                tooltip: "Unhold Token",
+              ),
+          ],
         ),
-        trailing: onHold != null
-            ? Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(24),
-                  onTap: onHold,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.pause_circle_outline_rounded,
-                      color: Colors.amber.shade700,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              )
-            : onUnhold != null
-            ? Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(24),
-                  onTap: onUnhold,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.play_circle_outline_rounded,
-                      color: Colors.green.shade700,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              )
-            : null,
       ),
     );
   }
 
-  // ✅ HELPER WIDGETS - Material Design 3
-  // ✅ Info Row Material Design 3
-  Widget _infoRowMaterial(IconData icon, String label, String value) {
+  // ✅ HELPER WIDGETS
+  // ✅ Enhanced Info Row with Icon
+  Widget _infoRowEnhanced(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: Colors.deepPurple.shade700, size: 22),
+        Icon(icon, color: Colors.deepPurple, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -1047,8 +909,8 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
+                style: const TextStyle(
+                  color: Colors.grey,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1056,10 +918,10 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
               const SizedBox(height: 4),
               Text(
                 value,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: Colors.grey.shade900,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.black87,
                 ),
               ),
             ],
@@ -1069,19 +931,39 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
     );
   }
 
-  // ✅ Stat Card Material Design 3
-  Widget _statCardMaterial(
-    IconData icon,
-    String value,
+  Widget _statCardEnhanced(
     String label,
+    String value,
     Color color,
+    IconData icon,
   ) {
+    Color lightColor;
+    Color darkColor;
+
+    // ✅ Map colors to their light variants
+    if (color == Colors.orange) {
+      lightColor = Colors.orange.shade50;
+      darkColor = Colors.orange.shade700;
+    } else if (color == Colors.green) {
+      lightColor = Colors.green.shade50;
+      darkColor = Colors.green.shade700;
+    } else if (color == Colors.blue) {
+      lightColor = Colors.blue.shade50;
+      darkColor = Colors.blue.shade700;
+    } else if (color == Colors.purple) {
+      lightColor = Colors.purple.shade50;
+      darkColor = Colors.purple.shade700;
+    } else {
+      lightColor = Colors.grey.shade100;
+      darkColor = Colors.grey.shade700;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2), width: 1),
+        color: lightColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         children: [
@@ -1100,8 +982,8 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: color.withOpacity(0.8),
-              fontWeight: FontWeight.w500,
+              color: darkColor,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -1109,45 +991,35 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
     );
   }
 
-  // ✅ Action Button Material Design 3
-  Widget _actionButtonMaterial(
+  // ✅ Enhanced Action Button with better styling
+  Widget _actionButtonEnhanced(
     String label,
     IconData icon,
     Color color,
     VoidCallback? onPressed,
   ) {
-    return Material(
-      color: onPressed != null ? color : Colors.grey.shade300,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: onPressed != null ? Colors.white : Colors.grey.shade600,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: onPressed != null
-                      ? Colors.white
-                      : Colors.grey.shade600,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 22),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
         ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        elevation: onPressed == null ? 0 : 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        disabledBackgroundColor: Colors.grey.shade300,
+        disabledForegroundColor: Colors.grey.shade600,
       ),
     );
   }
+  
+
 }

@@ -27,6 +27,5 @@ router.put("/holdtoken", tokenController.holdToken);
 router.put("/unholdtoken", tokenController.unholdToken);
 router.put("/nexttoken", tokenController.nextToken);
 router.get("/heldtokens/:queueName", tokenController.getHeldTokens);
-router.get("/completedtokens", tokenController.getCompletedTokens);
 
 module.exports = router;

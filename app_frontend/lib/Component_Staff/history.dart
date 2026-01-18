@@ -422,7 +422,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  // Build filter section - Fixed for Android overflow
+  // Build filter section
   Widget _buildFilterSection() {
     return Card(
       elevation: 2,
@@ -431,7 +431,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -470,7 +469,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 filled: true,
                 fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               ),
               onChanged: (value) {
                 setState(() => searchQuery = value);
@@ -480,7 +478,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
             const SizedBox(height: 8),
 
-            // Category and Status dropdowns - Fixed layout
+            // Category and Status dropdowns
             Row(
               children: [
                 Expanded(
@@ -493,23 +491,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      isDense: true,
                     ),
                     items: categories.map((category) {
                       return DropdownMenuItem(
                         value: category,
-                        child: Text(
-                          category,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(category),
                       );
                     }).toList(),
                     onChanged: (value) {
                       setState(() => selectedCategory = value ?? 'All');
                       _applyFilters();
                     },
-                    isExpanded: true,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -523,23 +515,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      isDense: true,
                     ),
                     items: statuses.map((status) {
                       return DropdownMenuItem(
                         value: status,
-                        child: Text(
-                          status,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(status),
                       );
                     }).toList(),
                     onChanged: (value) {
                       setState(() => selectedStatus = value ?? 'All');
                       _applyFilters();
                     },
-                    isExpanded: true,
                   ),
                 ),
               ],
@@ -547,43 +533,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
             const SizedBox(height: 8),
 
-            // Date range picker - Fixed with proper constraints
-            ConstrainedBox(
-              constraints: const BoxConstraints(
-                minHeight: 44,
-                maxHeight: 44,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _selectDateRange,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 12,
-                    ),
-                    minimumSize: const Size(0, 44),
+            // Date range picker
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _selectDateRange,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.calendar_today, size: 18),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          startDate != null && endDate != null
-                              ? "${DateFormat('MMM dd').format(startDate!)} - ${DateFormat('MMM dd, yyyy').format(endDate!)}"
-                              : "Select Date Range",
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                          textAlign: TextAlign.center,
-                        ),
+                  minimumSize: const Size(0, 44),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.calendar_today, size: 18),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        startDate != null && endDate != null
+                            ? "${DateFormat('MMM dd').format(startDate!)} - ${DateFormat('MMM dd, yyyy').format(endDate!)}"
+                            : "Select Date Range",
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
