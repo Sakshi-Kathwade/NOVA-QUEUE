@@ -1,4 +1,5 @@
 const Token = require("../Models/tokenmodel");
+const CompletedToken = require("../Models/completedtokenmodel");
 
 exports.createToken = async (req, res) => {
   try {
@@ -217,7 +218,7 @@ exports.getCurrentToken = async (req, res) => {
 // ✅ COMPLETE TOKEN
 exports.completeToken = async (req, res) => {
   try {
-    const { queueName, tokenId } = req.body;
+    const { queueName, tokenId, counterNumber, completedBy } = req.body;
 
     if (!queueName || !tokenId) {
       return res.status(400).json({
@@ -239,6 +240,26 @@ exports.completeToken = async (req, res) => {
         message: "Token not found",
       });
     }
+
+    // Get student name
+    const Student = require("../Models/registermodel");
+    const student = await Student.findById(token.studentId);
+    const studentName = student ? student.name : "Unknown";
+
+    // Insert into completed_tokens table
+    const completedToken = new CompletedToken({
+      tokenId: token._id,
+      queueName: token.queueName,
+      tokenNumber: token.tokenNumber,
+      studentId: token.studentId,
+      studentName: studentName,
+      serviceProvided: token.purpose,
+      counterNumber: counterNumber || "Counter-1",
+      servedTime: new Date(),
+      completedBy: completedBy || null,
+    });
+
+    await completedToken.save();
 
     res.status(200).json({
       success: true,
@@ -499,6 +520,45 @@ exports.getRemainingStudents = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ GET COMPLETED TOKENS
+exports.getCompletedTokens = async (req, res) => {
+  try {
+    const { date } = req.query; // Optional date filter (YYYY-MM-DD)
+
+    let query = {};
+    
+    // Filter by date if provided
+    if (date) {
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      query.servedTime = { $gte: startDate, $lte: endDate };
+    } else {
+      // Default: today's completed tokens
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      query.servedTime = { $gte: today, $lt: tomorrow };
+    }
+
+    const completedTokens = await CompletedToken.find(query)
+      .sort({ servedTime: -1 })
+      .limit(1000); // Limit to prevent overload
+
+    res.status(200).json({
+      success: true,
+      data: completedTokens,
+    });
+  } catch (err) {
     res.status(500).json({
       success: false,
       error: err.message,

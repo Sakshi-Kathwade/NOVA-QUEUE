@@ -64,80 +64,165 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.grey.shade50,
 
       // 🔹 APP BAR
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
+        elevation: 0,
+        backgroundColor: Colors.deepPurple.shade700,
         foregroundColor: Colors.white,
-        title: const Text("Queue History"),
+        title: const Text(
+          "Queue History",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
         centerTitle: true,
         actions: [
-          IconButton(icon: const Icon(Icons.filter_alt), onPressed: _pickDate),
+          IconButton(
+            icon: const Icon(Icons.filter_alt_rounded),
+            onPressed: _pickDate,
+            tooltip: "Filter by date",
+          ),
           if (selectedDate != null)
             IconButton(
-              icon: const Icon(Icons.clear),
+              icon: const Icon(Icons.clear_rounded),
               onPressed: () {
                 setState(() {
                   selectedDate = null;
                 });
               },
+              tooltip: "Clear filter",
             ),
         ],
       ),
 
       body: filteredHistory.isEmpty
-          ? const Center(
-              child: Text(
-                "No queue history found",
-                style: TextStyle(fontSize: 16),
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.history_rounded,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "No queue history found",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             )
-          : ListView.builder(
+          : ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: filteredHistory.length,
+              // ✅ Limit items to prevent overloading on Android
+              itemCount: filteredHistory.length > 50 ? 50 : filteredHistory.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              // ✅ Use cacheExtent to optimize scrolling
+              cacheExtent: 500,
               itemBuilder: (context, index) {
                 final item = filteredHistory[index];
                 final bool isCompleted = item["status"] == "Completed";
 
                 return Card(
-                  elevation: 4,
-                  margin: const EdgeInsets.only(bottom: 14),
+                  elevation: 1,
+                  margin: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isCompleted ? Colors.green : Colors.red,
-                      child: Icon(
-                        isCompleted ? Icons.check : Icons.close,
-                        color: Colors.white,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      // Optional: Add detail view
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          // ✅ Status Icon
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? Colors.green.shade50
+                                  : Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              isCompleted
+                                  ? Icons.check_circle_rounded
+                                  : Icons.cancel_rounded,
+                              color: isCompleted
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // ✅ Content
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item["queueName"],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  "Token: ${item["token"]}",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  DateFormat('dd MMM yyyy').format(item["date"]),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // ✅ Status Chip
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? Colors.green.shade50
+                                  : Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              item["status"],
+                              style: TextStyle(
+                                color: isCompleted
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    title: Text(
-                      item["queueName"],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(
-                          "Token: ${item["token"]}",
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        Text(
-                          "Date: ${DateFormat('dd MMM yyyy').format(item["date"])}",
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ],
-                    ),
-                    trailing: Chip(
-                      label: Text(
-                        item["status"],
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      backgroundColor: isCompleted ? Colors.green : Colors.red,
                     ),
                   ),
                 );
