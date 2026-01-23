@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const QueueSchema = new mongoose.Schema({
+  adminId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
   queueName: { type: String, required: true },
   department: { type: String, required: true },
   startTime: { type: Date, required: true }, // exact start timestamp
@@ -10,7 +11,7 @@ const QueueSchema = new mongoose.Schema({
       type: String,
       enum: ["Active", "Inactive"],
       default: "Active", }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("CreateQueue", QueueSchema);
 

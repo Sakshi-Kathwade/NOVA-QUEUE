@@ -7,7 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class ManageQueueScreen extends StatefulWidget {
-  const ManageQueueScreen({super.key});
+  final String? adminId;
+  const ManageQueueScreen({super.key, this.adminId});
 
   @override
   State<ManageQueueScreen> createState() => _ManageQueueScreenState();
@@ -64,7 +65,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
   Future<void> fetchQueueData() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/activequeue"),
+        Uri.parse("http://localhost:8000/api/activequeue/${widget.adminId ?? ''}"),
       );
 
       if (response.statusCode == 200) {
@@ -171,13 +172,20 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
     if (queueName == null) return;
 
     try {
-      // Calculate average service time (mock for now, can be enhanced with backend)
-      setState(() {
-        averageServiceTime = completedToday > 0
-            ? 5.0
-            : 0.0; // 5 minutes average
-        peakHour = DateTime.now().hour; // Current hour as peak
-      });
+      final response = await http.get(
+        Uri.parse("http://localhost:8000/api/analyticssummary/$queueName"),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data["success"] == true && data["data"] != null) {
+          setState(() {
+            completedToday = data["data"]["completedToday"] ?? 0;
+            averageServiceTime = data["data"]["averageServiceTime"] ?? 0.0;
+            peakHour = data["data"]["peakHour"] ?? 0;
+          });
+        }
+      }
     } catch (e) {
       debugPrint("Error fetching analytics: $e");
     }
@@ -785,6 +793,53 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ✅ WAITING TOKENS SECTION
+  Widget _buildWaitingTokensSection() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Waiting Tokens",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+                Chip(
+                  label: Text("${waitingTokens.length}"),
+                  backgroundColor: Colors.orange.shade100,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: waitingTokens.length,
+              itemBuilder: (context, index) {
+                final token = waitingTokens[index];
+                return _tokenListItem(
+                  token: token,
+                  isWaiting: true,
+                  onHold: () => holdToken(token["_id"] ?? ""),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

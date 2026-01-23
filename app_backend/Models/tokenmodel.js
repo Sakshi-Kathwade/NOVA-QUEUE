@@ -19,6 +19,8 @@ const tokenSchema = new mongoose.Schema({
     enum: ["waiting", "serving", "completed", "hold", "skipped"],
     default: "waiting",
   },
+}, {
+  timestamps: true, // ✅ Adds createdAt and updatedAt automatically
 });
 
 module.exports = mongoose.model("Token", tokenSchema);

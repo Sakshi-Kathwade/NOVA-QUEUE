@@ -85,7 +85,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> fetchQueueName() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/activequeue"),
+        Uri.parse("http://localhost:8000/api/activequeue/$adminId"),
       );
 
       if (response.statusCode == 200) {
@@ -475,13 +475,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
               context,
               Icons.add,
               Translations.translate('create_queue', currentLanguage),
-              screen: CreateQueueScreen(),
+              screen: CreateQueueScreen(adminId: adminId),
             ),
             _drawerItem(
               context,
               Icons.list,
               Translations.translate('manage_queue', currentLanguage),
-              screen: ManageQueueScreen(),
+              screen: ManageQueueScreen(adminId: adminId),
             ),
             _drawerItem(
               context,
@@ -535,7 +535,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               icon: queueStatus == "Active" ? Icons.lock_open : Icons.lock,
               color: queueStatus == "Active" ? Colors.green : Colors.grey,
               navigateTo: queueId != null
-                  ? QueueStatus(studentId: "studentID")
+                  ? QueueStatus(adminId: adminId, studentId: "studentID")
                   : null,
             ),
 
@@ -570,7 +570,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               value: completedToday.toString(),
               icon: Icons.check_circle,
               color: Colors.purple,
-              navigateTo: CompletedTodayScreen(),
+              navigateTo: CompletedTodayScreen(
+                queueName: queueName,
+                adminId: adminId,
+              ),
             ),
 
             _dashboardCard(

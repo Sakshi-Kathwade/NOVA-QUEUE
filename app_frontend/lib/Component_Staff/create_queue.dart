@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class CreateQueueScreen extends StatefulWidget {
-  const CreateQueueScreen({super.key});
+  final String? adminId;
+  const CreateQueueScreen({super.key, this.adminId});
 
   @override
   State<CreateQueueScreen> createState() => _CreateQueueScreenState();
@@ -37,6 +38,12 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
       ).showSnackBar(const SnackBar(content: Text("Select start & end time")));
       return;
     }
+    if (widget.adminId == null || widget.adminId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Admin not found. Please login again.")),
+      );
+      return;
+    }
 
     setState(() => isLoading = true);
 
@@ -45,6 +52,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
         Uri.parse("http://localhost:8000/api/createqueue"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
+          "adminId": widget.adminId,
           "queueName": queueName.text.trim(),
           "department": department,
           "maxStudents": int.parse(maxStudents.text),
@@ -53,9 +61,14 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
         }),
       );
 
+      final respBody = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      final message = respBody is Map && respBody["message"] != null
+          ? respBody["message"].toString()
+          : null;
+
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Queue Created Successfully")),
+          SnackBar(content: Text(message ?? "Queue Created Successfully")),
         );
 
         _formKey.currentState!.reset();
@@ -65,9 +78,9 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
         endTime = null;
         setState(() {});
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Failed to create queue")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message ?? "Failed to create queue")),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(

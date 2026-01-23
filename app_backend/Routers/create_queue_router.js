@@ -7,7 +7,7 @@ const { createQueue, getAllQueues, updateQueueStatus, getActiveQueue } = require
 
 router.post("/createqueue", createQueue);
 router.get("/queue", getAllQueues);
-router.get("/activequeue", getActiveQueue); // ✅ New endpoint for active queue
+router.get("/activequeue/:adminId", getActiveQueue); // ✅ Active queue per admin
 router.put("/queuestatus/:id", updateQueueStatus);
 
 module.exports = router;

@@ -1,4 +1,5 @@
 const Token = require("../Models/tokenmodel");
+const Queue = require("../Models/create_queue_model.js");
 
 exports.createToken = async (req, res) => {
   try {
@@ -23,6 +24,51 @@ exports.createToken = async (req, res) => {
       return res.status(409).json({
         success: false,
         message: "You already have a token for this queue",
+      });
+    }
+
+    // ✅ Queue must exist and be active and within time window
+    const queue = await Queue.findOne({ queueName }).sort({ createdAt: -1 });
+    if (!queue) {
+      return res.status(404).json({
+        success: false,
+        message: "Queue not found",
+      });
+    }
+
+    const now = new Date();
+    if (queue.status !== "Active") {
+      return res.status(400).json({
+        success: false,
+        message: "Queue is not active",
+      });
+    }
+    if (queue.startTime && now < queue.startTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Queue has not started yet",
+      });
+    }
+    if (queue.endTime && now >= queue.endTime) {
+      // Auto-expire and delete tokens when time finished
+      await Queue.findByIdAndUpdate(queue._id, { status: "Inactive" });
+      await Token.deleteMany({ queueName: queue.queueName });
+      return res.status(410).json({
+        success: false,
+        message: "Queue time is finished",
+      });
+    }
+
+    // ✅ Capacity rule: max 30 (or queue.maxStudents) active tokens
+    const activeCount = await Token.countDocuments({
+      queueName,
+      status: { $in: ["waiting", "serving", "hold"] },
+    });
+    const capacity = Math.min(Number(queue.maxStudents || 30), 30);
+    if (activeCount >= capacity) {
+      return res.status(409).json({
+        success: false,
+        message: "Queue is full please wait",
       });
     }
 
@@ -496,6 +542,107 @@ exports.getRemainingStudents = async (req, res) => {
       queueName,
       waitingCount: waitingList.length,
       waiting: waitingList,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ GET COMPLETED TOKENS TODAY WITH HOURLY BREAKDOWN
+exports.getCompletedToday = async (req, res) => {
+  try {
+    const { queueName } = req.params;
+
+    if (!queueName) {
+      return res.status(400).json({
+        success: false,
+        message: "queueName is required",
+      });
+    }
+
+    // Get today's date range (start and end of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get all completed tokens today
+    const completedTokens = await Token.find({
+      queueName,
+      status: "completed",
+      updatedAt: {
+        $gte: today,
+        $lt: tomorrow,
+      },
+    }).sort({ updatedAt: 1 });
+
+    // Get student names
+    const Student = require("../Models/registermodel");
+    const tokensWithDetails = await Promise.all(
+      completedTokens.map(async (token) => {
+        const student = await Student.findById(token.studentId);
+        return {
+          tokenId: token._id,
+          tokenNumber: token.tokenNumber,
+          studentName: student ? student.name : "Unknown",
+          purpose: token.purpose,
+          department: token.department,
+          completedAt: token.updatedAt,
+        };
+      })
+    );
+
+    // Calculate hourly breakdown
+    const hourlyBreakdown = {};
+    for (let hour = 0; hour < 24; hour++) {
+      hourlyBreakdown[hour] = 0;
+    }
+
+    tokensWithDetails.forEach((token) => {
+      if (token.completedAt) {
+        const hour = new Date(token.completedAt).getHours();
+        hourlyBreakdown[hour] = (hourlyBreakdown[hour] || 0) + 1;
+      }
+    });
+
+    // Format hourly data for frontend
+    const hourlyData = [];
+    const hourLabels = [
+      "12-1 AM", "1-2 AM", "2-3 AM", "3-4 AM", "4-5 AM", "5-6 AM",
+      "6-7 AM", "7-8 AM", "8-9 AM", "9-10 AM", "10-11 AM", "11-12 PM",
+      "12-1 PM", "1-2 PM", "2-3 PM", "3-4 PM", "4-5 PM", "5-6 PM",
+      "6-7 PM", "7-8 PM", "8-9 PM", "9-10 PM", "10-11 PM", "11-12 AM"
+    ];
+
+    for (let hour = 0; hour < 24; hour++) {
+      if (hourlyBreakdown[hour] > 0) {
+        hourlyData.push({
+          hour: hour,
+          label: hourLabels[hour],
+          count: hourlyBreakdown[hour],
+        });
+      }
+    }
+
+    // Calculate max count for percentage calculation
+    const maxCount = hourlyData.length > 0
+      ? Math.max(...hourlyData.map((h) => h.count))
+      : 1;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalCompleted: tokensWithDetails.length,
+        hourlyBreakdown: hourlyData.map((h) => ({
+          ...h,
+          percentage: (h.count / maxCount) * 100,
+        })),
+        completedTokens: tokensWithDetails,
+      },
     });
   } catch (err) {
     console.error(err);

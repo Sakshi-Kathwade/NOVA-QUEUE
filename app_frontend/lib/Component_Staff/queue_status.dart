@@ -7,7 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class QueueStatus extends StatefulWidget {
-  const QueueStatus({super.key, required String studentId});
+  final String? adminId;
+  const QueueStatus({super.key, this.adminId, required String studentId});
 
   @override
   State<QueueStatus> createState() => _QueueStatusState();
@@ -55,7 +56,7 @@ class _QueueStatusState extends State<QueueStatus> {
     try {
       // ✅ Fetch active queue instead of all queues
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/activequeue"),
+        Uri.parse("http://localhost:8000/api/activequeue/${widget.adminId ?? ''}"),
       );
       final data = jsonDecode(response.body);
 

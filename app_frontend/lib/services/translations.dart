@@ -53,6 +53,13 @@ class Translations {
       'logout_delete_account': 'Logout & Delete Account',
       'delete_logout': 'Delete & Logout',
       'logout_confirmation': 'Are you sure you want to logout?',
+      'completed_tokens': 'Completed Tokens',
+      'hourly_progress': 'Hourly Progress',
+      'no_data_available': 'No data available',
+      'loading': 'Loading...',
+      'error_loading_data': 'Error loading data',
+      'refresh': 'Refresh',
+      'tokens': 'tokens',
     },
     'hindi': {
       // Common
@@ -104,6 +111,13 @@ class Translations {
       'logout_delete_account': 'लॉगआउट और खाता हटाएं',
       'delete_logout': 'हटाएं और लॉगआउट',
       'logout_confirmation': 'क्या आप वाकई लॉगआउट करना चाहते हैं?',
+      'completed_tokens': 'पूर्ण टोकन',
+      'hourly_progress': 'प्रति घंटा प्रगति',
+      'no_data_available': 'कोई डेटा उपलब्ध नहीं',
+      'loading': 'लोड हो रहा है...',
+      'error_loading_data': 'डेटा लोड करने में त्रुटि',
+      'refresh': 'रीफ्रेश करें',
+      'tokens': 'टोकन',
     },
     'marathi': {
       // Common
@@ -157,6 +171,13 @@ class Translations {
       'delete_logout': 'हटवा आणि लॉगआउट',
       'logout_confirmation':
           'तुम्हाला खात्री आहे की तुम्ही लॉगआउट करू इच्छिता?',
+      'completed_tokens': 'पूर्ण टोकन',
+      'hourly_progress': 'प्रति तास प्रगती',
+      'no_data_available': 'डेटा उपलब्ध नाही',
+      'loading': 'लोड होत आहे...',
+      'error_loading_data': 'डेटा लोड करताना त्रुटी',
+      'refresh': 'रिफ्रेश करा',
+      'tokens': 'टोकन',
     },
   };
 
