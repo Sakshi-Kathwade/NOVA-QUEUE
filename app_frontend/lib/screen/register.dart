@@ -3,6 +3,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'google_signin.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,6 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool hidePassword = true;
   bool hideConfirmPassword = true;
   bool isLoading = false;
+  bool isGoogleLoading = false;
 
   // 🔥 POPUP
   void showPopup({
@@ -140,6 +143,134 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: "Server Error",
         message: "Unable to connect to server.",
         icon: Icons.wifi_off,
+        color: Colors.red,
+      );
+    }
+  }
+
+  // 🔐 GOOGLE SIGN-UP FUNCTION
+  Future<void> registerWithGoogle() async {
+    setState(() => isGoogleLoading = true);
+
+    try {
+      // 1️⃣ Sign in with Google using Firebase
+      final AuthService authService = AuthService();
+      final user = await authService.signInWithGoogle();
+
+      if (user == null) {
+        // User canceled the sign-in
+        setState(() => isGoogleLoading = false);
+        return;
+      }
+
+      // Validate user data
+      if (user.email == null || user.email!.isEmpty) {
+        setState(() => isGoogleLoading = false);
+        showPopup(
+          title: "Sign-Up Error",
+          message: "Unable to get email from Google account.\nPlease ensure your Google account has an email address.",
+          icon: Icons.error_outline,
+          color: Colors.red,
+        );
+        return;
+      }
+
+      // 2️⃣ Register user with backend
+      final response = await http.post(
+        Uri.parse("http://localhost:8000/api/register/google"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": user.displayName ?? "User",
+          "email": user.email!,
+          "role": selectedRole.toLowerCase(),
+        }),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception("Request timeout. Please check your internet connection.");
+        },
+      );
+
+      setState(() => isGoogleLoading = false);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // Check if user already exists
+        if (data["alreadyExists"] == true) {
+          showPopup(
+            title: "Account Already Exists",
+            message:
+                "An account with this email already exists.\nPlease login instead.",
+            icon: Icons.info_outline,
+            color: Colors.orange,
+            success: true,
+          );
+        } else {
+          showPopup(
+            title: "Registration Successful 🎉",
+            message:
+                "Welcome to Smart Queue System!\nYour account has been created successfully with Google.",
+            icon: Icons.check_circle,
+            color: Colors.deepPurple,
+            success: true,
+          );
+        }
+      } else {
+        showPopup(
+          title: "Registration Failed",
+          message: data["error"] ?? "Something went wrong. Please try again.",
+          icon: Icons.error_outline,
+          color: Colors.red,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => isGoogleLoading = false);
+      String errorMessage = "Google sign-in authentication failed.";
+      
+      switch (e.code) {
+        case 'network-request-failed':
+          errorMessage = "Network error. Please check your internet connection.";
+          break;
+        case 'sign_in_canceled':
+          errorMessage = "Sign-in was canceled.";
+          break;
+        case 'account-exists-with-different-credential':
+          errorMessage = "An account already exists with a different sign-in method.";
+          break;
+        default:
+          errorMessage = "Authentication error: ${e.message ?? 'Unknown error'}";
+      }
+
+      showPopup(
+        title: "Sign-In Error",
+        message: errorMessage,
+        icon: Icons.error_outline,
+        color: Colors.red,
+      );
+    } catch (e) {
+      setState(() => isGoogleLoading = false);
+      String errorMessage = "Unable to complete Google sign-up.";
+      
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains("network") || 
+          errorString.contains("socket") ||
+          errorString.contains("timeout") ||
+          errorString.contains("connection")) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (errorString.contains("sign_in_failed") || 
+                 errorString.contains("sign_in_canceled")) {
+        errorMessage = "Google sign-in failed. Please try again.";
+      } else if (errorString.contains("firebase")) {
+        errorMessage = "Firebase error. Please ensure Firebase is properly configured.";
+      } else {
+        errorMessage = "An error occurred: ${e.toString()}";
+      }
+
+      showPopup(
+        title: "Sign-Up Error",
+        message: errorMessage,
+        icon: Icons.error_outline,
         color: Colors.red,
       );
     }
@@ -303,14 +434,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
 
                     OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: Image.network(
-                        "https://img.icons8.com/color/48/google-logo.png",
-                        height: 24,
+                      onPressed: (isLoading || isGoogleLoading) ? null : registerWithGoogle,
+                      icon: isGoogleLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.deepPurple,
+                              ),
+                            )
+                          : Image.network(
+                              "https://img.icons8.com/color/48/google-logo.png",
+                              height: 24,
+                            ),
+                      label: Text(
+                        isGoogleLoading ? "Signing up..." : "Sign up with Google",
                       ),
-                      label: const Text("Sign up with Google"),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 48),
+                        side: const BorderSide(color: Colors.deepPurple),
                       ),
                     ),
 

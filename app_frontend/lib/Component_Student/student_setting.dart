@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/language_service.dart';
 import '../services/translations.dart';
+import 'edit_student_profile_screen.dart'; // Import the new screen
 
 class StudentSettingScreen extends StatefulWidget {
   final String studentId;
@@ -282,6 +283,25 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
           _infoTile(
             Translations.translate('role', currentLanguage),
             studentRole,
+          ),
+
+          const SizedBox(height: 16),
+
+          // New: Edit Student Profile
+          _sectionTitle(Translations.translate('profile', currentLanguage)),
+          _settingTile(
+            icon: Icons.person,
+            title: Translations.translate('edit_profile', currentLanguage),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EditStudentProfileScreen(
+                    studentId: widget.studentId,
+                  ),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 16),

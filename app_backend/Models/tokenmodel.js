@@ -1,26 +1,53 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const tokenSchema = new mongoose.Schema({
-  queueName: { type: String, required: true },
-  department: String,
-  purpose: { type: String, required: true },
-
+  queueId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Queue',
+    required: true,
+  },
+  adminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    required: true,
+  },
   studentId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Student",
-    required: true, // ✅ MUST
+    ref: 'Register', // Reference to the Register model (acting as Student)
+    required: true,
   },
-
-  tokenNumber: Number,
-  studentsAhead: Number,
-  estimatedWaitingTime: Number,
+  tokenNumber: {
+    type: Number,
+    required: true,
+  },
+  serviceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Service', // Reference to the Service model
+    required: true,
+  },
+  counterId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Counter', // Assuming a Counter model exists
+    required: false, // Counter might be assigned later
+  },
   status: {
     type: String,
-    enum: ["waiting", "serving", "completed", "hold", "skipped"],
-    default: "waiting",
+    enum: ['Waiting', 'Calling', 'Completed', 'Cancelled'],
+    default: 'Waiting',
   },
-}, {
-  timestamps: true, // ✅ Adds createdAt and updatedAt automatically
+  generatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  calledAt: {
+    type: Date,
+  },
+  completedAt: {
+    type: Date,
+  },
+  cancelledAt: {
+    type: Date,
+  },
 });
 
-module.exports = mongoose.model("Token", tokenSchema);
+module.exports = mongoose.models.Token || mongoose.model('Token', tokenSchema);

@@ -1,4 +1,5 @@
 buildscript {
+    
     repositories {
         google()
         mavenCentral()  // Already present, but ensure it's prioritized
@@ -6,8 +7,7 @@ buildscript {
     }
     dependencies {
         classpath("com.google.gms:google-services:4.4.4")
-    }
-}
+    }}
 
 allprojects {
     repositories {

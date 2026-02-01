@@ -1,4 +1,10 @@
 const Admin = require('../Models/adminmodel.js');
+const Service = require('../Models/serviceModel.js');
+const Queue = require('../Models/queueModel.js'); // Import Queue model
+const Token = require('../Models/tokenModel.js'); // Import Token model
+const Counter = require('../Models/counterModel.js'); // Import Counter model
+const Staff = require('../Models/staffModel.js'); // Import Staff model
+const Register = require('../Models/registermodel.js'); // Import Register model (acting as Student)
 
 const adminLogin = async (req, res) => {
   try {
@@ -209,4 +215,304 @@ const deleteAdmin = async (req, res) => {
   }
 };
 
-module.exports = { adminLogin, createAdmin, changeAdminPassword, deleteAdmin };
+// =================================== REPORTS FUNCTIONS ===================================
+const getReportsSummary = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    // Get today's date for filtering
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    // Total tokens generated (all time)
+    const totalTokensGenerated = await Token.countDocuments({ adminId });
+
+    // Completed services (today)
+    const completedServicesToday = await Token.countDocuments({
+      adminId,
+      status: 'Completed',
+      completedAt: { $gte: startOfToday, $lte: endOfToday },
+    });
+
+    // Average waiting time (for completed tokens today)
+    const completedTokens = await Token.find({
+      adminId,
+      status: 'Completed',
+      generatedAt: { $gte: startOfToday, $lte: endOfToday },
+      completedAt: { $exists: true }, // Ensure completedAt is set
+    }).select('generatedAt completedAt');
+
+    let totalWaitingTime = 0;
+    completedTokens.forEach(token => {
+      if (token.generatedAt && token.completedAt) {
+        totalWaitingTime += (token.completedAt.getTime() - token.generatedAt.getTime());
+      }
+    });
+
+    const averageWaitingTimeMs = completedTokens.length > 0 ? totalWaitingTime / completedTokens.length : 0;
+    const averageWaitingTimeMinutes = Math.round(averageWaitingTimeMs / (1000 * 60));
+
+    return res.status(200).json({
+      success: true,
+      message: "Reports summary data fetched successfully",
+      totalTokensGenerated,
+      completedServicesToday,
+      averageWaitingTimeMinutes,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const getCounterPerformance = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    // TODO: Implement logic to fetch counter-wise performance
+    return res.status(200).json({ success: true, message: "Counter performance data (TODO)", adminId });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const getBusyHours = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    // TODO: Implement logic to fetch busy hours data
+    return res.status(200).json({ success: true, message: "Busy hours data (TODO)", adminId });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// =================================== HISTORY FUNCTIONS ===================================
+const getQueueHistory = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const { date } = req.query; // Optional date filter
+
+    let filter = { adminId, status: { $in: ['Completed', 'Cancelled'] } };
+
+    if (date) {
+      const selectedDate = new Date(date);
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      filter.$or = [
+        { completedAt: { $gte: startOfDay, $lte: endOfDay } },
+        { cancelledAt: { $gte: startOfDay, $lte: endOfDay } },
+      ];
+    }
+
+    const history = await Token.find(filter)
+      .populate('serviceId', 'serviceName') // Populate service details
+      .populate('queueId', 'queueName') // Populate queue details
+      .populate('counterId', 'counterName') // Populate counter details
+      .populate('staffId', 'name email') // Populate staff details
+      .populate('studentId', 'name email') // Populate student (Register) details
+      .sort({ generatedAt: -1 });
+
+    return res.status(200).json({ success: true, message: "Queue history data fetched successfully", history });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// =================================== SETTINGS - SERVICES FUNCTIONS ===================================
+const getServices = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const services = await Service.find({ adminId });
+    return res.status(200).json({ success: true, services });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const createService = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const { serviceName, description } = req.body;
+
+    if (!serviceName) {
+      return res.status(400).json({
+        success: false,
+        message: "Service name is required",
+      });
+    }
+
+    const newService = await Service.create({ adminId, serviceName, description });
+    return res.status(201).json({ success: true, message: "Service created successfully", service: newService });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const updateService = async (req, res) => {
+  try {
+    const { serviceId, adminId } = req.params;
+    const { serviceName, description } = req.body;
+
+    const updatedService = await Service.findOneAndUpdate(
+      { _id: serviceId, adminId: adminId },
+      { serviceName, description },
+      { new: true }
+    );
+
+    if (!updatedService) {
+      return res.status(404).json({
+        success: false,
+        message: "Service not found or not authorized to update",
+      });
+    }
+    return res.status(200).json({ success: true, message: "Service updated successfully", service: updatedService });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const deleteService = async (req, res) => {
+  try {
+    const { serviceId, adminId } = req.params;
+
+    const deletedService = await Service.findOneAndDelete({ _id: serviceId, adminId: adminId });
+
+    if (!deletedService) {
+      return res.status(404).json({
+        success: false,
+        message: "Service not found or not authorized to delete",
+      });
+    }
+    return res.status(200).json({ success: true, message: "Service deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// =================================== SETTINGS - COUNTER FUNCTIONS ===================================
+const getCounters = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const counters = await Counter.find({ adminId }).populate('assignedStaff', 'name email');
+    return res.status(200).json({ success: true, counters });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const createCounter = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const { counterName } = req.body;
+
+    if (!counterName) {
+      return res.status(400).json({
+        success: false,
+        message: "Counter name is required",
+      });
+    }
+
+    const newCounter = await Counter.create({ adminId, counterName });
+    return res.status(201).json({ success: true, message: "Counter created successfully", counter: newCounter });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const updateCounter = async (req, res) => {
+  try {
+    const { counterId, adminId } = req.params;
+    const { counterName, status, assignedStaff } = req.body;
+
+    const updatedCounter = await Counter.findOneAndUpdate(
+      { _id: counterId, adminId: adminId },
+      { counterName, status, assignedStaff },
+      { new: true }
+    ).populate('assignedStaff', 'name email');
+
+    if (!updatedCounter) {
+      return res.status(404).json({
+        success: false,
+        message: "Counter not found or not authorized to update",
+      });
+    }
+    return res.status(200).json({ success: true, message: "Counter updated successfully", counter: updatedCounter });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const deleteCounter = async (req, res) => {
+  try {
+    const { counterId, adminId } = req.params;
+
+    const deletedCounter = await Counter.findOneAndDelete({ _id: counterId, adminId: adminId });
+
+    if (!deletedCounter) {
+      return res.status(404).json({
+        success: false,
+        message: "Counter not found or not authorized to delete",
+      });
+    }
+    return res.status(200).json({ success: true, message: "Counter deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+module.exports = {
+  adminLogin,
+  createAdmin,
+  changeAdminPassword,
+  deleteAdmin,
+  getReportsSummary,
+  getCounterPerformance,
+  getBusyHours,
+  getQueueHistory,
+  getServices,
+  createService,
+  updateService,
+  deleteService,
+  getCounters,
+  createCounter,
+  updateCounter,
+  deleteCounter,
+};

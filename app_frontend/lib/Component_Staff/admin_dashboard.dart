@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, unnecessary_brace_in_string_interps, prefer_interpolation_to_compose_strings
 
 import 'dart:convert';
 import 'dart:async';
@@ -12,6 +12,7 @@ import 'manage_queue.dart';
 import 'current_token.dart';
 import 'report.dart';
 import 'admin_setting.dart';
+import 'edit_admin_profile_screen.dart';
 import 'waiting_card.dart';
 import 'queue_preview.dart';
 import 'history.dart';
@@ -50,6 +51,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<dynamic> liveQueueData = []; // ✅ Live queue data from backend
   String currentLanguage =
       'english'; // ✅ Current language (english/hindi/marathi)
+  String? _adminProfilePictureUrl; // NEW: Admin profile picture URL
 
   @override
   void initState() {
@@ -57,11 +59,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
     adminEmail = widget.adminEmail; // ✅ Store admin email
     adminId = widget.adminId; // ✅ Store admin ID
     _loadLanguage(); // ✅ Load user's language preference
+    _fetchAdminProfilePicture(); // NEW: Fetch admin profile picture
     fetchQueueName(); // ✅ Fetch active queue first
     fetchDashboardData(); // ✅ Initial data fetch (after queue is fetched)
     fetchLiveQueueData(); // ✅ Fetch live queue data
     startPolling(); // ✅ Start real-time polling
     startQueuePolling(); // ✅ Start queue polling to detect changes
+  }
+
+  // NEW: Fetch admin profile picture
+  Future<void> _fetchAdminProfilePicture() async {
+    if (adminId == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse("http://localhost:8000/api/admin/profile/${adminId}"),
+        headers: {"Content-Type": "application/json"},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['admin']['profilePicture'] != null) {
+          setState(() {
+            _adminProfilePictureUrl = data['admin']['profilePicture'];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching admin profile picture: $e");
+    }
   }
 
   // ✅ Load user's language preference
@@ -392,46 +416,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
             onSelected: (value) async {
               if (value == 'logout') {
                 await performLogout(); // ✅ Call logout function
+              } else if (value == 'edit_profile' && adminId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EditAdminProfileScreen(adminId: adminId),
+                  ),
+                );
               }
             },
             itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'profile',
+                enabled: false, // Make this item non-clickable
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: Colors.deepPurple,
-                    child: Icon(Icons.person, color: Colors.white),
+                    radius: 20,
+                    backgroundImage: _adminProfilePictureUrl != null
+                        ? NetworkImage("http://localhost:8000/" + _adminProfilePictureUrl!) as ImageProvider
+                        : const AssetImage('assets/default_profile.png'),
+                    child: _adminProfilePictureUrl == null
+                        ? const Icon(Icons.person, color: Colors.white)
+                        : null,
                   ),
                   title: Text(
                     adminEmail ?? "Admin",
-
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text("Staff Member"),
+                  subtitle: Text(Translations.translate('staff_member', currentLanguage)),
                 ),
               ),
-              PopupMenuItem(
-                value: 'edit_picture',
-                child: ListTile(
-                  leading: Icon(Icons.camera_alt, color: Colors.deepPurple),
-                  title: Text("Edit Profile Picture"),
-                ),
-              ),
-
               PopupMenuItem(
                 value: 'edit_profile',
                 child: ListTile(
-                  leading: Icon(Icons.edit, color: Colors.deepPurple),
-                  title: Text("Edit Profile"),
+                  leading: const Icon(Icons.edit, color: Colors.deepPurple),
+                  title: Text(Translations.translate('edit_profile', currentLanguage)),
                 ),
               ),
-
               PopupMenuDivider(),
               PopupMenuItem(
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: Colors.red),
-                  title: Text("Logout", style: TextStyle(color: Colors.red)),
+                  title: Text(Translations.translate('logout', currentLanguage), style: TextStyle(color: Colors.red)),
                 ),
               ),
             ],
@@ -451,7 +478,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(radius: 30, child: Icon(Icons.person, size: 35)),
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundImage: _adminProfilePictureUrl != null
+                        ? NetworkImage("http://localhost:8000/" + _adminProfilePictureUrl!) as ImageProvider
+                        : const AssetImage('assets/default_profile.png'),
+                    child: _adminProfilePictureUrl == null
+                        ? const Icon(Icons.person, size: 35, color: Colors.white)
+                        : null,
+                  ),
                   const SizedBox(width: 12),
 
                   Expanded(
@@ -493,7 +528,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               context,
               Icons.bar_chart,
               Translations.translate('reports', currentLanguage),
-              screen: ReportScreen(),
+              screen: ReportScreen(adminId: adminId, adminEmail: adminEmail),
             ),
             _drawerItem(
               context,

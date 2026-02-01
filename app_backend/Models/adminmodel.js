@@ -15,6 +15,10 @@ const adminSchema = new mongoose.Schema(
       type: String,
       default: "admin", // ✅ added role
     },
+    profilePicture: {
+      type: String,
+      default: null, // Default to null, can be a URL or file path
+    },
   },
   { timestamps: true }
 );

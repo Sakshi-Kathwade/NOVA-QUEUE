@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, prefer_typing_uninitialized_variables
+// ignore_for_file: use_build_context_synchronously, prefer_typing_uninitialized_variables, prefer_interpolation_to_compose_strings
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -9,7 +9,9 @@ import 'my_current_queue.dart';
 import 'queue_history.dart';
 import 'student_setting.dart';
 import 'student_waiting.dart';
-
+import '../services/language_service.dart';
+import '../services/translations.dart';
+import 'edit_student_profile_screen.dart';
 class QueueStatusScreen extends StatefulWidget {
   final String studentId;
 
@@ -26,30 +28,40 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   Map<String, dynamic>? queueData;
   String errorMsg = "";
 
-  // ✅ FETCHED STUDENT DATA
-  String studentName = "";
   String studentEmail = "";
+  String? _studentProfilePictureUrl; // NEW: Student profile picture URL
+  String currentLanguage = 'english'; // Initial value
 
   @override
   void initState() {
     super.initState();
+    _loadLanguage(); // Load user's language preference
     fetchQueueStatus();
     fetchStudentDetails();
+  }
+
+  // ✅ Load user's language preference
+  Future<void> _loadLanguage() async {
+    final lang = await LanguageService.getLanguage(widget.studentId);
+    setState(() {
+      currentLanguage = lang;
+    });
   }
 
   // 🔵 FETCH STUDENT DETAILS
   Future<void> fetchStudentDetails() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/studentget/${widget.studentId}"),
+        Uri.parse("http://localhost:8000/api/student/profile/${widget.studentId}"),
         headers: {"Content-Type": "application/json"},
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)["data"];
+        final data = jsonDecode(response.body)["student"];
         setState(() {
           studentName = data["name"] ?? "";
           studentEmail = data["email"] ?? "";
+          _studentProfilePictureUrl = data['profilePicture']; // Set profile picture URL
         });
       }
     } catch (e) {
@@ -86,32 +98,6 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     }
   }
 
-  // 🔴 LOGOUT FUNCTION (ADDED)
-  Future<void> logoutStudent() async {
-    try {
-      final response = await http.delete(
-        Uri.parse("http://localhost:8000/api/logout/${widget.studentId}"),
-      );
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Logout successfully")));
-
-        // ⏩ Go back to Login/Home screen
-        Navigator.popUntil(context, (route) => route.isFirst);
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Logout failed")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Server error during logout")),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,12 +129,13 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               color: Colors.white,
             ),
             onSelected: (value) {
-              if (value == 'profile') {
+              if (value == 'edit_profile') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        StudentProfileScreen(studentId: widget.studentId),
+                    builder: (_) => EditStudentProfileScreen(
+                      studentId: widget.studentId,
+                    ),
                   ),
                 );
               } else if (value == 'logout') {
@@ -158,39 +145,37 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'profile',
+                enabled: false, // Make this item non-clickable
                 child: ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.deepPurple,
-                    child: Icon(Icons.person, color: Colors.white),
+                  leading: CircleAvatar(
+                    radius: 20,
+                    backgroundImage: _studentProfilePictureUrl != null
+                        ? NetworkImage("http://localhost:8000/" + _studentProfilePictureUrl!) as ImageProvider
+                        : const AssetImage('assets/default_profile.png'),
+                    child: _studentProfilePictureUrl == null
+                        ? const Icon(Icons.person, color: Colors.white)
+                        : null,
                   ),
                   title: Text(
-                    studentName.isNotEmpty ? studentName : "Student",
+                    studentName.isNotEmpty ? studentName : Translations.translate('student', currentLanguage),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: const Text("View Profile"),
-                  trailing: const Icon(Icons.edit, size: 18),
+                  subtitle: Text(Translations.translate('view_profile', currentLanguage)),
                 ),
               ),
-              const PopupMenuItem(
-                value: 'edit_picture',
-                child: ListTile(
-                  leading: Icon(Icons.camera_alt, color: Colors.deepPurple),
-                  title: Text("Edit Profile Picture"),
-                ),
-              ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'edit_profile',
                 child: ListTile(
                   leading: Icon(Icons.edit, color: Colors.deepPurple),
-                  title: Text("Edit Profile"),
+                  title: Text(Translations.translate('edit_profile', currentLanguage)),
                 ),
               ),
               const PopupMenuDivider(),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: Colors.red),
-                  title: Text("Logout", style: TextStyle(color: Colors.red)),
+                  title: Text(Translations.translate('logout', currentLanguage), style: TextStyle(color: Colors.red)),
                 ),
               ),
             ],
@@ -341,10 +326,14 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       decoration: const BoxDecoration(color: Colors.deepPurple),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 30,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person, color: Colors.deepPurple),
+            backgroundImage: _studentProfilePictureUrl != null
+                ? NetworkImage("http://localhost:8000/" + _studentProfilePictureUrl!) as ImageProvider
+                : const AssetImage('assets/default_profile.png'),
+            child: _studentProfilePictureUrl == null
+                ? const Icon(Icons.person, color: Colors.deepPurple)
+                : null,
           ),
           const SizedBox(width: 12),
 

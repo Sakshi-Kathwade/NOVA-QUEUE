@@ -10,6 +10,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/language_service.dart';
 import '../services/translations.dart';
+import 'manage_services_screen.dart'; // Import the new screen
+import 'manage_counters_screen.dart'; // Import the new ManageCountersScreen
+import 'edit_admin_profile_screen.dart'; // Import the new EditAdminProfileScreen
 
 class AdminSettingScreen extends StatefulWidget {
   final String? adminEmail;
@@ -134,7 +137,9 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
         confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(Translations.translate('all_fields_required', currentLanguage)),
+          content: Text(
+            Translations.translate('all_fields_required', currentLanguage),
+          ),
         ),
       );
       return;
@@ -143,7 +148,9 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     if (newPassword != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(Translations.translate('passwords_do_not_match', currentLanguage)),
+          content: Text(
+            Translations.translate('passwords_do_not_match', currentLanguage),
+          ),
         ),
       );
       return;
@@ -168,7 +175,12 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
         Navigator.pop(context); // Close dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(Translations.translate('password_changed_successfully', currentLanguage)),
+            content: Text(
+              Translations.translate(
+                'password_changed_successfully',
+                currentLanguage,
+              ),
+            ),
           ),
         );
         // Clear controllers
@@ -201,21 +213,30 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
               controller: currentPasswordController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: Translations.translate('current_password', currentLanguage),
+                labelText: Translations.translate(
+                  'current_password',
+                  currentLanguage,
+                ),
               ),
             ),
             TextField(
               controller: newPasswordController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: Translations.translate('new_password', currentLanguage),
+                labelText: Translations.translate(
+                  'new_password',
+                  currentLanguage,
+                ),
               ),
             ),
             TextField(
               controller: confirmPasswordController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: Translations.translate('confirm_new_password', currentLanguage),
+                labelText: Translations.translate(
+                  'confirm_new_password',
+                  currentLanguage,
+                ),
               ),
             ),
           ],
@@ -244,12 +265,14 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(Translations.translate('logout_delete_account', currentLanguage)),
+        title: Text(
+          Translations.translate('logout_delete_account', currentLanguage),
+        ),
         content: Text(
-          Translations.translate('logout_delete_account', currentLanguage) + 
-          " - This will permanently delete your admin account from the database. "
-          "You will need to create a new account to login again. "
-          "Are you sure you want to proceed?",
+          Translations.translate('logout_delete_account', currentLanguage) +
+              " - This will permanently delete your admin account from the database. "
+                  "You will need to create a new account to login again. "
+                  "Are you sure you want to proceed?",
         ),
         actions: [
           TextButton(
@@ -324,7 +347,9 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
   void clearCache() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(Translations.translate('cache_cleared_successfully', currentLanguage)),
+        content: Text(
+          Translations.translate('cache_cleared_successfully', currentLanguage),
+        ),
       ),
     );
   }
@@ -368,6 +393,26 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
 
           const SizedBox(height: 16),
 
+          // New: Edit Admin Profile
+          _sectionTitle(Translations.translate('profile', currentLanguage)),
+          _settingTile(
+            icon: Icons.person,
+            title: Translations.translate('edit_profile', currentLanguage),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EditAdminProfileScreen(
+                    adminId: widget.adminId,
+                    adminEmail: widget.adminEmail,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 16),
+
           _sectionTitle(Translations.translate('security', currentLanguage)),
           _settingTile(
             icon: Icons.lock,
@@ -391,7 +436,9 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             builder: (context, value, _) {
               return SwitchListTile(
                 value: value,
-                title: Text(Translations.translate('dark_mode', currentLanguage)),
+                title: Text(
+                  Translations.translate('dark_mode', currentLanguage),
+                ),
                 secondary: const Icon(Icons.dark_mode),
                 onChanged: (val) {
                   isDarkMode.value = val;
@@ -403,10 +450,97 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
 
           SwitchListTile(
             value: notificationsEnabled,
-            title: Text(Translations.translate('notifications', currentLanguage)),
+            title: Text(
+              Translations.translate('notifications', currentLanguage),
+            ),
             secondary: const Icon(Icons.notifications),
             onChanged: (value) {
               setState(() => notificationsEnabled = value);
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          // NEW: Queue Management Settings
+          _sectionTitle(
+            Translations.translate('queue_management', currentLanguage),
+          ),
+          _settingTile(
+            icon: Icons.room_service,
+            title: Translations.translate('manage_services', currentLanguage),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ManageServicesScreen(
+                    adminId: widget.adminId,
+                    adminEmail: widget.adminEmail,
+                  ),
+                ),
+              );
+            },
+          ),
+          _settingTile(
+            icon: Icons.view_carousel, // Changed from Icons.counter_tops
+            title: Translations.translate('manage_counters', currentLanguage),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ManageCountersScreen(
+                    adminId: widget.adminId,
+                    adminEmail: widget.adminEmail,
+                  ),
+                ),
+              );
+            },
+          ),
+          _settingTile(
+            icon: Icons.group,
+            title: Translations.translate('manage_staff', currentLanguage),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Manage Staff - Coming Soon!')),
+              );
+            },
+          ),
+          _settingTile(
+            icon: Icons.access_time,
+            title: Translations.translate('working_hours', currentLanguage),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Working Hours - Coming Soon!')),
+              );
+            },
+          ),
+          _settingTile(
+            icon: Icons.format_list_numbered,
+            title: Translations.translate('token_limits', currentLanguage),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Token Limits - Coming Soon!')),
+              );
+            },
+          ),
+          _settingTile(
+            icon: Icons.notifications_active,
+            title: Translations.translate(
+              'notification_settings',
+              currentLanguage,
+            ),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Notification Settings - Coming Soon!')),
+              );
+            },
+          ),
+          _settingTile(
+            icon: Icons.rule,
+            title: Translations.translate('queue_rules', currentLanguage),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Queue Rules - Coming Soon!')),
+              );
             },
           ),
 
@@ -436,9 +570,12 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
   }
 
   Widget _sectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
     );
   }
 
@@ -448,10 +585,17 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     required VoidCallback onTap,
   }) {
     return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        leading: Icon(icon),
+        leading: Icon(icon, color: Colors.deepPurple),
         title: Text(title),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: Colors.grey,
+        ),
         onTap: onTap,
       ),
     );
@@ -459,11 +603,17 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
 
   Widget _infoTile(String title, String value) {
     return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         title: Text(title),
         trailing: Text(
           value,
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.deepPurple,
+          ),
         ),
       ),
     );
