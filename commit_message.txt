@@ -1,3 +1,0 @@
-Fix: Update Gradle Java home to JDK 19
-
-This commit updates the `org.gradle.java.home` property in `gradle.properties` to point to JDK 19, resolving the "Unsupported class file major version 67" error.
