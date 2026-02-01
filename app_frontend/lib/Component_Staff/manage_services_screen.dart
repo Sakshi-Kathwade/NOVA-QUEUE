@@ -363,53 +363,53 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _services.isEmpty
-              ? Center(
-                  child: Text(
-                    Translations.translate('no_services_yet', _currentLanguage),
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ? Center(
+              child: Text(
+                Translations.translate('no_services_yet', _currentLanguage),
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _services.length,
+              itemBuilder: (context, index) {
+                final service = _services[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _services.length,
-                  itemBuilder: (context, index) {
-                    final service = _services[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        title: Text(
-                          service['serviceName'],
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: ListTile(
+                    title: Text(
+                      service['serviceName'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      service['description'] ??
+                          Translations.translate(
+                            'no_description',
+                            _currentLanguage,
+                          ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () =>
+                              _showAddEditServiceDialog(service: service),
                         ),
-                        subtitle: Text(
-                          service['description'] ??
-                              Translations.translate(
-                                'no_description',
-                                _currentLanguage,
-                              ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteService(service['_id']),
                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () =>
-                                  _showAddEditServiceDialog(service: service),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteService(service['_id']),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditServiceDialog(),
         backgroundColor: Colors.deepPurple,

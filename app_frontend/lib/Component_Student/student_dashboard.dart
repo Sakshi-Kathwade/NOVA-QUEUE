@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '';
+import '../screen/login.dart';
 import 'join_queue.dart';
 import 'my_current_queue.dart';
 import 'queue_history.dart';
@@ -28,6 +28,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   Map<String, dynamic>? queueData;
   String errorMsg = "";
 
+  String studentName = ""; // Declare studentName
   String studentEmail = "";
   String? _studentProfilePictureUrl; // NEW: Student profile picture URL
   String currentLanguage = 'english'; // Initial value
@@ -390,6 +391,17 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               );
             }
           },
+    );
+  }
+
+  // 🔴 LOGOUT METHOD
+  void logoutStudent() {
+    // Implement your logout logic here
+    // For now, let's just navigate to the login screen
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
     );
   }
 }
