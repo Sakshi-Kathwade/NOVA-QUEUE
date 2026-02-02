@@ -1,5 +1,4 @@
-buildscript {
-    
+buildscript 
     repositories {
         google()
         mavenCentral()  // Already present, but ensure it's prioritized

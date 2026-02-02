@@ -1,6 +1,5 @@
-const Token = require("../Models/tokenmodel");
-const Queue = require("../Models/create_queue_model.js");
 
+const Token = require("./Models/tokenmodel");
 exports.createToken = async (req, res) => {
   try {
     const { queueName, department, purpose, studentId } = req.body;
@@ -195,6 +194,98 @@ exports.deleteToken = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ✅ MARK TOKEN MISSED (for staff to mark a serving token as missed)
+exports.markTokenMissed = async (req, res) => {
+  try {
+    const { tokenId, queueName } = req.body; // queueName to get admin settings
+
+    if (!tokenId || !queueName) {
+      return res.status(400).json({
+        success: false,
+        message: "Token ID and Queue Name are required",
+      });
+    }
+
+    const token = await Token.findById(tokenId);
+    if (!token) {
+      return res.status(404).json({
+        success: false,
+        message: "Token not found",
+      });
+    }
+
+    // Ensure token is in a state that can be marked missed (e.g., serving)
+    if (token.status !== "serving") {
+      return res.status(400).json({
+        success: false,
+        message: "Token is not currently serving and cannot be marked as missed",
+      });
+    }
+
+    const Admin = require("../Models/adminmodel.js");
+    const admin = await Admin.findById(token.adminId); // Get admin for settings
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin for this queue not found",
+      });
+    }
+
+    const maxRecalls = admin.missedTokenRecalls;
+
+    if (token.recallAttempts < maxRecalls) {
+      // Requeue the token for a recall
+      // Find the last token in the queue to place this one after
+      const lastToken = await Token.findOne({
+        queueName: token.queueName,
+        status: { $in: ["waiting", "serving", "hold", "recalled"] },
+      }).sort({ tokenNumber: -1 });
+
+      const newTokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
+
+      // Update the current token
+      const updatedToken = await Token.findByIdAndUpdate(
+        tokenId,
+        {
+          status: "recalled",
+          recallAttempts: token.recallAttempts + 1,
+          lastCalledAt: Date.now(),
+          recalledAt: Date.now(),
+          originalTokenNumberForRecall: token.originalTokenNumberForRecall || token.tokenNumber, // Store original if first recall
+          tokenNumber: newTokenNumber, // Assign new token number at the end
+        },
+        { new: true }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: `Token A-${token.tokenNumber} marked as missed. Recalling after other students.`,
+        data: updatedToken,
+      });
+    } else {
+      // Max recalls reached, destroy/cancel the token
+      const cancelledToken = await Token.findByIdAndUpdate(
+        tokenId,
+        { status: "cancelled", cancelledAt: Date.now() },
+        { new: true }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: `Token A-${token.tokenNumber} cancelled due to multiple misses.`,
+        data: cancelledToken,
+      });
+    }
+  } catch (err) {
+    console.error("Error marking token missed:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
@@ -435,7 +526,105 @@ exports.getHeldTokens = async (req, res) => {
 };
 
 // ✅ NEXT TOKEN (skip hold tokens)
+// ✅ NEXT TOKEN (handle recalled tokens)
 exports.nextToken = async (req, res) => {
+  try {
+    const { queueName, currentTokenId, adminId } = req.body; // adminId is needed to fetch admin settings
+
+    if (!queueName || !adminId) {
+      return res.status(400).json({
+        success: false,
+        message: "Queue name and Admin ID are required",
+      });
+    }
+
+    let currentTokenNumber = 0;
+
+    // If current token exists, mark it as completed or update its status if recalled
+    if (currentTokenId) {
+      const currentToken = await Token.findById(currentTokenId);
+      if (currentToken) {
+        currentTokenNumber = currentToken.tokenNumber;
+        if (currentToken.status === "serving" || currentToken.status === "waiting") {
+          await Token.findByIdAndUpdate(currentTokenId, {
+            status: "completed",
+            completedAt: Date.now(),
+          });
+        }
+        // If it was a recalled token and is now being served, mark completed
+        if (currentToken.status === "recalled" && currentToken.recalledAt) {
+          await Token.findByIdAndUpdate(currentTokenId, {
+            status: "completed",
+            completedAt: Date.now(),
+          });
+        }
+      }
+    }
+
+    // Fetch admin settings for recall wait time
+    const Admin = require("../Models/adminmodel.js");
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin for this queue not found",
+      });
+    }
+    const missedTokenRecallWaitTimeMinutes = admin.missedTokenRecallWaitTimeMinutes || 10; // Default 10 min
+
+    const now = Date.now();
+
+    // Find next available token: prioritize recalled tokens whose wait time has passed, then waiting tokens
+    let nextToken = await Token.findOne({
+      queueName,
+      status: "recalled",
+      tokenNumber: { $gt: currentTokenNumber }, // Find tokens after current
+      recalledAt: { $lte: new Date(now - missedTokenRecallWaitTimeMinutes * 60 * 1000) }, // Wait time passed
+    }).sort({ tokenNumber: 1 });
+
+    if (!nextToken) {
+      // If no recalled token ready, find the next waiting token
+      nextToken = await Token.findOne({
+        queueName,
+        status: "waiting",
+        tokenNumber: { $gt: currentTokenNumber }, // Find tokens after current
+      }).sort({ tokenNumber: 1 });
+    }
+
+    if (!nextToken) {
+      return res.status(404).json({
+        success: false,
+        message: "No more tokens in queue",
+      });
+    }
+
+    // Mark next token as serving and update lastCalledAt
+    await Token.findByIdAndUpdate(nextToken._id, { status: "serving", lastCalledAt: Date.now() });
+
+    // Get student name
+    const Student = require("../Models/registermodel.js");
+    const student = await Student.findById(nextToken.studentId);
+    const studentName = student ? student.name : "Unknown";
+
+    res.status(200).json({
+      success: true,
+      message: "Next token loaded successfully",
+      data: {
+        tokenId: nextToken._id,
+        tokenNumber: nextToken.tokenNumber,
+        studentName: studentName,
+        purpose: nextToken.purpose,
+        status: nextToken.status, // Return the status (serving or recalled)
+      },
+    });
+  } catch (err) {
+    console.error("Error in nextToken:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
   try {
     const { queueName, currentTokenId } = req.body;
 
@@ -499,7 +688,7 @@ exports.nextToken = async (req, res) => {
       error: err.message,
     });
   }
-};
+
 
 
 
@@ -521,21 +710,26 @@ exports.getRemainingStudents = async (req, res) => {
       status: "waiting",
     }).sort({ tokenNumber: 1 });
 
-    // 2️⃣ Get all remaining waiting students after current token
+    // 2️⃣ Get all remaining waiting students (including current)
     const remainingStudents = await Token.find({
       queueName,
       status: "waiting",
-      tokenNumber: { $gt: currentToken ? currentToken.tokenNumber : 0 },
     }).sort({ tokenNumber: 1 });
 
-    // 3️⃣ Map data to return only needed fields
-    const waitingList = remainingStudents.map((s) => ({
-      tokenNumber: s.tokenNumber,
-      studentId: s.studentId,
-      studentName: s.studentName,
-      purpose: s.purpose,
-      department: s.department,
-    }));
+    // 3️⃣ Get student names and map to response
+    const Student = require("../Models/registermodel");
+    const waitingList = await Promise.all(
+      remainingStudents.map(async (s) => {
+        const student = await Student.findById(s.studentId);
+        return {
+          tokenNumber: s.tokenNumber,
+          studentId: s.studentId,
+          studentName: student ? student.name : "Unknown",
+          purpose: s.purpose,
+          department: s.department,
+        };
+      })
+    );
 
     res.status(200).json({
       success: true,
@@ -545,6 +739,47 @@ exports.getRemainingStudents = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ GET STUDENT QUEUE HISTORY (only logged-in student's personal history)
+exports.getStudentHistory = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Student ID is required",
+      });
+    }
+
+    const tokens = await Token.find({
+      studentId,
+      status: { $in: ['completed', 'cancelled', 'Completed', 'Cancelled'] },
+    })
+      .sort({ updatedAt: -1 })
+      .limit(100);
+
+    const history = tokens.map((t) => ({
+      id: t._id,
+      date: t.completedAt || t.cancelledAt || t.updatedAt || t.generatedAt,
+      serviceTaken: t.purpose || t.department || 'N/A',
+      queueName: t.queueName || 'N/A',
+      tokenNumber: t.tokenNumber,
+      waitingTimeMinutes: t.estimatedWaitingTime || 0,
+      status: t.status === 'completed' || t.status === 'Completed' ? 'Served' : 'Cancelled',
+    }));
+
+    res.status(200).json({
+      success: true,
+      history,
+    });
+  } catch (err) {
     res.status(500).json({
       success: false,
       error: err.message,

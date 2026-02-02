@@ -1,6 +1,4 @@
 const Queue = require("../Models/create_queue_model.js");
-const Token = require("../Models/tokenmodel");
-
 // CREATE QUEUE CONTROLLER
 const createQueue = async (req, res) => {
   try {

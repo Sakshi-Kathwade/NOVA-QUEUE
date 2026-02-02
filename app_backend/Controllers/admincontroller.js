@@ -1,4 +1,7 @@
 const Admin = require('../Models/adminmodel.js');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Service = require('../Models/serviceModel.js');
 const Queue = require('../Models/queueModel.js'); // Import Queue model
 const Token = require('../Models/tokenModel.js'); // Import Token model
@@ -170,6 +173,193 @@ const changeAdminPassword = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Password changed successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ✅ GET ADMIN PROFILE (email, role, profilePicture)
+const getAdminProfile = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin ID is required",
+      });
+    }
+
+    const admin = await Admin.findById(adminId).select("-password");
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      admin: {
+        adminId: admin._id,
+        email: admin.email,
+        role: admin.role || "Admin",
+        profilePicture: admin.profilePicture,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Multer config for admin profile picture
+const adminProfileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../uploads/admin_profiles');
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${req.params.adminId}_${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
+const uploadAdminProfile = multer({ storage: adminProfileStorage }).single('profilePicture');
+
+// ✅ UPDATE ADMIN PROFILE (with optional profile picture upload)
+const updateAdminProfile = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const { email, name } = req.body || {};
+
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin ID is required",
+      });
+    }
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    if (email) admin.email = email;
+
+    if (req.file) {
+      admin.profilePicture = `/uploads/admin_profiles/${req.file.filename}`;
+    }
+
+    await admin.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      admin: {
+        adminId: admin._id,
+        email: admin.email,
+        role: admin.role || "Admin",
+        profilePicture: admin.profilePicture,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ✅ GET ADMIN QUEUE SETTINGS
+const getAdminQueueSettings = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin ID is required",
+      });
+    }
+
+    const admin = await Admin.findById(adminId).select(
+      "estimatedServiceTimePerStudent missedTokenRecalls missedTokenRecallWaitTimeMinutes"
+    );
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      settings: {
+        estimatedServiceTimePerStudent: admin.estimatedServiceTimePerStudent,
+        missedTokenRecalls: admin.missedTokenRecalls,
+        missedTokenRecallWaitTimeMinutes: admin.missedTokenRecallWaitTimeMinutes,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ✅ UPDATE ADMIN QUEUE SETTINGS
+const updateAdminQueueSettings = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const { estimatedServiceTimePerStudent, missedTokenRecalls, missedTokenRecallWaitTimeMinutes } = req.body;
+
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin ID is required",
+      });
+    }
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    if (estimatedServiceTimePerStudent !== undefined) {
+      admin.estimatedServiceTimePerStudent = estimatedServiceTimePerStudent;
+    }
+    if (missedTokenRecalls !== undefined) {
+      admin.missedTokenRecalls = missedTokenRecalls;
+    }
+    if (missedTokenRecallWaitTimeMinutes !== undefined) {
+      admin.missedTokenRecallWaitTimeMinutes = missedTokenRecallWaitTimeMinutes;
+    }
+
+    await admin.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Queue settings updated successfully",
+      settings: {
+        estimatedServiceTimePerStudent: admin.estimatedServiceTimePerStudent,
+        missedTokenRecalls: admin.missedTokenRecalls,
+        missedTokenRecallWaitTimeMinutes: admin.missedTokenRecallWaitTimeMinutes,
+      },
     });
   } catch (error) {
     return res.status(500).json({
@@ -503,6 +693,11 @@ module.exports = {
   createAdmin,
   changeAdminPassword,
   deleteAdmin,
+  getAdminProfile,
+  updateAdminProfile,
+  uploadAdminProfile,
+  getAdminQueueSettings,
+  updateAdminQueueSettings,
   getReportsSummary,
   getCounterPerformance,
   getBusyHours,

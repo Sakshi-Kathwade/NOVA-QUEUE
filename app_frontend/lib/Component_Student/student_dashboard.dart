@@ -28,10 +28,11 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   Map<String, dynamic>? queueData;
   String errorMsg = "";
 
-  String studentName = ""; // Declare studentName
+  String studentName = "";
   String studentEmail = "";
-  String? _studentProfilePictureUrl; // NEW: Student profile picture URL
-  String currentLanguage = 'english'; // Initial value
+  String studentRole = "Student";
+  String? _studentProfilePictureUrl;
+  String currentLanguage = 'english';
 
   @override
   void initState() {
@@ -58,12 +59,16 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)["student"];
-        setState(() {
-          studentName = data["name"] ?? "";
-          studentEmail = data["email"] ?? "";
-          _studentProfilePictureUrl = data['profilePicture']; // Set profile picture URL
-        });
+        final data = jsonDecode(response.body);
+        if (data["success"] == true && data["student"] != null) {
+          final s = data["student"];
+          setState(() {
+            studentName = s["name"] ?? "";
+            studentEmail = s["email"] ?? "";
+            studentRole = s["role"] ?? "Student";
+            _studentProfilePictureUrl = s['profilePicture'];
+          });
+        }
       }
     } catch (e) {
       debugPrint("Student fetch error: $e");
@@ -148,12 +153,15 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 value: 'profile',
                 enabled: false, // Make this item non-clickable
                 child: ListTile(
-                  leading: CircleAvatar(
+                  leading:                   CircleAvatar(
                     radius: 20,
-                    backgroundImage: _studentProfilePictureUrl != null
+                    backgroundColor: Colors.white24,
+                    backgroundImage: _studentProfilePictureUrl != null &&
+                            _studentProfilePictureUrl!.isNotEmpty
                         ? NetworkImage("http://localhost:8000/" + _studentProfilePictureUrl!) as ImageProvider
-                        : const AssetImage('assets/default_profile.png'),
-                    child: _studentProfilePictureUrl == null
+                        : null,
+                    child: _studentProfilePictureUrl == null ||
+                            _studentProfilePictureUrl!.isEmpty
                         ? const Icon(Icons.person, color: Colors.white)
                         : null,
                   ),
@@ -221,7 +229,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             _drawerItem(
               Icons.history,
               "Queue History",
-              screen: const QueueHistoryScreen(),
+              screen: QueueHistoryScreen(studentId: widget.studentId),
             ),
             _drawerItem(
               Icons.settings,
@@ -329,39 +337,48 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundImage: _studentProfilePictureUrl != null
+            backgroundColor: Colors.white24,
+            backgroundImage: _studentProfilePictureUrl != null &&
+                    _studentProfilePictureUrl!.isNotEmpty
                 ? NetworkImage("http://localhost:8000/" + _studentProfilePictureUrl!) as ImageProvider
-                : const AssetImage('assets/default_profile.png'),
-            child: _studentProfilePictureUrl == null
-                ? const Icon(Icons.person, color: Colors.deepPurple)
+                : null,
+            child: _studentProfilePictureUrl == null ||
+                    _studentProfilePictureUrl!.isEmpty
+                ? const Icon(Icons.person, size: 35, color: Colors.white)
                 : null,
           ),
           const SizedBox(width: 12),
 
-          // ✅ FIX: Expanded added to prevent overflow
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  studentName.isNotEmpty ? studentName : "Student",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  studentRole.isNotEmpty
+                      ? (studentRole.toLowerCase() == 'student'
+                          ? Translations.translate('student', currentLanguage)
+                          : studentRole)
+                      : Translations.translate('student', currentLanguage),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  studentEmail.isNotEmpty
-                      ? studentEmail
-                      : "email@university.com",
+                  studentName.isNotEmpty ? studentName : "—",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  studentEmail.isNotEmpty ? studentEmail : "email@university.com",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),

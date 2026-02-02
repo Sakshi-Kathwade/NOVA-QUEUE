@@ -51,7 +51,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<dynamic> liveQueueData = []; // ✅ Live queue data from backend
   String currentLanguage =
       'english'; // ✅ Current language (english/hindi/marathi)
-  String? _adminProfilePictureUrl; // NEW: Admin profile picture URL
+  String? _adminProfilePictureUrl; // Admin profile picture URL
+  String? _adminRole; // Admin role fetched from backend
 
   @override
   void initState() {
@@ -59,7 +60,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     adminEmail = widget.adminEmail; // ✅ Store admin email
     adminId = widget.adminId; // ✅ Store admin ID
     _loadLanguage(); // ✅ Load user's language preference
-    _fetchAdminProfilePicture(); // NEW: Fetch admin profile picture
+    _fetchAdminProfilePicture(); // Fetch admin profile picture and role
     fetchQueueName(); // ✅ Fetch active queue first
     fetchDashboardData(); // ✅ Initial data fetch (after queue is fetched)
     fetchLiveQueueData(); // ✅ Fetch live queue data
@@ -67,7 +68,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     startQueuePolling(); // ✅ Start queue polling to detect changes
   }
 
-  // NEW: Fetch admin profile picture
+  // Fetch admin profile picture and role from backend
   Future<void> _fetchAdminProfilePicture() async {
     if (adminId == null) return;
     try {
@@ -77,14 +78,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['admin']['profilePicture'] != null) {
+        if (data['success'] == true && data['admin'] != null) {
           setState(() {
             _adminProfilePictureUrl = data['admin']['profilePicture'];
+            _adminRole = data['admin']['role'] ?? 'Admin';
           });
         }
       }
     } catch (e) {
-      debugPrint("Error fetching admin profile picture: $e");
+      debugPrint("Error fetching admin profile: $e");
     }
   }
 
@@ -432,10 +434,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: ListTile(
                   leading: CircleAvatar(
                     radius: 20,
-                    backgroundImage: _adminProfilePictureUrl != null
-                        ? NetworkImage("http://localhost:8000/" + _adminProfilePictureUrl!) as ImageProvider
-                        : const AssetImage('assets/default_profile.png'),
-                    child: _adminProfilePictureUrl == null
+                    backgroundColor: Colors.white24,
+                    backgroundImage:
+                        _adminProfilePictureUrl != null &&
+                            _adminProfilePictureUrl!.isNotEmpty
+                        ? NetworkImage(
+                                "http://localhost:8000/" +
+                                    _adminProfilePictureUrl!,
+                              )
+                              as ImageProvider
+                        : null,
+                    child:
+                        _adminProfilePictureUrl == null ||
+                            _adminProfilePictureUrl!.isEmpty
                         ? const Icon(Icons.person, color: Colors.white)
                         : null,
                   ),
@@ -443,14 +454,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     adminEmail ?? "Admin",
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(Translations.translate('staff_member', currentLanguage)),
+                  subtitle: Text(
+                    Translations.translate('staff_member', currentLanguage),
+                  ),
                 ),
               ),
               PopupMenuItem(
                 value: 'edit_profile',
                 child: ListTile(
                   leading: const Icon(Icons.edit, color: Colors.deepPurple),
-                  title: Text(Translations.translate('edit_profile', currentLanguage)),
+                  title: Text(
+                    Translations.translate('edit_profile', currentLanguage),
+                  ),
                 ),
               ),
               PopupMenuDivider(),
@@ -458,7 +473,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: Colors.red),
-                  title: Text(Translations.translate('logout', currentLanguage), style: TextStyle(color: Colors.red)),
+                  title: Text(
+                    Translations.translate('logout', currentLanguage),
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
               ),
             ],
@@ -480,21 +498,61 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundImage: _adminProfilePictureUrl != null
-                        ? NetworkImage("http://localhost:8000/" + _adminProfilePictureUrl!) as ImageProvider
-                        : const AssetImage('assets/default_profile.png'),
-                    child: _adminProfilePictureUrl == null
-                        ? const Icon(Icons.person, size: 35, color: Colors.white)
+                    backgroundColor: Colors.white24,
+                    backgroundImage:
+                        _adminProfilePictureUrl != null &&
+                            _adminProfilePictureUrl!.isNotEmpty
+                        ? NetworkImage(
+                                "http://localhost:8000/" +
+                                    _adminProfilePictureUrl!,
+                              )
+                              as ImageProvider
+                        : null,
+                    child:
+                        _adminProfilePictureUrl == null ||
+                            _adminProfilePictureUrl!.isEmpty
+                        ? const Icon(
+                            Icons.person,
+                            size: 35,
+                            color: Colors.white,
+                          )
                         : null,
                   ),
                   const SizedBox(width: 12),
-
                   Expanded(
-                    child: Text(
-                      adminEmail ?? "Admin",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 18),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _adminRole != null
+                              ? (_adminRole!.toLowerCase() == 'admin'
+                                    ? Translations.translate(
+                                        'administrator',
+                                        currentLanguage,
+                                      )
+                                    : _adminRole!)
+                              : Translations.translate(
+                                  'administrator',
+                                  currentLanguage,
+                                ),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          adminEmail ?? "Admin",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -522,7 +580,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               context,
               Icons.person,
               Translations.translate('current_token', currentLanguage),
-              screen: CurrentTokenScreen(queueName: queueName ?? ""),
+              screen: CurrentTokenScreen(
+                queueName: queueName ?? "",
+                adminId: adminId,
+              ),
             ),
             _drawerItem(
               context,
@@ -619,7 +680,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
               color: Colors.deepPurple,
               navigateTo: liveQueueData.isNotEmpty
                   ? LiveQueuePreviewScreen(
-                      queueData: List<Map<String, String>>.from(
+                      adminId: adminId,
+                      activeQueueName: queueName, // Pass active queue name
+                      initialQueueData: List<Map<String, String>>.from(
                         liveQueueData.map(
                           (item) => Map<String, String>.from(item),
                         ),

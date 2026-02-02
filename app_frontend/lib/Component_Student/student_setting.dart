@@ -115,21 +115,23 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
     );
   }
 
-  // 🔵 GET STUDENT DETAILS API
+  // Fetch student details (email, role) from backend
   Future<void> fetchStudentDetails() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/studentget/${widget.studentId}"),
+        Uri.parse("http://localhost:8000/api/student/profile/${widget.studentId}"),
         headers: {"Content-Type": "application/json"},
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)["data"];
-
-        setState(() {
-          studentEmail = data["email"] ?? "";
-          studentRole = data["role"] ?? "";
-        });
+        final data = jsonDecode(response.body);
+        if (data["success"] == true && data["student"] != null) {
+          final student = data["student"];
+          setState(() {
+            studentEmail = student["email"] ?? "";
+            studentRole = student["role"] ?? "Student";
+          });
+        }
       }
     } catch (e) {
       debugPrint("Fetch Student Error: $e");
@@ -277,12 +279,16 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
         children: [
           _sectionTitle(Translations.translate('account', currentLanguage)),
           _infoTile(
-            Translations.translate('admin_email', currentLanguage),
-            studentEmail,
+            Translations.translate('student_email', currentLanguage),
+            studentEmail.isNotEmpty ? studentEmail : "—",
           ),
           _infoTile(
             Translations.translate('role', currentLanguage),
-            studentRole,
+            studentRole.isNotEmpty
+                ? (studentRole.toLowerCase() == 'student'
+                    ? Translations.translate('student', currentLanguage)
+                    : studentRole)
+                : Translations.translate('student', currentLanguage),
           ),
 
           const SizedBox(height: 16),

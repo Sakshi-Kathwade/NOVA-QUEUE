@@ -1,53 +1,34 @@
 const mongoose = require('mongoose');
 
 const tokenSchema = new mongoose.Schema({
-  queueId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Queue',
-    required: true,
-  },
-  adminId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin',
-    required: true,
-  },
+  queueId: { type: mongoose.Schema.Types.ObjectId, ref: 'Queue', required: false },
+  adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: false },
   studentId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Register', // Reference to the Register model (acting as Student)
+    ref: 'Register',
     required: true,
   },
-  tokenNumber: {
-    type: Number,
-    required: true,
-  },
-  serviceId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Service', // Reference to the Service model
-    required: true,
-  },
-  counterId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Counter', // Assuming a Counter model exists
-    required: false, // Counter might be assigned later
-  },
+  tokenNumber: { type: Number, required: true },
+  serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: false },
+  counterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Counter', required: false },
+  queueName: { type: String, required: false },
+  department: { type: String, required: false },
+  purpose: { type: String, required: false },
+  studentsAhead: { type: Number, required: false },
+  estimatedWaitingTime: { type: Number, required: false },
   status: {
     type: String,
-    enum: ['Waiting', 'Calling', 'Completed', 'Cancelled'],
-    default: 'Waiting',
+    enum: ['waiting', 'serving', 'hold', 'completed', 'cancelled', 'recalled', 'Waiting', 'Calling', 'Completed', 'Cancelled'],
+    default: 'waiting',
   },
-  generatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-  calledAt: {
-    type: Date,
-  },
-  completedAt: {
-    type: Date,
-  },
-  cancelledAt: {
-    type: Date,
-  },
-});
+  generatedAt: { type: Date, default: Date.now },
+  calledAt: { type: Date },
+  completedAt: { type: Date },
+  cancelledAt: { type: Date },
+  recallAttempts: { type: Number, default: 0 },
+  lastCalledAt: { type: Date },
+  recalledAt: { type: Date },
+  originalTokenNumberForRecall: { type: Number }, // To track original position for recall logic
+}, { strict: false });
 
 module.exports = mongoose.models.Token || mongoose.model('Token', tokenSchema);

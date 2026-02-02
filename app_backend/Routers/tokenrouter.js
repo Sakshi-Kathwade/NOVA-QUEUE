@@ -20,12 +20,14 @@ router.get(
   "/remainingtoken/:queueName",
   tokenController.getRemainingStudents
 );
+router.get("/student/history/:studentId", tokenController.getStudentHistory);
 
 // ✅ Token Actions
 router.put("/completetoken", tokenController.completeToken);
 router.put("/holdtoken", tokenController.holdToken);
 router.put("/unholdtoken", tokenController.unholdToken);
 router.put("/nexttoken", tokenController.nextToken);
+router.put("/markmissedtoken", tokenController.markTokenMissed);
 router.get("/heldtokens/:queueName", tokenController.getHeldTokens);
 router.get("/completedtoday/:queueName", tokenController.getCompletedToday);
 

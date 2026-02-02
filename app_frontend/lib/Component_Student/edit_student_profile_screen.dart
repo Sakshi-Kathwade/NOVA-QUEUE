@@ -187,25 +187,24 @@ class _EditStudentProfileScreenState extends State<EditStudentProfileScreen> {
                     children: [
                       CircleAvatar(
                         radius: 80,
+                        backgroundColor: Colors.deepPurple.shade100,
                         backgroundImage: _newProfileImage != null
-                            ? FileImage(_newProfileImage!)
+                            ? FileImage(_newProfileImage!) as ImageProvider
                             : (_profilePictureUrl != null &&
-                                          _profilePictureUrl!.isNotEmpty
-                                      ? NetworkImage(
-                                          "http://localhost:8000/" +
-                                              _profilePictureUrl!,
-                                        )
-                                      : const AssetImage(
-                                          'assets/default_profile.png',
-                                        ))
-                                  as ImageProvider,
+                                      _profilePictureUrl!.isNotEmpty
+                                  ? NetworkImage(
+                                      "http://localhost:8000/" +
+                                          _profilePictureUrl!,
+                                    ) as ImageProvider
+                                  : null),
                         child:
-                            _profilePictureUrl == null &&
+                            (_profilePictureUrl == null ||
+                                    _profilePictureUrl!.isEmpty) &&
                                 _newProfileImage == null
                             ? const Icon(
                                 Icons.person,
                                 size: 80,
-                                color: Colors.white70,
+                                color: Colors.deepPurple,
                               )
                             : null,
                       ),

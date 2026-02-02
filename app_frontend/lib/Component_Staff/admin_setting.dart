@@ -10,9 +10,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/language_service.dart';
 import '../services/translations.dart';
-import 'manage_services_screen.dart'; // Import the new screen
-import 'manage_counters_screen.dart'; // Import the new ManageCountersScreen
-import 'edit_admin_profile_screen.dart'; // Import the new EditAdminProfileScreen
+import 'edit_admin_profile_screen.dart';
 
 class AdminSettingScreen extends StatefulWidget {
   final String? adminEmail;
@@ -33,11 +31,65 @@ class AdminSettingScreen extends StatefulWidget {
 class _AdminSettingScreenState extends State<AdminSettingScreen> {
   bool notificationsEnabled = true;
   String currentLanguage = 'english';
+  String? adminRole; // Admin role fetched from backend
+  int _estimatedServiceTime = 5;
+  int _missedTokenRecalls = 2;
+  int _missedTokenRecallWaitTimeMinutes = 10;
 
   @override
   void initState() {
     super.initState();
     _loadLanguage();
+    _fetchAdminProfile();
+    _fetchQueueSettings();
+  }
+
+  // Fetch admin profile (email, role) from backend
+  Future<void> _fetchAdminProfile() async {
+    if (widget.adminId == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse("http://localhost:8000/api/admin/profile/${widget.adminId}"),
+        headers: {"Content-Type": "application/json"},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['admin'] != null) {
+          setState(() {
+            adminRole = data['admin']['role'] ?? 'Admin';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching admin profile: $e");
+    }
+  }
+
+  // Fetch queue settings from backend
+  Future<void> _fetchQueueSettings() async {
+    if (widget.adminId == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://localhost:8000/api/admin/settings/queue/${widget.adminId}",
+        ),
+        headers: {"Content-Type": "application/json"},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['settings'] != null) {
+          setState(() {
+            _estimatedServiceTime =
+                data['settings']['estimatedServiceTimePerStudent'] ?? 5;
+            _missedTokenRecalls = data['settings']['missedTokenRecalls'] ?? 2;
+            _missedTokenRecallWaitTimeMinutes =
+                data['settings']['missedTokenRecallWaitTimeMinutes'] ?? 10;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching queue settings: $e");
+    }
   }
 
   // ✅ Load user's language preference
@@ -201,6 +253,66 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     }
   }
 
+  // Update queue settings to backend
+  Future<void> _updateQueueSettings() async {
+    if (widget.adminId == null) return;
+    try {
+      final response = await http.put(
+        Uri.parse(
+          "http://localhost:8000/api/admin/settings/queue/${widget.adminId}",
+        ),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "estimatedServiceTimePerStudent": _estimatedServiceTime,
+          "missedTokenRecalls": _missedTokenRecalls,
+          "missedTokenRecallWaitTimeMinutes": _missedTokenRecallWaitTimeMinutes,
+        }),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                Translations.translate(
+                  'queue_settings_updated_successfully',
+                  currentLanguage,
+                ),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                data['message'] ?? "Failed to update queue settings",
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Failed to update queue settings: ${response.statusCode}",
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error updating queue settings: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Server error. Please try again."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void changePasswordDialog() {
     showDialog(
       context: context,
@@ -354,6 +466,143 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     );
   }
 
+  void _showEstimatedServiceTimeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          Translations.translate('estimated_service_time', currentLanguage),
+        ),
+        content: DropdownButton<int>(
+          value: _estimatedServiceTime,
+          onChanged: (int? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _estimatedServiceTime = newValue;
+              });
+            }
+          },
+          items: List.generate(20, (index) => index + 1)
+              .map<DropdownMenuItem<int>>((int value) {
+                return DropdownMenuItem<int>(
+                  value: value,
+                  child: Text(
+                    '$value ${Translations.translate('min', currentLanguage)}',
+                  ),
+                );
+              })
+              .toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(Translations.translate('cancel', currentLanguage)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateQueueSettings();
+              Navigator.pop(context);
+            },
+            child: Text(Translations.translate('save', currentLanguage)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMissedTokenRetriesDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          Translations.translate('missed_token_retries', currentLanguage),
+        ),
+        content: DropdownButton<int>(
+          value: _missedTokenRecalls,
+          onChanged: (int? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _missedTokenRecalls = newValue;
+              });
+            }
+          },
+          items:
+              List.generate(6, (index) => index) // 0 to 5 retries
+                  .map<DropdownMenuItem<int>>((int value) {
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text(
+                        '$value ${Translations.translate('retries', currentLanguage)}',
+                      ),
+                    );
+                  })
+                  .toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(Translations.translate('cancel', currentLanguage)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateQueueSettings();
+              Navigator.pop(context);
+            },
+            child: Text(Translations.translate('save', currentLanguage)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRecallWaitTimeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          Translations.translate('recall_wait_time', currentLanguage),
+        ),
+        content: DropdownButton<int>(
+          value: _missedTokenRecallWaitTimeMinutes,
+          onChanged: (int? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _missedTokenRecallWaitTimeMinutes = newValue;
+              });
+            }
+          },
+          items:
+              List.generate(
+                    6,
+                    (index) => (index + 1) * 5,
+                  ) // 5, 10, 15, 20, 25, 30 minutes
+                  .map<DropdownMenuItem<int>>((int value) {
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text(
+                        '$value ${Translations.translate('min', currentLanguage)}',
+                      ),
+                    );
+                  })
+                  .toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(Translations.translate('cancel', currentLanguage)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateQueueSettings();
+              Navigator.pop(context);
+            },
+            child: Text(Translations.translate('save', currentLanguage)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -388,7 +637,11 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
           ),
           _infoTile(
             Translations.translate('role', currentLanguage),
-            Translations.translate('administrator', currentLanguage),
+            adminRole != null
+                ? (adminRole!.toLowerCase() == 'admin'
+                      ? Translations.translate('administrator', currentLanguage)
+                      : adminRole!)
+                : Translations.translate('administrator', currentLanguage),
           ),
 
           const SizedBox(height: 16),
@@ -461,87 +714,32 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
 
           const SizedBox(height: 16),
 
-          // NEW: Queue Management Settings
           _sectionTitle(
-            Translations.translate('queue_management', currentLanguage),
-          ),
-          _settingTile(
-            icon: Icons.room_service,
-            title: Translations.translate('manage_services', currentLanguage),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ManageServicesScreen(
-                    adminId: widget.adminId,
-                    adminEmail: widget.adminEmail,
-                  ),
-                ),
-              );
-            },
-          ),
-          _settingTile(
-            icon: Icons.view_carousel, // Changed from Icons.counter_tops
-            title: Translations.translate('manage_counters', currentLanguage),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ManageCountersScreen(
-                    adminId: widget.adminId,
-                    adminEmail: widget.adminEmail,
-                  ),
-                ),
-              );
-            },
-          ),
-          _settingTile(
-            icon: Icons.group,
-            title: Translations.translate('manage_staff', currentLanguage),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Manage Staff - Coming Soon!')),
-              );
-            },
-          ),
-          _settingTile(
-            icon: Icons.access_time,
-            title: Translations.translate('working_hours', currentLanguage),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Working Hours - Coming Soon!')),
-              );
-            },
-          ),
-          _settingTile(
-            icon: Icons.format_list_numbered,
-            title: Translations.translate('token_limits', currentLanguage),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Token Limits - Coming Soon!')),
-              );
-            },
-          ),
-          _settingTile(
-            icon: Icons.notifications_active,
-            title: Translations.translate(
-              'notification_settings',
+            Translations.translate(
+              'queue_management_settings',
               currentLanguage,
             ),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Notification Settings - Coming Soon!')),
-              );
-            },
           ),
           _settingTile(
-            icon: Icons.rule,
-            title: Translations.translate('queue_rules', currentLanguage),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Queue Rules - Coming Soon!')),
-              );
-            },
+            icon: Icons.timer,
+            title: Translations.translate(
+              'estimated_service_time',
+              currentLanguage,
+            ),
+            onTap: () => _showEstimatedServiceTimeDialog(),
+          ),
+          _settingTile(
+            icon: Icons.refresh,
+            title: Translations.translate(
+              'missed_token_retries',
+              currentLanguage,
+            ),
+            onTap: () => _showMissedTokenRetriesDialog(),
+          ),
+          _settingTile(
+            icon: Icons.hourglass_empty,
+            title: Translations.translate('recall_wait_time', currentLanguage),
+            onTap: () => _showRecallWaitTimeDialog(),
           ),
 
           const SizedBox(height: 16),

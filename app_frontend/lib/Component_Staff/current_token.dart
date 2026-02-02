@@ -8,7 +8,11 @@ import 'package:http/http.dart' as http;
 class CurrentTokenScreen extends StatefulWidget {
   final String queueName;
 
-  const CurrentTokenScreen({super.key, required this.queueName});
+  const CurrentTokenScreen({
+    super.key,
+    required this.queueName,
+    String? adminId,
+  });
 
   @override
   State<CurrentTokenScreen> createState() => _CurrentTokenScreenState();
