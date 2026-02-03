@@ -1,5 +1,5 @@
 
-const Token = require("./Models/tokenmodel");
+const Token = require("../Models/tokenmodel");
 exports.createToken = async (req, res) => {
   try {
     const { queueName, department, purpose, studentId } = req.body;
@@ -625,69 +625,7 @@ exports.nextToken = async (req, res) => {
     });
   }
 };
-  try {
-    const { queueName, currentTokenId } = req.body;
 
-    if (!queueName) {
-      return res.status(400).json({
-        success: false,
-        message: "Queue name is required",
-      });
-    }
-
-    let currentTokenNumber = 0;
-
-    // If current token exists, mark it as completed
-    if (currentTokenId) {
-      const currentToken = await Token.findById(currentTokenId);
-      if (currentToken) {
-        currentTokenNumber = currentToken.tokenNumber;
-        if (currentToken.status === "serving" || currentToken.status === "waiting") {
-          await Token.findByIdAndUpdate(currentTokenId, {
-            status: "completed",
-          });
-        }
-      }
-    }
-
-    // Find next waiting token (skip hold tokens and completed tokens)
-    const nextToken = await Token.findOne({
-      queueName,
-      status: "waiting",
-      tokenNumber: { $gt: currentTokenNumber },
-    }).sort({ tokenNumber: 1 });
-
-    if (!nextToken) {
-      return res.status(404).json({
-        success: false,
-        message: "No more tokens in queue",
-      });
-    }
-
-    // Mark next token as serving
-    await Token.findByIdAndUpdate(nextToken._id, { status: "serving" });
-
-    // Get student name
-    const Student = require("../Models/registermodel");
-    const student = await Student.findById(nextToken.studentId);
-    const studentName = student ? student.name : "Unknown";
-
-    res.status(200).json({
-      success: true,
-      message: "Next token loaded successfully",
-      data: {
-        tokenId: nextToken._id,
-        tokenNumber: nextToken.tokenNumber,
-        studentName: studentName,
-        purpose: nextToken.purpose,
-      },
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message,
-    });
-  }
 
 
 
