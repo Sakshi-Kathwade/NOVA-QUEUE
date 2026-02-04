@@ -134,9 +134,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               size: 35,
               color: Colors.white,
             ),
-            onSelected: (value) {
+            onSelected: (value) async {
               if (value == 'edit_profile') {
-                Navigator.push(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => EditStudentProfileScreen(
@@ -144,8 +144,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     ),
                   ),
                 );
+                fetchStudentDetails(); // ✅ Refresh profile after return
               } else if (value == 'logout') {
-                logoutStudent(); // 🔴 LOGOUT CALLED HERE
+                logoutStudent();
               }
             },
             itemBuilder: (context) => [
@@ -399,13 +400,14 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       onTap:
           onTap ??
-          () {
+          () async { // ✅ Async
             Navigator.pop(context);
             if (screen != null) {
-              Navigator.push(
+              await Navigator.push( // ✅ Wait for return
                 context,
                 MaterialPageRoute(builder: (_) => screen),
               );
+              fetchStudentDetails(); // ✅ Refresh dashboard
             }
           },
     );

@@ -51,6 +51,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<dynamic> liveQueueData = []; // ✅ Live queue data from backend
   String currentLanguage =
       'english'; // ✅ Current language (english/hindi/marathi)
+  String? _adminName; // ✅ Admin name fetched from backend
   String? _adminProfilePictureUrl; // Admin profile picture URL
   String? _adminRole; // Admin role fetched from backend
 
@@ -80,6 +81,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         final data = json.decode(response.body);
         if (data['success'] == true && data['admin'] != null) {
           setState(() {
+            _adminName = data['admin']['name']; // ✅ Store admin name
+            adminEmail = data['admin']['email']; // ✅ Update email if changed
             _adminProfilePictureUrl = data['admin']['profilePicture'];
             _adminRole = data['admin']['role'] ?? 'Admin';
           });
@@ -419,12 +422,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
               if (value == 'logout') {
                 await performLogout(); // ✅ Call logout function
               } else if (value == 'edit_profile' && adminId != null) {
-                Navigator.push(
+                // ✅ Wait for result and refresh profile
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => EditAdminProfileScreen(adminId: adminId),
+                    builder: (_) => EditAdminProfileScreen(adminId: adminId, adminEmail: adminEmail),
                   ),
                 );
+                _fetchAdminProfilePicture(); // ✅ Refresh profile after return
               }
             },
             itemBuilder: (context) => [
@@ -451,7 +456,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         : null,
                   ),
                   title: Text(
-                    adminEmail ?? "Admin",
+                    _adminName ?? adminEmail ?? "Admin", // ✅ Display Name if available
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
@@ -719,10 +724,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return ListTile(
       leading: Icon(icon, color: Colors.deepPurple),
       title: Text(title),
-      onTap: () {
+      onTap: () async {
         Navigator.pop(context);
         if (screen != null) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+          _fetchAdminProfilePicture(); // ✅ Refresh dashboard
         }
       },
     );

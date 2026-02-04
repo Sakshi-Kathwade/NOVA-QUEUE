@@ -35,7 +35,7 @@ router.put('/changepassword/:studentID', changePassword);
 
 // STUDENT PROFILE ROUTES
 router.get("/student/profile/:studentID", getStudentProfile);
-router.put("/student/profile/:studentID", updateStudentProfile);
+router.put("/student/profile/:studentID", upload, updateStudentProfile);
 router.post("/student/profile/picture/:studentID", upload, uploadStudentProfilePicture);
 
 module.exports = router;

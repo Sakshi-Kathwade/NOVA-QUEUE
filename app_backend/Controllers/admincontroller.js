@@ -207,6 +207,7 @@ const getAdminProfile = async (req, res) => {
       success: true,
       admin: {
         adminId: admin._id,
+        name: admin.name,
         email: admin.email,
         role: admin.role || "Admin",
         profilePicture: admin.profilePicture,

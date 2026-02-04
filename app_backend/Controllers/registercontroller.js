@@ -207,9 +207,12 @@ const getStudentProfile = async (req, res) => {
       });
     }
 
+    console.log("getStudentProfile called for ID:", studentID);
     const student = await User.findById(studentID).select(
       "-password -confirmPassword"
     );
+    console.log("getStudentProfile found student:", student ? student._id : "null");
+    if (student) console.log("getStudentProfile pic:", student.profilePicture);
 
     if (!student) {
       return res.status(404).json({
@@ -248,6 +251,10 @@ const updateStudentProfile = async (req, res) => {
       return res.status(400).json({ success: false, message: "Student ID is required" });
     }
 
+    console.log("updateStudentProfile called for:", studentID);
+    console.log("Req Body:", req.body);
+    console.log("Req File:", req.file);
+
     const student = await User.findById(studentID);
     if (!student) {
       return res.status(404).json({ success: false, message: "Student not found" });
@@ -257,7 +264,14 @@ const updateStudentProfile = async (req, res) => {
     // Student email is typically not editable, but if it were, add validation
     // student.email = email || student.email;
 
-    await student.save();
+    if (req.file) {
+      const newPath = `/uploads/student_profiles/${req.file.filename}`;
+      console.log("Setting new profile picture path:", newPath);
+      student.profilePicture = newPath;
+    }
+
+    const savedStudent = await student.save();
+    console.log("Saved Student Profile Pic:", savedStudent.profilePicture);
 
     return res.status(200).json({
       success: true,

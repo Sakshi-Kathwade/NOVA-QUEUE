@@ -298,8 +298,8 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
           _settingTile(
             icon: Icons.person,
             title: Translations.translate('edit_profile', currentLanguage),
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => EditStudentProfileScreen(
@@ -307,6 +307,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
                   ),
                 ),
               );
+              fetchStudentDetails(); // ✅ Refresh settings (email/role/etc if needed)
             },
           ),
 

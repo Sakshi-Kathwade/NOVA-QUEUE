@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../services/translations.dart';
 import 'package:path/path.dart' as path;
+import 'package:flutter/foundation.dart' show kIsWeb; // Add this import
 
 class EditAdminProfileScreen extends StatefulWidget {
   final String? adminId;
@@ -22,7 +23,7 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   String? _profilePictureUrl;
-  File? _newProfileImage;
+  XFile? _newProfileImage; // Changed to XFile
   bool _isLoading = false;
   final String _currentLanguage = 'english';
 
@@ -101,11 +102,12 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
       request.fields['name'] = _nameController.text.trim();
 
       if (_newProfileImage != null) {
+        final bytes = await _newProfileImage!.readAsBytes();
         request.files.add(
-          await http.MultipartFile.fromPath(
+           http.MultipartFile.fromBytes( // Removed await as fromBytes is synchronous? No, actually fromBytes is sync, readAsBytes is async.
             'profilePicture',
-            _newProfileImage!.path,
-            filename: path.basename(_newProfileImage!.path),
+            bytes,
+            filename: _newProfileImage!.name,
           ),
         );
       }
@@ -158,7 +160,7 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
 
     if (pickedFile != null) {
       setState(() {
-        _newProfileImage = File(pickedFile.path);
+        _newProfileImage = pickedFile;
       });
     }
   }
@@ -171,6 +173,20 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider? backgroundImage;
+    if (_newProfileImage != null) {
+       if (kIsWeb) {
+         backgroundImage = NetworkImage(_newProfileImage!.path);
+      } else {
+         backgroundImage = FileImage(File(_newProfileImage!.path));
+      }
+    } else if (_profilePictureUrl != null &&
+        _profilePictureUrl!.isNotEmpty) {
+      backgroundImage = NetworkImage(
+        "http://localhost:8000/" + _profilePictureUrl!,
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(Translations.translate('edit_profile', _currentLanguage)),
@@ -189,19 +205,8 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
                       CircleAvatar(
                         radius: 80,
                         backgroundColor: Colors.deepPurple.shade100,
-                        backgroundImage: _newProfileImage != null
-                            ? FileImage(_newProfileImage!) as ImageProvider
-                            : (_profilePictureUrl != null &&
-                                      _profilePictureUrl!.isNotEmpty
-                                  ? NetworkImage(
-                                      "http://localhost:8000/" +
-                                          _profilePictureUrl!,
-                                    ) as ImageProvider
-                                  : null),
-                        child:
-                            (_profilePictureUrl == null ||
-                                    _profilePictureUrl!.isEmpty) &&
-                                _newProfileImage == null
+                        backgroundImage: backgroundImage,
+                        child: backgroundImage == null
                             ? const Icon(
                                 Icons.person,
                                 size: 80,
