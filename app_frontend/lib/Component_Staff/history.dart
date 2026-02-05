@@ -7,7 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
-import '../../services/translations.dart'; // Adjust path as needed
+import '../services/language_service.dart';
+import '../services/translations.dart';
 
 class HistoryScreen extends StatefulWidget {
   final String? adminId;
@@ -22,7 +23,7 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoading = true;
   List<dynamic> _historyData = [];
-  final String _currentLanguage = 'english'; // Changed to final
+  String _currentLanguage = 'english'; // Changed to non-final
 
   // Filter states
   DateTime? _selectedDate;
@@ -31,7 +32,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _selectedDate = DateTime.now(); // Default to today
+    _loadLanguage(); // Fetch language
     _fetchQueueHistory();
+  }
+
+  // ✅ Load user's language preference
+  Future<void> _loadLanguage() async {
+    if (widget.adminId != null) {
+      final lang = await LanguageService.getLanguage(widget.adminId!);
+      if (mounted) {
+        setState(() {
+          _currentLanguage = lang;
+        });
+      }
+    }
   }
 
   // Fetch queue history data from backend
@@ -538,10 +552,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     Color statusColor;
     IconData statusIcon; // Changed from io.IconData
-    if (status == 'Completed') {
+    if (status.toString().toLowerCase() == 'completed' || status.toString().toLowerCase() == 'served') {
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
-    } else if (status == 'Cancelled') {
+    } else if (status.toString().toLowerCase() == 'cancelled') {
       statusColor = Colors.red;
       statusIcon = Icons.cancel;
     } else {
@@ -625,7 +639,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             _buildInfoRow(
               Translations.translate(
-                status == 'Completed' ? 'completed_at' : 'cancelled_at',
+                (status.toString().toLowerCase() == 'completed' ||
+                        status.toString().toLowerCase() == 'served')
+                    ? 'completed_at'
+                    : 'cancelled_at',
                 _currentLanguage,
               ),
               eventTime,

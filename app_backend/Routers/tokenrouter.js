@@ -31,4 +31,10 @@ router.put("/markmissedtoken", tokenController.markTokenMissed);
 router.get("/heldtokens/:queueName", tokenController.getHeldTokens);
 router.get("/completedtoday/:queueName", tokenController.getCompletedToday);
 
+// ✅ Pending & Approval Routes
+router.get("/pendingtokens/:queueName", tokenController.getPendingTokens);
+router.get("/student/pending/:studentId", tokenController.getPendingTokensForStudent);
+router.put("/approvetoken", tokenController.approveToken);
+router.put("/rejecttoken", tokenController.rejectToken);
+
 module.exports = router;

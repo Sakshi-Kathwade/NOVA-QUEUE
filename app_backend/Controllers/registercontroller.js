@@ -62,6 +62,7 @@ const addstudent = async (req, res) => {
       password,
       confirmPassword, // (later hash it)
       role,
+      profilePicture: req.file ? `/uploads/student_profiles/${req.file.filename}` : null,
     });
 
     await user.save();

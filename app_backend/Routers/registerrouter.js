@@ -12,7 +12,8 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    cb(null, `${req.params.studentID}_${Date.now()}${path.extname(file.originalname)}`);
+    const id = req.params.studentID || 'new_register';
+    cb(null, `${id}_${Date.now()}${path.extname(file.originalname)}`);
   },
 });
 
@@ -22,7 +23,7 @@ const upload = multer({ storage }).single('profilePicture');
 const { addstudent, deleteStudent, changePassword, getStudentProfile, updateStudentProfile, uploadStudentProfilePicture, registerWithGoogle } = require('../Controllers/registercontroller');
 
 // REGISTER USER
-router.post('/register', addstudent);
+router.post('/register', upload, addstudent);
 
 // REGISTER USER WITH GOOGLE OAUTH
 router.post('/register/google', registerWithGoogle);

@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import '../services/language_service.dart';
+import '../services/translations.dart';
 
 class QueueHistoryScreen extends StatefulWidget {
   final String studentId;
@@ -19,11 +21,22 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
   List<Map<String, dynamic>> historyData = [];
   String? _errorMsg;
   DateTime? selectedDate;
+  String _currentLanguage = 'english';
 
   @override
   void initState() {
     super.initState();
+    _loadLanguage();
     _fetchHistory();
+  }
+
+  Future<void> _loadLanguage() async {
+    final lang = await LanguageService.getLanguage(widget.studentId);
+    if (mounted) {
+      setState(() {
+        _currentLanguage = lang;
+      });
+    }
   }
 
   Future<void> _fetchHistory() async {
@@ -94,7 +107,7 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        title: const Text("Queue History"),
+        title: Text(Translations.translate("queue_history", _currentLanguage)),
         centerTitle: true,
         elevation: 0,
         actions: [
@@ -134,7 +147,7 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                           Icon(Icons.history, size: 64, color: Colors.grey.shade400),
                           const SizedBox(height: 16),
                           Text(
-                            "No queue history found",
+                            Translations.translate("no_queue_history_found", _currentLanguage),
                             style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
                           ),
                           const SizedBox(height: 8),
@@ -207,7 +220,7 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                                   ),
                                   Chip(
                                     label: Text(
-                                      entry["status"]?.toString() ?? "—",
+                                      Translations.translate((entry["status"] ?? "").toString().toLowerCase(), _currentLanguage),
                                       style: const TextStyle(color: Colors.white, fontSize: 12),
                                     ),
                                     backgroundColor: isServed ? Colors.green : Colors.red,

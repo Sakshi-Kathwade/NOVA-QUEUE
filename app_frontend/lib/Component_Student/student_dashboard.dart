@@ -12,6 +12,8 @@ import 'student_waiting.dart';
 import '../services/language_service.dart';
 import '../services/translations.dart';
 import 'edit_student_profile_screen.dart';
+import 'my_pending_today.dart';
+
 class QueueStatusScreen extends StatefulWidget {
   final String studentId;
 
@@ -54,7 +56,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   Future<void> fetchStudentDetails() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/student/profile/${widget.studentId}"),
+        Uri.parse(
+          "http://localhost:8000/api/student/profile/${widget.studentId}",
+        ),
         headers: {"Content-Type": "application/json"},
       );
 
@@ -139,9 +143,8 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => EditStudentProfileScreen(
-                      studentId: widget.studentId,
-                    ),
+                    builder: (_) =>
+                        EditStudentProfileScreen(studentId: widget.studentId),
                   ),
                 );
                 fetchStudentDetails(); // ✅ Refresh profile after return
@@ -154,30 +157,42 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 value: 'profile',
                 enabled: false, // Make this item non-clickable
                 child: ListTile(
-                  leading:                   CircleAvatar(
+                  leading: CircleAvatar(
                     radius: 20,
                     backgroundColor: Colors.white24,
-                    backgroundImage: _studentProfilePictureUrl != null &&
+                    backgroundImage:
+                        _studentProfilePictureUrl != null &&
                             _studentProfilePictureUrl!.isNotEmpty
-                        ? NetworkImage("http://localhost:8000/" + _studentProfilePictureUrl!) as ImageProvider
+                        ? NetworkImage(
+                                "http://localhost:8000/" +
+                                    _studentProfilePictureUrl!,
+                              )
+                              as ImageProvider
                         : null,
-                    child: _studentProfilePictureUrl == null ||
+                    child:
+                        _studentProfilePictureUrl == null ||
                             _studentProfilePictureUrl!.isEmpty
                         ? const Icon(Icons.person, color: Colors.white)
                         : null,
                   ),
                   title: Text(
-                    studentName.isNotEmpty ? studentName : Translations.translate('student', currentLanguage),
+                    studentName.isNotEmpty
+                        ? studentName
+                        : Translations.translate('student', currentLanguage),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(Translations.translate('view_profile', currentLanguage)),
+                  subtitle: Text(
+                    Translations.translate('view_profile', currentLanguage),
+                  ),
                 ),
               ),
               PopupMenuItem(
                 value: 'edit_profile',
                 child: ListTile(
                   leading: Icon(Icons.edit, color: Colors.deepPurple),
-                  title: Text(Translations.translate('edit_profile', currentLanguage)),
+                  title: Text(
+                    Translations.translate('edit_profile', currentLanguage),
+                  ),
                 ),
               ),
               const PopupMenuDivider(),
@@ -185,7 +200,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: Colors.red),
-                  title: Text(Translations.translate('logout', currentLanguage), style: TextStyle(color: Colors.red)),
+                  title: Text(
+                    Translations.translate('logout', currentLanguage),
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
               ),
             ],
@@ -293,10 +311,8 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => MyCurrentQueueScreen(
-                          queueName: queueData?["queueName"] ?? "",
-                          studentId: widget.studentId,
-                        ),
+                        builder: (context) =>
+                            QueueHistoryScreen(studentId: widget.studentId),
                       ),
                     );
                   },
@@ -312,16 +328,16 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => MyCurrentQueueScreen(
+                        builder: (context) => MyPendingToday(
                           queueName: queueData?["queueName"] ?? "",
                           studentId: widget.studentId,
                         ),
                       ),
                     );
                   },
-                  child: const _InfoCard(
-                    title: "Pending Today",
-                    value: "--",
+                  child: _InfoCard(
+                    title: Translations.translate('student_pending_today', currentLanguage),
+                    value: "--", // We could fetch this if needed, for now just navigates
                     icon: Icons.pending_actions,
                     color: Colors.red,
                   ),
@@ -339,11 +355,16 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
           CircleAvatar(
             radius: 30,
             backgroundColor: Colors.white24,
-            backgroundImage: _studentProfilePictureUrl != null &&
+            backgroundImage:
+                _studentProfilePictureUrl != null &&
                     _studentProfilePictureUrl!.isNotEmpty
-                ? NetworkImage("http://localhost:8000/" + _studentProfilePictureUrl!) as ImageProvider
+                ? NetworkImage(
+                        "http://localhost:8000/" + _studentProfilePictureUrl!,
+                      )
+                      as ImageProvider
                 : null,
-            child: _studentProfilePictureUrl == null ||
+            child:
+                _studentProfilePictureUrl == null ||
                     _studentProfilePictureUrl!.isEmpty
                 ? const Icon(Icons.person, size: 35, color: Colors.white)
                 : null,
@@ -358,8 +379,8 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 Text(
                   studentRole.isNotEmpty
                       ? (studentRole.toLowerCase() == 'student'
-                          ? Translations.translate('student', currentLanguage)
-                          : studentRole)
+                            ? Translations.translate('student', currentLanguage)
+                            : studentRole)
                       : Translations.translate('student', currentLanguage),
                   style: const TextStyle(
                     color: Colors.white,
@@ -376,7 +397,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  studentEmail.isNotEmpty ? studentEmail : "email@university.com",
+                  studentEmail.isNotEmpty
+                      ? studentEmail
+                      : "email@university.com",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
@@ -400,10 +423,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       onTap:
           onTap ??
-          () async { // ✅ Async
+          () async {
+            // ✅ Async
             Navigator.pop(context);
             if (screen != null) {
-              await Navigator.push( // ✅ Wait for return
+              await Navigator.push(
+                // ✅ Wait for return
                 context,
                 MaterialPageRoute(builder: (_) => screen),
               );

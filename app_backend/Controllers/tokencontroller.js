@@ -1,5 +1,6 @@
 
 const Token = require("../Models/tokenmodel");
+const Queue = require("../Models/create_queue_model");
 exports.createToken = async (req, res) => {
   try {
     const { queueName, department, purpose, studentId } = req.body;
@@ -92,7 +93,7 @@ exports.createToken = async (req, res) => {
       tokenNumber,
       studentsAhead,
       estimatedWaitingTime: studentsAhead * 5,
-      status: "waiting",
+      status: "pending", // ✅ Start as pending for admin approval
     });
 
     // 6️⃣ Success response
@@ -306,18 +307,24 @@ exports.getCurrentToken = async (req, res) => {
       status: "serving",
     });
 
-    // If no serving token, get first waiting token (skip hold tokens)
-    if (!token) {
-      token = await Token.findOne({
-        queueName,
-        status: "waiting",
-      }).sort({ tokenNumber: 1 });
-    }
+    // ✅ Get counts even if no token is found
+    const totalCount = await Token.countDocuments({ queueName });
+    const completedCount = await Token.countDocuments({
+      queueName,
+      status: { $in: ["completed", "Completed"] },
+    });
+    const pendingCount = await Token.countDocuments({
+      queueName,
+      status: "pending",
+    });
 
     if (!token) {
-      return res.status(404).json({
-        success: false,
-        message: "No active token",
+      return res.status(200).json({
+        success: true,
+        data: null, // No active token, but return counts
+        completedCount,
+        pendingCount,
+        totalCount,
       });
     }
 
@@ -326,11 +333,7 @@ exports.getCurrentToken = async (req, res) => {
     const student = await Student.findById(token.studentId);
     const studentName = student ? student.name : "Unknown";
 
-    const totalCount = await Token.countDocuments({ queueName });
-    const completedCount = await Token.countDocuments({
-      queueName,
-      status: "completed",
-    });
+    // No need to repeat counts here, they are calculated above
 
     res.status(200).json({
       success: true,
@@ -340,6 +343,7 @@ exports.getCurrentToken = async (req, res) => {
         studentName: studentName,
         purpose: token.purpose,
         completedCount,
+        pendingCount,
         totalCount,
       },
     });
@@ -746,7 +750,7 @@ exports.getCompletedToday = async (req, res) => {
     // Get all completed tokens today
     const completedTokens = await Token.find({
       queueName,
-      status: "completed",
+      status: { $in: ["completed", "Completed"] },
       updatedAt: {
         $gte: today,
         $lt: tomorrow,
@@ -823,5 +827,100 @@ exports.getCompletedToday = async (req, res) => {
       success: false,
       error: err.message,
     });
+  }
+};
+// =================================== PENDING TOKEN FUNCTIONS ===================================
+
+// ✅ Get all pending tokens for a queue (Admin)
+exports.getPendingTokens = async (req, res) => {
+  try {
+    const { queueName } = req.params;
+    const pendingTokens = await Token.find({
+      queueName,
+      status: "pending"
+    }).populate('studentId', 'name email');
+
+    res.status(200).json({
+      success: true,
+      data: pendingTokens
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ✅ Get all pending tokens for a specific student
+exports.getPendingTokensForStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const pendingTokens = await Token.find({
+      studentId,
+      status: "pending"
+    }).sort({ generatedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: pendingTokens
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ✅ Approve a token (Change pending -> waiting)
+exports.approveToken = async (req, res) => {
+  try {
+    const { tokenId } = req.body;
+
+    const token = await Token.findById(tokenId);
+    if (!token) {
+      return res.status(404).json({ success: false, message: "Token not found" });
+    }
+
+    if (token.status !== "pending") {
+      return res.status(400).json({ success: false, message: "Token is not in pending state" });
+    }
+
+    // Update status to waiting
+    token.status = "waiting";
+    await token.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Token approved and added to active queue",
+      data: token
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ✅ Reject a token (Change pending -> cancelled)
+exports.rejectToken = async (req, res) => {
+  try {
+    const { tokenId, reason } = req.body;
+
+    const token = await Token.findById(tokenId);
+    if (!token) {
+      return res.status(404).json({ success: false, message: "Token not found" });
+    }
+
+    if (token.status !== "pending") {
+      return res.status(400).json({ success: false, message: "Token is not in pending state" });
+    }
+
+    // Update status to cancelled
+    token.status = "cancelled";
+    token.cancelledAt = new Date();
+    if (reason) token.rejectionReason = reason; // Optional: add rejectionReason to model if desired, or just use purpose/strict:false
+    await token.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Token rejected",
+      data: token
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };

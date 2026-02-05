@@ -413,7 +413,10 @@ class _LiveQueuePreviewScreenState extends State<LiveQueuePreviewScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  Translations.translate('no_students_in_queue', _currentLanguage),
+                                  Translations.translate(
+                                    'no_students_in_queue',
+                                    _currentLanguage,
+                                  ),
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey.shade600,

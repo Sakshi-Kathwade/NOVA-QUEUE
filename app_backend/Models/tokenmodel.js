@@ -18,8 +18,8 @@ const tokenSchema = new mongoose.Schema({
   estimatedWaitingTime: { type: Number, required: false },
   status: {
     type: String,
-    enum: ['waiting', 'serving', 'hold', 'completed', 'cancelled', 'recalled', 'Waiting', 'Calling', 'Completed', 'Cancelled'],
-    default: 'waiting',
+    enum: ['pending', 'waiting', 'serving', 'hold', 'completed', 'cancelled', 'recalled', 'Waiting', 'Calling', 'Completed', 'Cancelled'],
+    default: 'pending',
   },
   generatedAt: { type: Date, default: Date.now },
   calledAt: { type: Date },

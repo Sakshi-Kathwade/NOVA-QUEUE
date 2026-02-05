@@ -423,14 +423,14 @@ const getReportsSummary = async (req, res) => {
     // Completed services (today)
     const completedServicesToday = await Token.countDocuments({
       adminId,
-      status: 'Completed',
+      status: { $in: ['completed', 'Completed'] },
       completedAt: { $gte: startOfToday, $lte: endOfToday },
     });
 
     // Average waiting time (for completed tokens today)
     const completedTokens = await Token.find({
       adminId,
-      status: 'Completed',
+      status: { $in: ['completed', 'Completed'] },
       generatedAt: { $gte: startOfToday, $lte: endOfToday },
       completedAt: { $exists: true }, // Ensure completedAt is set
     }).select('generatedAt completedAt');
@@ -492,7 +492,7 @@ const getQueueHistory = async (req, res) => {
     const { adminId } = req.params;
     const { date } = req.query; // Optional date filter
 
-    let filter = { adminId, status: { $in: ['Completed', 'Cancelled'] } };
+    let filter = { adminId, status: { $in: ['completed', 'Completed', 'cancelled', 'Cancelled'] } };
 
     if (date) {
       const selectedDate = new Date(date);

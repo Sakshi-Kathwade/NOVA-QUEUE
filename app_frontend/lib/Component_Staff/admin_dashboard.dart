@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, unnecessary_brace_in_string_interps, prefer_interpolation_to_compose_strings
+// ignore_for_file: use_build_context_synchronously, unnecessary_brace_in_string_interps, prefer_interpolation_to_compose_strings, duplicate_import
 
 import 'dart:convert';
 import 'dart:async';
@@ -12,9 +12,12 @@ import 'manage_queue.dart';
 import 'current_token.dart';
 import 'report.dart';
 import 'admin_setting.dart';
+import '../services/translations.dart';
 import 'edit_admin_profile_screen.dart';
+import 'pending_student.dart';
 import 'waiting_card.dart';
 import 'queue_preview.dart';
+import 'admin_live_queue.dart';
 import 'history.dart';
 import '../screen/login.dart';
 import '../screen/home.dart';
@@ -46,6 +49,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int waitingCount = 0;
   String currentToken = "N/A";
   int completedToday = 0;
+  int pendingCount = 0; // ✅ Pending student count
   String queueStatus = "N/A"; // ✅ Dynamic queue status (Active/Inactive)
   int averageWaitingTime = 0; // ✅ Average waiting time in minutes
   List<dynamic> liveQueueData = []; // ✅ Live queue data from backend
@@ -180,6 +184,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         waitingCount = 0;
         currentToken = "N/A";
         completedToday = 0;
+        pendingCount = 0;
         averageWaitingTime = 0;
       });
       return;
@@ -211,14 +216,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
         if (tokenData["data"] != null) {
           final tokenNumber = tokenData["data"]["tokenNumber"] ?? 0;
           final completedCount = tokenData["data"]["completedCount"] ?? 0;
+          final pCount = tokenData["data"]["pendingCount"] ?? 0;
           setState(() {
             currentToken = tokenNumber > 0 ? "A-$tokenNumber" : "N/A";
             completedToday = completedCount;
+            pendingCount = pCount;
           });
         } else {
           setState(() {
             currentToken = "N/A";
             completedToday = 0;
+            pendingCount = 0;
           });
         }
       }
@@ -426,7 +434,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => EditAdminProfileScreen(adminId: adminId, adminEmail: adminEmail),
+                    builder: (_) => EditAdminProfileScreen(
+                      adminId: adminId,
+                      adminEmail: adminEmail,
+                    ),
                   ),
                 );
                 _fetchAdminProfilePicture(); // ✅ Refresh profile after return
@@ -456,7 +467,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         : null,
                   ),
                   title: Text(
-                    _adminName ?? adminEmail ?? "Admin", // ✅ Display Name if available
+                    _adminName ??
+                        adminEmail ??
+                        "Admin", // ✅ Display Name if available
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
@@ -683,29 +696,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
               value: liveQueueData.isNotEmpty ? "${liveQueueData.length}" : "0",
               icon: Icons.people_alt,
               color: Colors.deepPurple,
-              navigateTo: liveQueueData.isNotEmpty
-                  ? LiveQueuePreviewScreen(
-                      adminId: adminId,
-                      activeQueueName: queueName, // Pass active queue name
-                      initialQueueData: List<Map<String, String>>.from(
-                        liveQueueData.map(
-                          (item) => Map<String, String>.from(item),
-                        ),
-                      ),
+              navigateTo: queueName != null
+                  ? AdminLiveQueueScreen(
+                      adminId: adminId!,
+                      queueName: queueName!,
                     )
                   : null,
             ),
 
             _dashboardCard(
               context: context,
-              title: Translations.translate('waiting_time', currentLanguage),
-              value: averageWaitingTime > 0
-                  ? "$averageWaitingTime ${Translations.translate('min', currentLanguage)}"
-                  : "0 ${Translations.translate('min', currentLanguage)}",
-              icon: Icons.timer,
+              title: Translations.translate('pending_student', currentLanguage),
+              value: pendingCount.toString(),
+              icon: Icons.hourglass_empty,
               color: Colors.teal,
               navigateTo: queueName != null
-                  ? WaitingCardScreen(queueName: queueName!)
+                  ? PendingStudentsScreen(
+                      queueName: queueName!,
+                      adminId: adminId!,
+                    )
                   : null,
             ),
           ],
@@ -727,7 +736,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       onTap: () async {
         Navigator.pop(context);
         if (screen != null) {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => screen),
+          );
           _fetchAdminProfilePicture(); // ✅ Refresh dashboard
         }
       },
