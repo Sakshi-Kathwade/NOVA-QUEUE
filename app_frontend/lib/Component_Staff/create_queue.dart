@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
 
 class CreateQueueScreen extends StatefulWidget {
   final String? adminId;
@@ -49,7 +50,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:8000/api/createqueue"),
+        Uri.parse("${ApiConfig.baseUrl}/createqueue"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "adminId": widget.adminId,

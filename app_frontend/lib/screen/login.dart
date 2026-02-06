@@ -4,6 +4,7 @@ import 'package:app_frontend/Component_Staff/queue_status.dart';
 import 'package:app_frontend/Component_Student/student_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
 import 'register.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -82,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       // 1️⃣ Try ADMIN login first
       http.Response response = await http.post(
-        Uri.parse("http://localhost:8000/api/adminLogin"),
+        Uri.parse("${ApiConfig.baseUrl}/adminLogin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": emailController.text.trim(),
@@ -93,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // 2️⃣ If admin NOT found, try STUDENT login
       if (response.statusCode == 404) {
         response = await http.post(
-          Uri.parse("http://localhost:8000/api/login"),
+          Uri.parse("${ApiConfig.baseUrl}/login"),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode({
             "email": emailController.text.trim(),

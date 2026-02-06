@@ -9,11 +9,8 @@ const QueueSchema = new mongoose.Schema({
   maxStudents: { type: Number, required: true },
    status: {
       type: String,
-      enum: ["Active", "Inactive"],
+      enum: ["Active", "Inactive", "Paused"],
       default: "Active", }
 }, { timestamps: true });
-
-module.exports = mongoose.model("CreateQueue", QueueSchema);
-
 
   

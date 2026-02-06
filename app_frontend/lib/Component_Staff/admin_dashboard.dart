@@ -4,11 +4,13 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
 
+import 'manage_queue.dart';
 import 'queue_status.dart';
 import 'completed_today.dart';
 import 'create_queue.dart';
-import 'manage_queue.dart';
+
 import 'current_token.dart';
 import 'report.dart';
 import 'admin_setting.dart';
@@ -78,7 +80,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (adminId == null) return;
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/admin/profile/${adminId}"),
+        Uri.parse("${ApiConfig.baseUrl}/admin/profile/${adminId}"),
         headers: {"Content-Type": "application/json"},
       );
       if (response.statusCode == 200) {
@@ -118,7 +120,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> fetchQueueName() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/activequeue/$adminId"),
+        Uri.parse("${ApiConfig.baseUrl}/activequeue/$adminId"),
       );
 
       if (response.statusCode == 200) {
@@ -193,7 +195,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     try {
       // Fetch waiting students count
       final waitingResponse = await http.get(
-        Uri.parse("http://localhost:8000/api/remainingtoken/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$queueName"),
       );
 
       if (waitingResponse.statusCode == 200) {
@@ -208,7 +210,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       // Fetch current token
       final tokenResponse = await http.get(
-        Uri.parse("http://localhost:8000/api/currenttoken/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/currenttoken/$queueName"),
       );
 
       if (tokenResponse.statusCode == 200) {
@@ -247,7 +249,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/remainingtoken/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$queueName"),
       );
 
       if (response.statusCode == 200) {
@@ -320,7 +322,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       try {
         // ✅ Delete admin account from database
         final response = await http.delete(
-          Uri.parse("http://localhost:8000/api/deleteadmin/$adminId"),
+          Uri.parse("${ApiConfig.baseUrl}/deleteadmin/$adminId"),
           headers: {"Content-Type": "application/json"},
         );
 
@@ -590,16 +592,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             _drawerItem(
               context,
-              Icons.list,
-              Translations.translate('manage_queue', currentLanguage),
-              screen: ManageQueueScreen(
-                adminId: adminId,
-                initialQueueName: queueName,
-                initialQueueId: queueId,
-              ),
-            ),
-            _drawerItem(
-              context,
               Icons.person,
               Translations.translate('current_token', currentLanguage),
               screen: CurrentTokenScreen(
@@ -613,6 +605,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Translations.translate('reports', currentLanguage),
               screen: ReportScreen(adminId: adminId, adminEmail: adminEmail),
             ),
+            _drawerItem(
+              context,
+              Icons.bar_chart,
+              Translations.translate('Manage Queue', currentLanguage),
+              screen: ManageQueueScreen(adminId: adminId),
+            ),
+
             _drawerItem(
               context,
               Icons.history,

@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'google_signin.dart';
 
@@ -106,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:8000/api/Register"),
+        Uri.parse("${ApiConfig.baseUrl}/Register"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name": nameController.text.trim(),
@@ -177,7 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // 2️⃣ Register user with backend
       final response = await http.post(
-        Uri.parse("http://localhost:8000/api/register/google"),
+        Uri.parse("${ApiConfig.baseUrl}/register/google"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name": user.displayName ?? "User",

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
 import '../services/language_service.dart';
 import '../services/translations.dart';
 
@@ -63,17 +64,17 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
     try {
       // Fetch queue status
       final queueRes = await http.get(
-        Uri.parse("http://localhost:8000/api/activequeue/${widget.adminId}"),
+        Uri.parse("${ApiConfig.baseUrl}/activequeue/${widget.adminId}"),
       );
 
       // Fetch current token and counts
       final currentRes = await http.get(
-        Uri.parse("http://localhost:8000/api/currenttoken/$encodedQueue"),
+        Uri.parse("${ApiConfig.baseUrl}/currenttoken/$encodedQueue"),
       );
 
       // Fetch remaining tokens (the actual queue list)
       final remainingRes = await http.get(
-        Uri.parse("http://localhost:8000/api/remainingtoken/$encodedQueue"),
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$encodedQueue"),
       );
 
       if (!mounted) return;

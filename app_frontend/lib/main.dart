@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'firebase_options.dart';
 import 'Component_Staff/theme_pref.dart';
 import 'screen/home.dart';
 
@@ -10,16 +10,12 @@ ValueNotifier<bool> isDarkMode = ValueNotifier(false);
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔥 Initialize Firebase (auto-initializes on Android via google-services.json)
+  // 🔥 Initialize Firebase
   try {
-    if (kIsWeb) {
-      debugPrint("Firebase initialization skipped on Web (FirebaseOptions required for manual init).");
-    } else {
-      await Firebase.initializeApp();
-    }
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (e) {
-    // Firebase might already be initialized or auto-initialized on Android
-    // Using debugPrint for development debugging
     debugPrint("Firebase initialization note: $e");
   }
 

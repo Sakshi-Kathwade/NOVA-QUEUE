@@ -4,445 +4,276 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
+import '../services/api_config.dart';
+import '../services/translations.dart';
+import '../services/language_service.dart';
 
 class ManageQueueScreen extends StatefulWidget {
-  final String? adminId;
   final String? initialQueueName;
   final String? initialQueueId;
+  final String? adminId;
 
   const ManageQueueScreen({
     super.key,
-    this.adminId,
     this.initialQueueName,
     this.initialQueueId,
+    this.adminId,
   });
 
   @override
   State<ManageQueueScreen> createState() => _ManageQueueScreenState();
 }
 
-class _ManageQueueScreenState extends State<ManageQueueScreen> {
-  // ✅ Queue State
-  String? queueName;
-  String? queueId;
-  bool isQueueActive = false;
-  bool isQueuePaused = false;
-
-  // ✅ Current Token Data
-  Map<String, dynamic>? currentToken;
-  String? currentTokenId;
-  int currentTokenNumber = 0;
-  String currentStudentName = "N/A";
-  String currentPurpose = "N/A";
-
-  // ✅ Waiting Tokens List
-  List<dynamic> waitingTokens = [];
-  List<dynamic> holdTokens = [];
-
-  // ✅ Analytics Data
-  int completedToday = 0;
-  int totalTokens = 0;
-  double averageServiceTime = 0.0;
-  int peakHour = 0;
-
-  // ✅ UI State
+class _ManageQueueScreenState extends State<ManageQueueScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  Timer? _pollTimer;
   bool isLoading = true;
+  String? error;
+  String currentLanguage = 'english';
+
+  // Queue State
+  String? queueId;
+  String? queueName;
+  String queueStatus = "Inactive";
+  int waitingCount = 0;
+  int completedCount = 0;
+  int pendingCount = 0;
+  int totalCount = 0;
+
+  // Current Token State
+  Map<String, dynamic>? currentToken;
   bool isProcessing = false;
-  Timer? _refreshTimer;
+
+  // Lists
+  List<dynamic> waitingList = [];
+  List<dynamic> heldList = [];
 
   @override
   void initState() {
     super.initState();
-    // ✅ Initialize state from passed parameters
-    queueName = widget.initialQueueName;
+    _tabController = TabController(length: 2, vsync: this);
     queueId = widget.initialQueueId;
-
-    fetchQueueData();
-    // ✅ Start real-time refresh every 3 seconds
-    _refreshTimer = Timer.periodic(Duration(seconds: 5), (_) {
-      if (!isProcessing && queueName != null) {
-        fetchCurrentToken();
-        fetchWaitingTokens();
-      }
-    });
+    queueName = widget.initialQueueName;
+    _loadLanguage();
+    fetchData();
+    startPolling();
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _pollTimer?.cancel();
+    _tabController.dispose();
     super.dispose();
   }
 
-  // ✅ FETCH ACTIVE QUEUE
-  Future<void> fetchQueueData() async {
+  Future<void> _loadLanguage() async {
+    if (widget.adminId != null) {
+      final lang = await LanguageService.getLanguage(widget.adminId!);
+      setState(() {
+        currentLanguage = lang;
+      });
+    }
+  }
+
+  void startPolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!isProcessing) {
+        fetchData();
+      }
+    });
+  }
+
+  Future<void> fetchData() async {
+    if (queueName == null || queueName!.isEmpty) {
+      // Try to fetch active queue if not provided
+      await _fetchActiveQueue();
+      if (queueName == null) return;
+    }
+
+    await Future.wait([
+      _fetchQueueStatus(),
+      _fetchCurrentToken(),
+      _fetchWaitingList(),
+      _fetchHeldTokens(),
+    ]);
+
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchActiveQueue() async {
+    if (widget.adminId == null) return;
     try {
       final response = await http.get(
-        Uri.parse(
-          "http://localhost:8000/api/activequeue/${widget.adminId ?? ''}",
-        ),
+        Uri.parse("${ApiConfig.baseUrl}/activequeue/${widget.adminId}"),
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data["success"] == true && data["data"] != null) {
-          final queue = data["data"];
+        if (data['success'] == true) {
           setState(() {
-            queueName = data["queueName"];
-            queueId = queue["_id"];
-            isQueueActive = queue["status"] == "Active";
-            isLoading = false;
-          });
-          // ✅ Fetch token data
-          await fetchCurrentToken();
-          await fetchWaitingTokens();
-          await fetchHeldTokens();
-          await fetchAnalytics();
-        } else {
-          setState(() {
-            isLoading = false;
-            queueName = null;
-            queueId = null;
-            isQueueActive = false;
-            currentTokenNumber = 0;
+            queueId = data['data']['_id'];
+            queueName = data['data']['queueName'];
+            queueStatus = data['data']['status'];
           });
         }
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      debugPrint("Error fetching active queue: $e");
     }
   }
 
-  // ✅ FETCH CURRENT TOKEN
-  Future<void> fetchCurrentToken() async {
-    if (queueName == null) return;
-
+  Future<void> _fetchQueueStatus() async {
+    if (widget.adminId == null) return;
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/currenttoken/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/activequeue/${widget.adminId}"),
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data["success"] == true && data["data"] != null) {
+        if (data['success'] == true) {
           setState(() {
-            currentToken = data["data"];
-            currentTokenId = data["data"]["tokenId"];
-            currentTokenNumber = data["data"]["tokenNumber"] ?? 0;
-            currentStudentName = data["data"]["studentName"] ?? "N/A";
-            currentPurpose = data["data"]["purpose"] ?? "N/A";
-            completedToday = data["data"]["completedCount"] ?? 0;
-            totalTokens = data["data"]["totalCount"] ?? 0;
+            queueStatus = data['data']['status'];
           });
         }
+      }
+    } catch (e) {
+      debugPrint("Error fetching queue status: $e");
+    }
+  }
+
+  Future<void> _fetchCurrentToken() async {
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/currenttoken/$queueName"),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          currentToken = data['data'];
+          completedCount = data['completedCount'] ?? 0;
+          pendingCount = data['pendingCount'] ?? 0;
+          totalCount = data['totalCount'] ?? 0;
+        });
       }
     } catch (e) {
       debugPrint("Error fetching current token: $e");
     }
   }
 
-  // ✅ FETCH WAITING TOKENS
-  Future<void> fetchWaitingTokens() async {
-    if (queueName == null) return;
-
+  Future<void> _fetchWaitingList() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/remainingtoken/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$queueName"),
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final waitingList = (data["waiting"] as List?) ?? [];
         setState(() {
-          waitingTokens = waitingList;
+          waitingList = data['waiting'] ?? [];
+          waitingCount = waitingList.length;
         });
       }
     } catch (e) {
-      debugPrint("Error fetching waiting tokens: $e");
+      debugPrint("Error fetching waiting list: $e");
     }
   }
 
-  // ✅ FETCH HELD TOKENS
-  Future<void> fetchHeldTokens() async {
-    if (queueName == null) return;
-
+  Future<void> _fetchHeldTokens() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/heldtokens/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/heldtokens/$queueName"),
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data["success"] == true) {
-          final heldList = (data["heldTokens"] as List?) ?? [];
-          setState(() {
-            holdTokens = heldList;
-          });
-        }
+        setState(() {
+          heldList = data['heldTokens'] ?? [];
+        });
       }
     } catch (e) {
       debugPrint("Error fetching held tokens: $e");
     }
   }
 
-  // ✅ FETCH ANALYTICS
-  Future<void> fetchAnalytics() async {
-    if (queueName == null) return;
-
-    try {
-      final response = await http.get(
-        Uri.parse("http://localhost:8000/api/analyticssummary/$queueName"),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data["success"] == true && data["data"] != null) {
-          setState(() {
-            completedToday = data["data"]["completedToday"] ?? 0;
-            averageServiceTime = data["data"]["averageServiceTime"] ?? 0.0;
-            peakHour = data["data"]["peakHour"] ?? 0;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Error fetching analytics: $e");
-    }
-  }
-
-  // ✅ ACTIVATE/PAUSE QUEUE
-  Future<void> toggleQueueStatus() async {
+  Future<void> _updateQueueStatus(String status) async {
     if (queueId == null) return;
-
     setState(() => isProcessing = true);
-
     try {
-      final newStatus = isQueueActive ? "Inactive" : "Active";
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/queuestatus/$queueId"),
+        Uri.parse("${ApiConfig.baseUrl}/queuestatus/$queueId"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"status": newStatus}),
+        body: jsonEncode({"status": status}),
       );
-
       if (response.statusCode == 200) {
         setState(() {
-          isQueueActive = !isQueueActive;
-          isQueuePaused = !isQueueActive;
+          queueStatus = status;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isQueueActive ? "Queue Activated" : "Queue Paused"),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Queue $status")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Failed to update queue status"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Error updating status")));
     } finally {
       setState(() => isProcessing = false);
     }
   }
 
-  // ✅ NEXT TOKEN
-  Future<void> nextToken() async {
-    if (queueName == null) return;
-
+  Future<void> _handleTokenAction(String action, {String? tokenId}) async {
     setState(() => isProcessing = true);
-
     try {
+      String url = "";
+      Map<String, dynamic> body = {"queueName": queueName};
+
+      if (action == "complete") {
+        url = "${ApiConfig.baseUrl}/completetoken";
+        body["tokenId"] = tokenId ?? currentToken?['tokenId'];
+      } else if (action == "hold") {
+        url = "${ApiConfig.baseUrl}/holdtoken";
+        body["tokenId"] = tokenId ?? currentToken?['tokenId'];
+      } else if (action == "unhold") {
+        url = "${ApiConfig.baseUrl}/unholdtoken";
+        body["tokenId"] = tokenId;
+      } else if (action == "next") {
+        url = "${ApiConfig.baseUrl}/nexttoken";
+        body["currentTokenId"] = currentToken?['tokenId'];
+        body["adminId"] = widget.adminId;
+      } else if (action == "missed") {
+        url = "${ApiConfig.baseUrl}/markmissedtoken";
+        body["tokenId"] = tokenId ?? currentToken?['tokenId'];
+      }
+
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/nexttoken"),
+        Uri.parse(url),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "queueName": queueName,
-          "currentTokenId": currentTokenId,
-        }),
+        body: jsonEncode(body),
       );
 
-      final data = json.decode(response.body);
-
+      final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
+        await fetchData();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Next token loaded successfully"),
+          SnackBar(
+            content: Text(data['message'] ?? "Action successful"),
             backgroundColor: Colors.green,
           ),
         );
-        await fetchCurrentToken();
-        await fetchWaitingTokens();
-        await fetchHeldTokens();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(data['message'] ?? "No more tokens"),
-            backgroundColor: Colors.orange,
+            content: Text(data['message'] ?? "Action failed"),
+            backgroundColor: Colors.red,
           ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Server error. Please try again."),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => isProcessing = false);
-    }
-  }
-
-  // ✅ COMPLETE TOKEN
-  Future<void> completeToken() async {
-    if (queueName == null || currentTokenId == null) return;
-
-    setState(() => isProcessing = true);
-
-    try {
-      final response = await http.put(
-        Uri.parse("http://localhost:8000/api/completetoken"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"queueName": queueName, "tokenId": currentTokenId}),
-      );
-
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Token completed successfully"),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        await Future.wait([
-          fetchCurrentToken(),
-          fetchWaitingTokens(),
-          fetchHeldTokens(),
-          fetchAnalytics(),
-        ]);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Failed to complete token"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => isProcessing = false);
-    }
-  }
-
-  // ✅ SKIP TOKEN
-  Future<void> skipToken() async {
-    if (queueName == null || currentTokenId == null) return;
-
-    setState(() => isProcessing = true);
-
-    try {
-      // Mark current token as skipped and move to next
-      final response = await http.put(
-        Uri.parse("http://localhost:8000/api/nexttoken"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "queueName": queueName,
-          "currentTokenId": currentTokenId,
-        }),
-      );
-
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Token skipped. Moving to next token."),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        await fetchCurrentToken();
-        await fetchWaitingTokens();
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Failed to skip token"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => isProcessing = false);
-    }
-  }
-
-  // ✅ HOLD TOKEN
-  Future<void> holdToken(String tokenId) async {
-    if (queueName == null) return;
-
-    setState(() => isProcessing = true);
-
-    try {
-      final response = await http.put(
-        Uri.parse("http://localhost:8000/api/holdtoken"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"queueName": queueName, "tokenId": tokenId}),
-      );
-
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Token put on hold"),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        await fetchCurrentToken();
-        await fetchWaitingTokens();
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Failed to hold token"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => isProcessing = false);
-    }
-  }
-
-  // ✅ UNHOLD TOKEN
-  Future<void> unholdToken(String tokenId) async {
-    if (queueName == null) return;
-
-    setState(() => isProcessing = true);
-
-    try {
-      final response = await http.put(
-        Uri.parse("http://localhost:8000/api/unholdtoken"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"queueName": queueName, "tokenId": tokenId}),
-      );
-
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Token unheld successfully"),
-            backgroundColor: Colors.green,
-          ),
-        );
-        await fetchWaitingTokens();
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Failed to unhold token"),
+          content: Text("Error performing action"),
           backgroundColor: Colors.red,
         ),
       );
@@ -453,617 +284,419 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (isLoading && queueName == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text("Manage Queue"),
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-        ),
+        appBar: AppBar(title: const Text("Manage Queue")),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: const Color(0xFFF5F7FB),
       appBar: AppBar(
-        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Manage Queue",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 2),
             Text(
-              queueName ?? "No Active Queue",
+              queueName ?? "Manage Queue",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              queueStatus,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-                color: Colors.white.withOpacity(0.9),
+                fontSize: 12,
+                color: queueStatus == "Active"
+                    ? Colors.greenAccent
+                    : Colors.white70,
               ),
             ),
           ],
         ),
-        backgroundColor: Colors.deepPurple.shade700,
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
-          // ✅ Queue Status Toggle with Material Design 3 style
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: (isProcessing || queueId == null)
-                    ? null
-                    : toggleQueueStatus,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isQueueActive
-                        ? Colors.green.shade400
-                        : Colors.grey.shade600,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isQueueActive
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isQueueActive ? "Active" : "Paused",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: fetchData),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildQuickStats(),
+          _buildCurrentTokenCard(),
+          _buildQueueControls(),
+          const SizedBox(height: 10),
+          _buildTabsHeader(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [_buildWaitingList(), _buildHeldList()],
             ),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: fetchQueueData,
-        color: Colors.deepPurple,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ✅ CURRENT TOKEN CARD
-                    _buildCurrentTokenCard(),
+    );
+  }
 
-                    // ✅ WAITING TOKENS SECTION
-                    if (waitingTokens.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      _buildWaitingTokensSection(),
-                    ],
-
-                    // ✅ HELD TOKENS (if any)
-                    if (holdTokens.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      _buildHeldTokensSection(),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+  Widget _buildQuickStats() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          _statItem("Waiting", waitingCount.toString(), Colors.orange),
+          _statItem("Completed", completedCount.toString(), Colors.green),
+          _statItem("Pending", pendingCount.toString(), Colors.blue),
+        ],
       ),
     );
   }
 
-  // ✅ CURRENT TOKEN CARD - Enhanced & Professional
-  Widget _buildCurrentTokenCard() {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.deepPurple.shade50, Colors.deepPurple.shade100],
-          ),
+  Widget _statItem(String label, String value, Color color) {
+    return Expanded(
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: color.withOpacity(0.2)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ✅ Header with Status
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.deepPurple,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.confirmation_number,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Current Token",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            currentTokenNumber > 0
-                                ? "A-$currentTokenNumber"
-                                : "N/A",
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isQueueActive ? Colors.green : Colors.grey,
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isQueueActive ? Colors.green : Colors.grey)
-                              .withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isQueueActive
-                              ? Icons.play_circle
-                              : Icons.pause_circle,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          isQueueActive ? "ACTIVE" : "PAUSED",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // ✅ Student Info Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    _infoRowEnhanced(
-                      "Student Name",
-                      currentStudentName,
-                      Icons.person,
-                    ),
-                    const Divider(height: 24),
-                    _infoRowEnhanced(
-                      "Purpose",
-                      currentPurpose,
-                      Icons.description,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ✅ Stats Row
-              Row(
-                children: [
-                  Expanded(
-                    child: _statCardEnhanced(
-                      "Waiting",
-                      waitingTokens.length.toString(),
-                      Colors.orange,
-                      Icons.people,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _statCardEnhanced(
-                      "Completed",
-                      completedToday.toString(),
-                      Colors.green,
-                      Icons.check_circle,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // ✅ Action Buttons Row (Next, Complete, Skip)
-              Row(
-                children: [
-                  Expanded(
-                    child: _actionButtonEnhanced(
-                      "Next",
-                      Icons.skip_next,
-                      Colors.deepPurple,
-                      isProcessing || currentTokenNumber == 0 || queueId == null
-                          ? null
-                          : nextToken,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _actionButtonEnhanced(
-                      "Complete",
-                      Icons.check_circle,
-                      Colors.green,
-                      isProcessing || currentTokenNumber == 0 || queueId == null
-                          ? null
-                          : completeToken,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _actionButtonEnhanced(
-                      "Skip",
-                      Icons.skip_next_outlined,
-                      Colors.orange,
-                      isProcessing || currentTokenNumber == 0 || queueId == null
-                          ? null
-                          : skipToken,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ✅ WAITING TOKENS SECTION
-  Widget _buildWaitingTokensSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Waiting Tokens",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange,
-                  ),
-                ),
-                Chip(
-                  label: Text("${waitingTokens.length}"),
-                  backgroundColor: Colors.orange.shade100,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: waitingTokens.length,
-              itemBuilder: (context, index) {
-                final token = waitingTokens[index];
-                return _tokenListItem(
-                  token: token,
-                  isWaiting: true,
-                  onHold: () => holdToken(token["_id"] ?? ""),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ✅ HELD TOKENS SECTION
-  Widget _buildHeldTokensSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Held Tokens",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.amber,
-                  ),
-                ),
-                Chip(
-                  label: Text("${holdTokens.length}"),
-                  backgroundColor: Colors.amber.shade100,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: holdTokens.length,
-              itemBuilder: (context, index) {
-                final token = holdTokens[index];
-                return _tokenListItem(
-                  token: token,
-                  isWaiting: false,
-                  onUnhold: () => unholdToken(token["_id"] ?? ""),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ✅ TOKEN LIST ITEM
-  Widget _tokenListItem({
-    required Map<String, dynamic> token,
-    required bool isWaiting,
-    VoidCallback? onHold,
-    VoidCallback? onUnhold,
-    VoidCallback? onPriority,
-  }) {
-    final tokenNumber = token["tokenNumber"] ?? 0;
-    final studentName = token["studentName"] ?? "Unknown";
-    final purpose = token["purpose"] ?? "N/A";
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: isWaiting ? Colors.orange : Colors.amber,
-          child: Text(
-            "A-$tokenNumber",
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        title: Text(
-          studentName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(purpose),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (onPriority != null)
-              IconButton(
-                icon: const Icon(Icons.star, color: Colors.amber),
-                onPressed: onPriority,
-                tooltip: "Set Priority",
-              ),
-            if (onHold != null)
-              IconButton(
-                icon: const Icon(Icons.pause_circle, color: Colors.amber),
-                onPressed: onHold,
-                tooltip: "Hold Token",
-              ),
-            if (onUnhold != null)
-              IconButton(
-                icon: const Icon(Icons.play_circle, color: Colors.green),
-                onPressed: onUnhold,
-                tooltip: "Unhold Token",
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ✅ HELPER WIDGETS
-  // ✅ Enhanced Info Row with Icon
-  Widget _infoRowEnhanced(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.deepPurple, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                value,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: color,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.black87,
-                ),
+                label,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCurrentTokenCard() {
+    bool hasToken = currentToken != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        elevation: 4,
+        shadowColor: Colors.deepPurple.withOpacity(0.2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              colors: hasToken
+                  ? [Colors.deepPurple, Colors.deepPurpleAccent]
+                  : [Colors.grey[400]!, Colors.grey[500]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "NOW SERVING",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    if (hasToken)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          "LIVE",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  hasToken ? "A-${currentToken!['tokenNumber']}" : "---",
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  hasToken
+                      ? (currentToken!['studentName'] ?? "Unknown Student")
+                      : "No Active Token",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  hasToken
+                      ? (currentToken!['purpose'] ?? "General Inquiry")
+                      : "Call next student to start",
+                  style: const TextStyle(fontSize: 14, color: Colors.white70),
+                ),
+                const SizedBox(height: 20),
+                if (hasToken)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _actionButton(
+                        Icons.pause,
+                        "Hold",
+                        Colors.orange,
+                        () => _handleTokenAction("hold"),
+                      ),
+                      _actionButton(
+                        Icons.check_circle,
+                        "Complete",
+                        Colors.green,
+                        () => _handleTokenAction("complete"),
+                      ),
+                      _actionButton(
+                        Icons.close,
+                        "Missed",
+                        Colors.red,
+                        () => _handleTokenAction("missed"),
+                      ),
+                    ],
+                  )
+                else
+                  ElevatedButton.icon(
+                    onPressed: isProcessing
+                        ? null
+                        : () => _handleTokenAction("next"),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text("CALL NEXT STUDENT"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.deepPurple,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _actionButton(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return Column(
+      children: [
+        IconButton(
+          onPressed: isProcessing ? null : onPressed,
+          icon: Icon(icon, color: Colors.white, size: 28),
+          style: IconButton.styleFrom(backgroundColor: Colors.white24),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
       ],
     );
   }
 
-  Widget _statCardEnhanced(
-    String label,
-    String value,
-    Color color,
-    IconData icon,
-  ) {
-    Color lightColor;
-    Color darkColor;
-
-    // ✅ Map colors to their light variants
-    if (color == Colors.orange) {
-      lightColor = Colors.orange.shade50;
-      darkColor = Colors.orange.shade700;
-    } else if (color == Colors.green) {
-      lightColor = Colors.green.shade50;
-      darkColor = Colors.green.shade700;
-    } else if (color == Colors.blue) {
-      lightColor = Colors.blue.shade50;
-      darkColor = Colors.blue.shade700;
-    } else if (color == Colors.purple) {
-      lightColor = Colors.purple.shade50;
-      darkColor = Colors.purple.shade700;
-    } else {
-      lightColor = Colors.grey.shade100;
-      darkColor = Colors.grey.shade700;
-    }
-
-    return Container(
+  Widget _buildQueueControls() {
+    return Padding(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: lightColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+          _controlBtn(
+            "Pause",
+            Icons.pause,
+            Colors.orange,
+            queueStatus == "Active",
+            () => _updateQueueStatus("Paused"),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: darkColor,
-              fontWeight: FontWeight.w600,
-            ),
+          _controlBtn(
+            "Resume",
+            Icons.play_arrow,
+            Colors.green,
+            queueStatus == "Paused",
+            () => _updateQueueStatus("Active"),
+          ),
+          _controlBtn(
+            "Stop",
+            Icons.stop,
+            Colors.red,
+            queueStatus != "Inactive",
+            () => _updateQueueStatus("Inactive"),
           ),
         ],
       ),
     );
   }
 
-  // ✅ Enhanced Action Button with better styling
-  Widget _actionButtonEnhanced(
+  Widget _controlBtn(
     String label,
     IconData icon,
     Color color,
-    VoidCallback? onPressed,
+    bool enabled,
+    VoidCallback onPressed,
   ) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 22),
-      label: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
+    return OutlinedButton.icon(
+      onPressed: enabled && !isProcessing ? onPressed : null,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: enabled ? color : Colors.grey),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _buildTabsHeader() {
+    return Container(
+      color: Colors.white,
+      child: TabBar(
+        controller: _tabController,
+        labelColor: Colors.deepPurple,
+        unselectedLabelColor: Colors.grey,
+        indicatorColor: Colors.deepPurple,
+        tabs: const [
+          Tab(text: "Waiting List"),
+          Tab(text: "Held Tokens"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWaitingList() {
+    if (waitingList.isEmpty) {
+      return const Center(
+        child: Text(
+          "No students waiting",
+          style: TextStyle(color: Colors.grey),
         ),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        elevation: onPressed == null ? 0 : 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        disabledBackgroundColor: Colors.grey.shade300,
-        disabledForegroundColor: Colors.grey.shade600,
-      ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: waitingList.length,
+      itemBuilder: (context, index) {
+        final student = waitingList[index];
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade200),
+          ),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.deepPurple.shade50,
+              child: Text(
+                "${student['tokenNumber']}",
+                style: const TextStyle(
+                  color: Colors.deepPurple,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(student['studentName'] ?? "Unknown"),
+            subtitle: Text(student['purpose'] ?? ""),
+            trailing: PopupMenuButton(
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'hold', child: Text("Put on Hold")),
+                const PopupMenuItem(value: 'remove', child: Text("Remove")),
+              ],
+              onSelected: (val) {
+                // Implement specific student actions if needed
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeldList() {
+    if (heldList.isEmpty) {
+      return const Center(
+        child: Text("No tokens on hold", style: TextStyle(color: Colors.grey)),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: heldList.length,
+      itemBuilder: (context, index) {
+        final token = heldList[index];
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.orange.shade100),
+          ),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.orange.shade50,
+              child: Text(
+                "${token['tokenNumber']}",
+                style: const TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(token['studentName'] ?? "Unknown"),
+            subtitle: Text(token['purpose'] ?? ""),
+            trailing: ElevatedButton(
+              onPressed: isProcessing
+                  ? null
+                  : () =>
+                        _handleTokenAction("unhold", tokenId: token['tokenId']),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(60, 30),
+              ),
+              child: const Text("Unhold", style: TextStyle(fontSize: 12)),
+            ),
+          ),
+        );
+      },
     );
   }
 }
