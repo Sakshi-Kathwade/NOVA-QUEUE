@@ -156,8 +156,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
             }
           }
         }
-      } else if (response.statusCode == 404) {
-        // No queue found - set to null
+      } else {
+        // No queue found (success: false) - set to null
         setState(() {
           queueName = null;
           queueId = null;
@@ -665,9 +665,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               value: waitingCount.toString(),
               icon: Icons.people,
               color: Colors.orange,
-              navigateTo: queueName != null
-                  ? WaitingCardScreen(queueName: queueName!)
-                  : null,
+              navigateTo: WaitingCardScreen(queueName: queueName ?? ""),
             ),
 
             _dashboardCard(
@@ -676,9 +674,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               value: currentToken,
               icon: Icons.confirmation_number,
               color: Colors.blue,
-              navigateTo: queueName != null
-                  ? CurrentTokenScreen(queueName: queueName!)
-                  : null,
+              navigateTo: CurrentTokenScreen(queueName: queueName ?? ""),
             ),
 
             _dashboardCard(
@@ -688,7 +684,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               icon: Icons.check_circle,
               color: Colors.purple,
               navigateTo: CompletedTodayScreen(
-                queueName: queueName,
+                queueName: queueName ?? "",
                 adminId: adminId,
               ),
             ),
@@ -699,12 +695,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               value: liveQueueData.isNotEmpty ? "${liveQueueData.length}" : "0",
               icon: Icons.people_alt,
               color: Colors.deepPurple,
-              navigateTo: queueName != null
-                  ? AdminLiveQueueScreen(
-                      adminId: adminId!,
-                      queueName: queueName!,
-                    )
-                  : null,
+              navigateTo: AdminLiveQueueScreen(
+                adminId: adminId!,
+                queueName: queueName ?? "",
+              ),
             ),
 
             _dashboardCard(
@@ -713,12 +707,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               value: pendingCount.toString(),
               icon: Icons.hourglass_empty,
               color: Colors.teal,
-              navigateTo: queueName != null
-                  ? PendingStudentsScreen(
-                      queueName: queueName!,
-                      adminId: adminId!,
-                    )
-                  : null,
+              navigateTo: PendingStudentsScreen(
+                queueName: queueName ?? "",
+                adminId: adminId!,
+              ),
             ),
           ],
         ),

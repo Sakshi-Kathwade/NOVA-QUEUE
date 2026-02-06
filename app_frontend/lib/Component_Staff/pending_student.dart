@@ -43,6 +43,16 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
   }
 
   Future<void> _fetchPendingTokens() async {
+    if (widget.queueName.isEmpty) {
+       if (mounted) {
+        setState(() {
+          _pendingTokens = [];
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
@@ -122,23 +132,37 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _pendingTokens.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    Translations.translate(
-                      'no_pending_tokens',
-                      _currentLanguage,
-                    ),
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+          : widget.queueName.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info_outline, size: 80, color: Colors.orange.shade300),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Queue is not active or not generated.",
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )
+                )
+              : _pendingTokens.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            Translations.translate(
+                              'no_pending_tokens',
+                              _currentLanguage,
+                            ),
+                            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _pendingTokens.length,

@@ -41,6 +41,16 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
   }
 
   Future<void> fetchStudents() async {
+    if (widget.queueName.isEmpty) {
+      if (mounted) {
+        setState(() {
+          students = [];
+          isLoading = false;
+        });
+      }
+      return;
+    }
+
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/api/remainingtoken/${widget.queueName}"),
@@ -143,41 +153,55 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : students.isEmpty
-                ? const Center(child: Text("No students waiting"))
-                : ListView.builder(
-                    itemCount: students.length,
-                    itemBuilder: (context, index) {
-                      final student = students[index];
-
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.deepPurple.shade100,
-                            child: Text(
-                              "A-${student["tokenNumber"]}",
-                              style: const TextStyle(
-                                color: Colors.deepPurple,
-                                fontWeight: FontWeight.bold,
-                              ),
+                : widget.queueName.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.info_outline, size: 48, color: Colors.orange),
+                            const SizedBox(height: 16),
+                            const Text(
+                              "Queue is not active or not generated.",
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
                             ),
-                          ),
-                          title: const Text("Waiting"),
-                          subtitle: Text(
-                            student["purpose"] ?? "Purpose not available",
-                          ),
-                          trailing: const Icon(
-                            Icons.hourglass_bottom,
-                            color: Colors.orange,
-                          ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                      )
+                    : students.isEmpty
+                        ? const Center(child: Text("No students waiting"))
+                        : ListView.builder(
+                            itemCount: students.length,
+                            itemBuilder: (context, index) {
+                              final student = students[index];
+
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.deepPurple.shade100,
+                                    child: Text(
+                                      "A-${student["tokenNumber"]}",
+                                      style: const TextStyle(
+                                        color: Colors.deepPurple,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  title: const Text("Waiting"),
+                                  subtitle: Text(
+                                    student["purpose"] ?? "Purpose not available",
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.hourglass_bottom,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
           ),
         ],
       ),

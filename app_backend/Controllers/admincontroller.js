@@ -3,7 +3,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const Service = require('../Models/serviceModel.js');
-const Queue = require('../Models/queueModel.js'); // Import Queue model
 const Token = require('../Models/tokenModel.js'); // Import Token model
 const Counter = require('../Models/counterModel.js'); // Import Counter model
 const Staff = require('../Models/staffModel.js'); // Import Staff model

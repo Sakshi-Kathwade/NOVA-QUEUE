@@ -52,6 +52,16 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
   }
 
   Future<void> fetchCurrentToken() async {
+    if (widget.queueName.isEmpty) {
+      if (mounted) {
+        setState(() {
+          error = "Queue is not active or not generated";
+          isLoading = false;
+        });
+      }
+      return;
+    }
+
     try {
       final url = Uri.parse(
         "http://localhost:8000/api/currenttoken/${widget.queueName}",
@@ -79,6 +89,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
             completed = data['completedCount'] ?? 0;
             total = data['totalCount'] ?? 0;
             isLoading = false;
+            error = null; // Clear error if successful
           });
         }
       } else {

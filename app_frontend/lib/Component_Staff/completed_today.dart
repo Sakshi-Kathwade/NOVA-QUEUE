@@ -36,7 +36,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     } else {
       setState(() {
         isLoading = false;
-        error = "No active queue";
+        error = "Queue is not active or not generated";
       });
     }
   }
@@ -71,7 +71,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     if (widget.queueName == null || widget.queueName!.isEmpty) {
       setState(() {
         isLoading = false;
-        error = "No active queue";
+        error = "Queue is not active or not generated";
       });
       return;
     }

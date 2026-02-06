@@ -13,4 +13,4 @@ const QueueSchema = new mongoose.Schema({
       default: "Active", }
 }, { timestamps: true });
 
-  
+module.exports = mongoose.model("Queue", QueueSchema);
