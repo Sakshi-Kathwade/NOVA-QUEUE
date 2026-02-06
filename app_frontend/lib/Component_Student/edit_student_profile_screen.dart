@@ -180,7 +180,7 @@ class _EditStudentProfileScreenState extends State<EditStudentProfileScreen> {
          backgroundImage = FileImage(File(_newProfileImage!.path));
       }
     } else if (_profilePictureUrl != null && _profilePictureUrl!.isNotEmpty) {
-      backgroundImage = NetworkImage("http://localhost:8000/" + _profilePictureUrl!);
+      backgroundImage = NetworkImage("http://localhost:8000" + _profilePictureUrl!);
     }
 
     return Scaffold(

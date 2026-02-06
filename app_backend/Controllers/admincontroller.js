@@ -427,12 +427,21 @@ const getReportsSummary = async (req, res) => {
       completedAt: { $gte: startOfToday, $lte: endOfToday },
     });
 
+    // Total students visited (unique studentIds across all time)
+    const totalStudentsVisited = (await Token.distinct('studentId', { adminId })).length;
+
+    // Waiting students (currently in queue)
+    const waitingTokensCount = await Token.countDocuments({
+      adminId,
+      status: { $in: ['waiting', 'pending', 'Waiting', 'pending'] }
+    });
+
     // Average waiting time (for completed tokens today)
     const completedTokens = await Token.find({
       adminId,
       status: { $in: ['completed', 'Completed'] },
       generatedAt: { $gte: startOfToday, $lte: endOfToday },
-      completedAt: { $exists: true }, // Ensure completedAt is set
+      completedAt: { $exists: true },
     }).select('generatedAt completedAt');
 
     let totalWaitingTime = 0;
@@ -450,6 +459,8 @@ const getReportsSummary = async (req, res) => {
       message: "Reports summary data fetched successfully",
       totalTokensGenerated,
       completedServicesToday,
+      totalStudentsVisited,
+      waitingTokensCount,
       averageWaitingTimeMinutes,
     });
   } catch (error) {
@@ -463,26 +474,73 @@ const getReportsSummary = async (req, res) => {
 const getCounterPerformance = async (req, res) => {
   try {
     const { adminId } = req.params;
-    // TODO: Implement logic to fetch counter-wise performance
-    return res.status(200).json({ success: true, message: "Counter performance data (TODO)", adminId });
+    
+    const performance = await Token.aggregate([
+      { $match: { adminId: new mongoose.Types.ObjectId(adminId), status: { $in: ['completed', 'Completed'] } } },
+      { $group: { _id: "$counterId", count: { $sum: 1 } } },
+      { $lookup: { from: 'counters', localField: '_id', foreignField: '_id', as: 'counter' } },
+      { $unwind: { path: "$counter", preserveNullAndEmptyArrays: true } },
+      { $project: { counterName: { $ifNull: ["$counter.counterName", "Unknown"] }, count: 1 } }
+    ]);
+
+    return res.status(200).json({ success: true, performance });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const getBusyHours = async (req, res) => {
   try {
     const { adminId } = req.params;
-    // TODO: Implement logic to fetch busy hours data
-    return res.status(200).json({ success: true, message: "Busy hours data (TODO)", adminId });
+    
+    const busyHours = await Token.aggregate([
+      { $match: { adminId: new mongoose.Types.ObjectId(adminId) } },
+      { $project: { hour: { $hour: "$generatedAt" } } },
+      { $group: { _id: "$hour", count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    return res.status(200).json({ success: true, busyHours });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getServiceWiseData = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    
+    const serviceData = await Token.aggregate([
+      { $match: { adminId: new mongoose.Types.ObjectId(adminId) } },
+      { $group: { _id: "$serviceId", count: { $sum: 1 } } },
+      { $lookup: { from: 'services', localField: '_id', foreignField: '_id', as: 'service' } },
+      { $unwind: { path: "$service", preserveNullAndEmptyArrays: true } },
+      { $project: { serviceName: { $ifNull: ["$service.serviceName", "General"] }, count: 1 } }
+    ]);
+
+    return res.status(200).json({ success: true, serviceData });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getDailyCrowdDetails = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const days = parseInt(req.query.days) || 7;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const dailyCrowd = await Token.aggregate([
+      { $match: { adminId: new mongoose.Types.ObjectId(adminId), generatedAt: { $gte: startDate } } },
+      { $project: { date: { $dateToString: { format: "%Y-%m-%d", date: "$generatedAt" } } } },
+      { $group: { _id: "$date", count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    return res.status(200).json({ success: true, dailyCrowd });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -711,4 +769,6 @@ module.exports = {
   createCounter,
   updateCounter,
   deleteCounter,
+  getServiceWiseData,
+  getDailyCrowdDetails,
 };

@@ -1,9 +1,11 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: unused_field, dead_code, prefer_final_fields, deprecated_member_use, curly_braces_in_flow_control_structures
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../../services/translations.dart'; // Adjust path as needed
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+import '../../services/translations.dart';
 
 class ReportScreen extends StatefulWidget {
   final String? adminId;
@@ -17,338 +19,474 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   bool _isLoading = true;
-  final String _currentLanguage =
-      'english'; // Assuming default language, will load from LanguageService
+  String _currentLanguage = 'english'; // Default
 
   // Report summary data
   int _totalTokensGenerated = 0;
   int _completedServicesToday = 0;
+  int _totalStudentsVisited = 0;
+  int _waitingStudents = 0;
   int _averageWaitingTimeMinutes = 0;
+
+  List<dynamic> _dailyCrowd = [];
+  List<dynamic> _serviceData = [];
+  List<dynamic> _counterPerformance = [];
+  List<dynamic> _busyHours = [];
 
   @override
   void initState() {
     super.initState();
-    _loadLanguage();
-    _fetchReportsSummary();
+    _fetchAllData();
   }
 
-  Future<void> _loadLanguage() async {
-    // Implement language loading if needed, similar to AdminSettingScreen
-    // For now, assuming default 'english' or it's set globally
+  Future<void> _fetchAllData() async {
+    if (widget.adminId == null) return;
+    setState(() => _isLoading = true);
+    await Future.wait([
+      _fetchReportsSummary(),
+      _fetchDailyCrowd(),
+      _fetchServiceWise(),
+      _fetchCounterPerformance(),
+      _fetchBusyHours(),
+    ]);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _fetchReportsSummary() async {
-    if (widget.adminId == null) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-      return;
-    }
-
-    if (mounted) {
-      setState(() => _isLoading = true);
-    }
-
     try {
       final response = await http.get(
         Uri.parse(
           "http://localhost:8000/api/admin/reports/summary/${widget.adminId}",
         ),
-        headers: {"Content-Type": "application/json"},
       );
-
-      if (!mounted) return; // Add mounted check immediately after await
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true) {
+        if (data['success']) {
           setState(() {
             _totalTokensGenerated = data['totalTokensGenerated'] ?? 0;
             _completedServicesToday = data['completedServicesToday'] ?? 0;
+            _totalStudentsVisited = data['totalStudentsVisited'] ?? 0;
+            _waitingStudents = data['waitingTokensCount'] ?? 0;
             _averageWaitingTimeMinutes = data['averageWaitingTimeMinutes'] ?? 0;
           });
-        } else {
-          _showSnackBar(
-            '${Translations.translate('failed_to_load_reports', _currentLanguage)}: ${data['message']}',
-            Colors.red,
-          );
         }
-      } else {
-        _showSnackBar(
-          '${Translations.translate('failed_to_load_reports', _currentLanguage)}: ${json.decode(response.body)['message']}',
-          Colors.red,
-        );
       }
     } catch (e) {
-      if (mounted) {
-        // Only show snackbar if mounted
-        _showSnackBar(
-          '${Translations.translate('server_error', _currentLanguage)}: $e',
-          Colors.red,
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      print(e);
     }
   }
 
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
+  Future<void> _fetchDailyCrowd() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://localhost:8000/api/admin/reports/daily-crowd/${widget.adminId}?days=7",
+        ),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _dailyCrowd = data['dailyCrowd'];
+          });
+        }
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<void> _fetchServiceWise() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://localhost:8000/api/admin/reports/service-wise/${widget.adminId}",
+        ),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _serviceData = data['serviceData'];
+          });
+        }
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<void> _fetchCounterPerformance() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://localhost:8000/api/admin/reports/counter-performance/${widget.adminId}",
+        ),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _counterPerformance = data['performance'];
+          });
+        }
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<void> _fetchBusyHours() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://localhost:8000/api/admin/reports/busy-hours/${widget.adminId}",
+        ),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _busyHours = data['busyHours'];
+          });
+        }
+      }
+    } catch (e) {
+      print(e);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(Translations.translate('reports', _currentLanguage)),
+        title: Text(
+          Translations.translate('reports', _currentLanguage),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchAllData),
+        ],
       ),
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(color: Colors.deepPurple),
             )
-          : RefreshIndicator(
-              onRefresh: _fetchReportsSummary,
-              color: Colors.deepPurple,
-              child: ListView(
-                padding: const EdgeInsets.all(20),
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Summary Section - Clean card layout
-                  Text(
-                    Translations.translate('summary', _currentLanguage),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 0.95,
-                    children: [
-                      _summaryCard(
-                        title: Translations.translate(
-                          'total_tokens_generated',
-                          _currentLanguage,
-                        ),
-                        value: _totalTokensGenerated.toString(),
-                        icon: Icons.confirmation_number,
-                        color: Colors.blue,
-                        gradient: const [Color(0xFF2196F3), Color(0xFF1976D2)],
-                      ),
-                      _summaryCard(
-                        title: Translations.translate(
-                          'completed_services_today',
-                          _currentLanguage,
-                        ),
-                        value: _completedServicesToday.toString(),
-                        icon: Icons.check_circle,
-                        color: Colors.green,
-                        gradient: const [Color(0xFF4CAF50), Color(0xFF388E3C)],
-                      ),
-                      _summaryCard(
-                        title: Translations.translate(
-                          'average_waiting_time',
-                          _currentLanguage,
-                        ),
-                        value:
-                            "$_averageWaitingTimeMinutes ${Translations.translate('min', _currentLanguage)}",
-                        icon: Icons.timer,
-                        color: Colors.orange,
-                        gradient: const [Color(0xFFFF9800), Color(0xFFF57C00)],
-                      ),
-                    ],
-                  ),
+                  _buildSummaryGrid(),
                   const SizedBox(height: 24),
-
-                  // Queue Statistics Section
-                  Text(
-                    Translations.translate(
-                      'queue_statistics',
-                      _currentLanguage,
-                    ),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
-                    ),
+                  _buildSectionTitle(
+                    Translations.translate('daily_progress', _currentLanguage),
                   ),
                   const SizedBox(height: 12),
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.analytics,
-                                color: Colors.deepPurple,
-                                size: 28,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                Translations.translate(
-                                  'counter_performance',
-                                  _currentLanguage,
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            Translations.translate(
-                              'counter_performance_placeholder',
-                              _currentLanguage,
-                            ),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.schedule,
-                                color: Colors.deepPurple,
-                                size: 28,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                Translations.translate(
-                                  'busy_hours',
-                                  _currentLanguage,
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            Translations.translate(
-                              'busy_hours_placeholder',
-                              _currentLanguage,
-                            ),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  _buildLineChart(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Service-wise Distribution'),
+                  const SizedBox(height: 12),
+                  _buildPieChart(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Counter Performance'),
+                  const SizedBox(height: 12),
+                  _buildCounterBars(),
                 ],
               ),
             ),
     );
   }
 
-  Widget _summaryCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-    List<Color>? gradient,
-  }) {
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.deepPurple,
+      ),
+    );
+  }
+
+  Widget _buildSummaryGrid() {
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.5,
+      children: [
+        _summaryCard(
+          'Total Generated',
+          _totalTokensGenerated.toString(),
+          Icons.confirmation_number,
+          Colors.blue,
+        ),
+        _summaryCard(
+          'Completed Today',
+          _completedServicesToday.toString(),
+          Icons.check_circle,
+          Colors.green,
+        ),
+        _summaryCard(
+          'Students Visited',
+          _totalStudentsVisited.toString(),
+          Icons.people,
+          Colors.orange,
+        ),
+        _summaryCard(
+          'Waiting Now',
+          _waitingStudents.toString(),
+          Icons.hourglass_top,
+          Colors.red,
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryCard(String title, String value, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        gradient: gradient != null
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: gradient,
-              )
-            : null,
-        color: gradient == null ? color.withOpacity(0.1) : null,
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 8,
+            color: color.withOpacity(0.1),
+            blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 40,
-              color: gradient != null ? Colors.white : color,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 20, color: color),
+                const SizedBox(width: 8),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: gradient != null ? Colors.white : color,
-              ),
-            ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               title,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: gradient != null ? Colors.white70 : Colors.grey.shade700,
-                height: 1.2,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLineChart() {
+    if (_dailyCrowd.isEmpty)
+      return const SizedBox(
+        height: 200,
+        child: Center(child: Text("No data available")),
+      );
+
+    return Container(
+      height: 240,
+      padding: const EdgeInsets.fromLTRB(16, 32, 32, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: LineChart(
+        LineChartData(
+          gridData: const FlGridData(show: false),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  int idx = value.toInt();
+                  if (idx >= 0 && idx < _dailyCrowd.length) {
+                    final date = DateTime.parse(_dailyCrowd[idx]['_id']);
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        DateFormat('dd/MM').format(date),
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    );
+                  }
+                  return const Text('');
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: _dailyCrowd
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) =>
+                        FlSpot(e.key.toDouble(), e.value['count'].toDouble()),
+                  )
+                  .toList(),
+              isCurved: true,
+              color: Colors.deepPurple,
+              barWidth: 4,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: true),
+              belowBarData: BarAreaData(
+                show: true,
+                color: Colors.deepPurple.withOpacity(0.1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPieChart() {
+    if (_serviceData.isEmpty)
+      return const SizedBox(
+        height: 200,
+        child: Center(child: Text("No data available")),
+      );
+
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.red,
+      Colors.purple,
+      Colors.cyan,
+    ];
+
+    return Container(
+      height: 240,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: PieChart(
+        PieChartData(
+          sectionsSpace: 4,
+          centerSpaceRadius: 40,
+          sections: _serviceData.asMap().entries.map((e) {
+            final color = colors[e.key % colors.length];
+            return PieChartSectionData(
+              color: color,
+              value: e.value['count'].toDouble(),
+              title: '${e.value['count']}',
+              radius: 60,
+              titleStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              badgeWidget: _Badge(
+                e.value['serviceName'],
+                size: 40,
+                borderColor: color,
+              ),
+              badgePositionPercentageOffset: 1.3,
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCounterBars() {
+    if (_counterPerformance.isEmpty)
+      return const SizedBox(
+        height: 100,
+        child: Center(child: Text("No data available")),
+      );
+
+    return Column(
+      children: _counterPerformance.map((data) {
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey[200]!),
+          ),
+          child: ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Colors.deepPurple,
+              child: Icon(Icons.computer, color: Colors.white, size: 20),
+            ),
+            title: Text(
+              data['counterName'],
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple[50],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                "${data['count']} Done",
+                style: const TextStyle(
+                  color: Colors.deepPurple,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String text;
+  final double size;
+  final Color borderColor;
+
+  const _Badge(this.text, {required this.size, required this.borderColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor, width: 2),
+        boxShadow: [const BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
       ),
     );
   }

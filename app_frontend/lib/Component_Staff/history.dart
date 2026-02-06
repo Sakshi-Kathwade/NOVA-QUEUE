@@ -95,7 +95,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         );
       }
     } catch (e) {
-      if (mounted) { // Only show snackbar if mounted
+      if (mounted) {
+        // Only show snackbar if mounted
         _showSnackBar(
           '${Translations.translate('server_error', _currentLanguage)}: $e', // Interpolated string
           Colors.red,
@@ -218,39 +219,43 @@ class _HistoryScreenState extends State<HistoryScreen> {
           _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _historyData.isEmpty
-                  ? Expanded(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.history, size: 64, color: Colors.grey[400]), // Removed io.
-                            const SizedBox(height: 16),
-                            Text(
-                              Translations.translate(
-                                'no_history_records_found',
-                                _currentLanguage,
-                              ),
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
+              ? Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.history,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ), // Removed io.
+                        const SizedBox(height: 16),
+                        Text(
+                          Translations.translate(
+                            'no_history_records_found',
+                            _currentLanguage,
+                          ),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
                         ),
-                      ),
-                    )
-                  : Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _fetchQueueHistory,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          itemCount: _historyData.length,
-                          itemBuilder: (context, index) {
-                            return _buildHistoryCard(_historyData[index]);
-                          },
-                        ),
-                      ),
+                      ],
                     ),
+                  ),
+                )
+              : Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _fetchQueueHistory,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      itemCount: _historyData.length,
+                      itemBuilder: (context, index) {
+                        return _buildHistoryCard(_historyData[index]);
+                      },
+                    ),
+                  ),
+                ),
         ],
       ),
     );
@@ -287,10 +292,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 'yyyy-MM-dd HH:mm:ss',
               ).format(DateTime.parse(item['completedAt']))
             : (item['cancelledAt'] != null)
-                ? DateFormat(
-                    'yyyy-MM-dd HH:mm:ss',
-                  ).format(DateTime.parse(item['cancelledAt']))
-                : 'N/A';
+            ? DateFormat(
+                'yyyy-MM-dd HH:mm:ss',
+              ).format(DateTime.parse(item['cancelledAt']))
+            : 'N/A';
         final counterName = item['counterId']?['counterName'] ?? 'N/A';
         final staffName = item['staffId']?['name'] ?? 'N/A';
         final studentName = item['studentId']?['name'] ?? 'N/A';
@@ -431,11 +436,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         isHeader: true,
                       ),
                       _buildTableCell(
-                        Translations.translate('student_name', _currentLanguage),
+                        Translations.translate(
+                          'student_name',
+                          _currentLanguage,
+                        ),
                         isHeader: true,
                       ),
                       _buildTableCell(
-                        Translations.translate('student_email', _currentLanguage),
+                        Translations.translate(
+                          'student_email',
+                          _currentLanguage,
+                        ),
                         isHeader: true,
                       ),
                     ],
@@ -457,11 +468,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             'MMM dd, HH:mm',
                           ).format(DateTime.parse(item['completedAt']))
                         : (item['cancelledAt'] != null)
-                            ? DateFormat(
-                                'MMM dd, HH:mm',
-                              ).format(DateTime.parse(item['cancelledAt']))
-                            : 'N/A';
-                    final counterName = item['counterId']?['counterName'] ?? 'N/A';
+                        ? DateFormat(
+                            'MMM dd, HH:mm',
+                          ).format(DateTime.parse(item['cancelledAt']))
+                        : 'N/A';
+                    final counterName =
+                        item['counterId']?['counterName'] ?? 'N/A';
                     final staffName = item['staffId']?['name'] ?? 'N/A';
                     final studentName = item['studentId']?['name'] ?? 'N/A';
                     final studentEmail = item['studentId']?['email'] ?? 'N/A';
@@ -544,15 +556,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final cancelledAt = item['cancelledAt'] != null
         ? DateTime.parse(item['cancelledAt'])
         : null;
-    final counterName = item['counterId']?['counterName'] ?? 'N/A'; // Added counter name
+    final counterName =
+        item['counterId']?['counterName'] ?? 'N/A'; // Added counter name
     final staffName = item['staffId']?['name'] ?? 'N/A'; // Added staff name
-    final studentName = item['studentId']?['name'] ?? 'N/A'; // Added student name
-    final studentEmail = item['studentId']?['email'] ?? 'N/A'; // Added student email
-
+    final studentName =
+        item['studentId']?['name'] ?? 'N/A'; // Added student name
+    final studentEmail =
+        item['studentId']?['email'] ?? 'N/A'; // Added student email
 
     Color statusColor;
     IconData statusIcon; // Changed from io.IconData
-    if (status.toString().toLowerCase() == 'completed' || status.toString().toLowerCase() == 'served') {
+    if (status.toString().toLowerCase() == 'completed' ||
+        status.toString().toLowerCase() == 'served') {
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
     } else if (status.toString().toLowerCase() == 'cancelled') {
@@ -596,7 +611,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withAlpha((255 * 0.1).round()), // Changed from withOpacity
+                    color: statusColor.withAlpha(
+                      (255 * 0.1).round(),
+                    ), // Changed from withOpacity
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
@@ -649,22 +666,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Icons.event_note,
             ),
             _buildInfoRow(
-              Translations.translate('counter', _currentLanguage), // Added counter info
+              Translations.translate(
+                'counter',
+                _currentLanguage,
+              ), // Added counter info
               counterName,
               Icons.store,
             ),
             _buildInfoRow(
-              Translations.translate('staff', _currentLanguage), // Added staff info
+              Translations.translate(
+                'staff',
+                _currentLanguage,
+              ), // Added staff info
               staffName,
               Icons.person_pin,
             ),
             _buildInfoRow(
-              Translations.translate('student_name', _currentLanguage), // Added student name
+              Translations.translate(
+                'student_name',
+                _currentLanguage,
+              ), // Added student name
               studentName,
               Icons.person,
             ),
             _buildInfoRow(
-              Translations.translate('student_email', _currentLanguage), // Added student email
+              Translations.translate(
+                'student_email',
+                _currentLanguage,
+              ), // Added student email
               studentEmail,
               Icons.email,
             ),
@@ -694,7 +723,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               value,
               style: TextStyle(fontSize: 14, color: Colors.grey[700]),
               overflow: TextOverflow.ellipsis,
-            )
+            ),
           ),
         ],
       ),

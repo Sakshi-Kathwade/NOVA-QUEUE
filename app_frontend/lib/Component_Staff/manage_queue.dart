@@ -8,7 +8,15 @@ import 'package:intl/intl.dart';
 
 class ManageQueueScreen extends StatefulWidget {
   final String? adminId;
-  const ManageQueueScreen({super.key, this.adminId});
+  final String? initialQueueName;
+  final String? initialQueueId;
+
+  const ManageQueueScreen({
+    super.key,
+    this.adminId,
+    this.initialQueueName,
+    this.initialQueueId,
+  });
 
   @override
   State<ManageQueueScreen> createState() => _ManageQueueScreenState();
@@ -46,11 +54,16 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
   @override
   void initState() {
     super.initState();
+    // ✅ Initialize state from passed parameters
+    queueName = widget.initialQueueName;
+    queueId = widget.initialQueueId;
+
     fetchQueueData();
     // ✅ Start real-time refresh every 3 seconds
-    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (!isProcessing) {
-        fetchQueueData();
+    _refreshTimer = Timer.periodic(Duration(seconds: 5), (_) {
+      if (!isProcessing && queueName != null) {
+        fetchCurrentToken();
+        fetchWaitingTokens();
       }
     });
   }
@@ -65,7 +78,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
   Future<void> fetchQueueData() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/activequeue/${widget.adminId ?? ''}"),
+        Uri.parse(
+          "http://localhost:8000/api/activequeue/${widget.adminId ?? ''}",
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -87,6 +102,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
           setState(() {
             isLoading = false;
             queueName = null;
+            queueId = null;
+            isQueueActive = false;
+            currentTokenNumber = 0;
           });
         }
       }
@@ -299,10 +317,13 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        await fetchCurrentToken();
-        await fetchWaitingTokens();
-        await fetchHeldTokens();
-        await fetchAnalytics();
+
+        await Future.wait([
+          fetchCurrentToken(),
+          fetchWaitingTokens(),
+          fetchHeldTokens(),
+          fetchAnalytics(),
+        ]);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -443,38 +464,6 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       );
     }
 
-    if (queueName == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text("Manage Queue"),
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.queue_music, size: 64, color: Colors.grey.shade400),
-              const SizedBox(height: 16),
-              Text(
-                "No Active Queue",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Please create a queue first",
-                style: TextStyle(color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -492,7 +481,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              queueName ?? "",
+              queueName ?? "No Active Queue",
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
@@ -511,7 +500,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(24),
-                onTap: isProcessing ? null : toggleQueueStatus,
+                onTap: (isProcessing || queueId == null)
+                    ? null
+                    : toggleQueueStatus,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -762,7 +753,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
                       "Next",
                       Icons.skip_next,
                       Colors.deepPurple,
-                      isProcessing || currentTokenNumber == 0
+                      isProcessing || currentTokenNumber == 0 || queueId == null
                           ? null
                           : nextToken,
                     ),
@@ -773,7 +764,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
                       "Complete",
                       Icons.check_circle,
                       Colors.green,
-                      isProcessing || currentTokenNumber == 0
+                      isProcessing || currentTokenNumber == 0 || queueId == null
                           ? null
                           : completeToken,
                     ),
@@ -784,7 +775,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
                       "Skip",
                       Icons.skip_next_outlined,
                       Colors.orange,
-                      isProcessing || currentTokenNumber == 0
+                      isProcessing || currentTokenNumber == 0 || queueId == null
                           ? null
                           : skipToken,
                     ),
@@ -1075,6 +1066,4 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       ),
     );
   }
-  
-
 }

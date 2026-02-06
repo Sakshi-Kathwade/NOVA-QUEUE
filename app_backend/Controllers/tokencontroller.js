@@ -1,6 +1,8 @@
 
 const Token = require("../Models/tokenmodel");
 const Queue = require("../Models/create_queue_model");
+const QueueHistory = require("../Models/queueHistoryModel");
+
 exports.createToken = async (req, res) => {
   try {
     const { queueName, department, purpose, studentId } = req.body;
@@ -50,9 +52,24 @@ exports.createToken = async (req, res) => {
       });
     }
     if (queue.endTime && now >= queue.endTime) {
-      // Auto-expire and delete tokens when time finished
-      await Queue.findByIdAndUpdate(queue._id, { status: "Inactive" });
+      // 1️⃣ Copy to History
+      await QueueHistory.create({
+        adminId: queue.adminId,
+        queueName: queue.queueName,
+        department: queue.department,
+        startTime: queue.startTime,
+        endTime: queue.endTime,
+        maxStudents: queue.maxStudents,
+        status: "Expired",
+        discardedAt: now
+      });
+
+      // 2️⃣ Delete from Active Queues
+      await Queue.findByIdAndDelete(queue._id);
+
+      // 3️⃣ Delete associated tokens
       await Token.deleteMany({ queueName: queue.queueName });
+
       return res.status(410).json({
         success: false,
         message: "Queue time is finished",

@@ -164,7 +164,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                         _studentProfilePictureUrl != null &&
                             _studentProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "http://localhost:8000/" +
+                                "http://localhost:8000" +
                                     _studentProfilePictureUrl!,
                               )
                               as ImageProvider
@@ -336,8 +336,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     );
                   },
                   child: _InfoCard(
-                    title: Translations.translate('student_pending_today', currentLanguage),
-                    value: "--", // We could fetch this if needed, for now just navigates
+                    title: Translations.translate(
+                      'student_pending_today',
+                      currentLanguage,
+                    ),
+                    value:
+                        "--", // We could fetch this if needed, for now just navigates
                     icon: Icons.pending_actions,
                     color: Colors.red,
                   ),
@@ -359,7 +363,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 _studentProfilePictureUrl != null &&
                     _studentProfilePictureUrl!.isNotEmpty
                 ? NetworkImage(
-                        "http://localhost:8000/" + _studentProfilePictureUrl!,
+                        "http://localhost:8000" + _studentProfilePictureUrl!,
                       )
                       as ImageProvider
                 : null,

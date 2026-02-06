@@ -1,4 +1,7 @@
 const Queue = require("../Models/create_queue_model.js");
+const Token = require("../Models/tokenmodel"); 
+const QueueHistory = require("../Models/queueHistoryModel");
+
 // CREATE QUEUE CONTROLLER
 const createQueue = async (req, res) => {
   try {
@@ -129,9 +132,24 @@ async function expireQueueIfNeeded(queueDoc) {
   if (!queueDoc) return null;
   const now = new Date();
   if (queueDoc.status === "Active" && queueDoc.endTime && queueDoc.endTime <= now) {
-    // Mark inactive + delete tokens for that queue
-    await Queue.findByIdAndUpdate(queueDoc._id, { status: "Inactive" });
+    // 1️⃣ Copy to History
+    await QueueHistory.create({
+      adminId: queueDoc.adminId,
+      queueName: queueDoc.queueName,
+      department: queueDoc.department,
+      startTime: queueDoc.startTime,
+      endTime: queueDoc.endTime,
+      maxStudents: queueDoc.maxStudents,
+      status: "Expired",
+      discardedAt: now
+    });
+
+    // 2️⃣ Delete from Active Queues
+    await Queue.findByIdAndDelete(queueDoc._id);
+
+    // 3️⃣ Delete associated tokens (as per existing logic)
     await Token.deleteMany({ queueName: queueDoc.queueName });
+    
     return { expired: true };
   }
   return { expired: false };

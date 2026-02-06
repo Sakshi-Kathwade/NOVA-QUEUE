@@ -98,6 +98,8 @@ class Translations {
       'missed_token_retries': 'Missed Token Retries',
       'recall_wait_time': 'Recall Wait Time',
       'retries': 'retries',
+      'total_students_visited': 'Total Students Visited',
+      'waiting_students': 'Waiting Students',
       'queue_settings_updated_successfully': 'Queue settings updated successfully',
     },
     'hindi': {

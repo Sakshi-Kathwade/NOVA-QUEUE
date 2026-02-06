@@ -183,7 +183,7 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
     } else if (_profilePictureUrl != null &&
         _profilePictureUrl!.isNotEmpty) {
       backgroundImage = NetworkImage(
-        "http://localhost:8000/" + _profilePictureUrl!,
+        "http://localhost:8000" + _profilePictureUrl!,
       );
     }
 

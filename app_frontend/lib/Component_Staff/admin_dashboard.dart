@@ -455,7 +455,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _adminProfilePictureUrl != null &&
                             _adminProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "http://localhost:8000/" +
+                                "http://localhost:8000" +
                                     _adminProfilePictureUrl!,
                               )
                               as ImageProvider
@@ -521,7 +521,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _adminProfilePictureUrl != null &&
                             _adminProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "http://localhost:8000/" +
+                                "http://localhost:8000" +
                                     _adminProfilePictureUrl!,
                               )
                               as ImageProvider
@@ -592,7 +592,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               context,
               Icons.list,
               Translations.translate('manage_queue', currentLanguage),
-              screen: ManageQueueScreen(adminId: adminId),
+              screen: ManageQueueScreen(
+                adminId: adminId,
+                initialQueueName: queueName,
+                initialQueueId: queueId,
+              ),
             ),
             _drawerItem(
               context,

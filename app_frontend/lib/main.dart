@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'Component_Staff/theme_pref.dart';
 import 'screen/home.dart';
 
@@ -11,7 +12,11 @@ void main() async {
 
   // 🔥 Initialize Firebase (auto-initializes on Android via google-services.json)
   try {
-    await Firebase.initializeApp();
+    if (kIsWeb) {
+      debugPrint("Firebase initialization skipped on Web (FirebaseOptions required for manual init).");
+    } else {
+      await Firebase.initializeApp();
+    }
   } catch (e) {
     // Firebase might already be initialized or auto-initialized on Android
     // Using debugPrint for development debugging
