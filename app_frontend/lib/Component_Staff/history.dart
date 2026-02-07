@@ -546,7 +546,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final tokenNumber = item['tokenNumber']?.toString() ?? 'N/A';
     final serviceName = item['serviceId']?['serviceName'] ?? 'N/A';
     final queueName = item['queueId']?['queueName'] ?? 'N/A';
-    final status = item['status'] ?? 'N/A';
+    var status = item['status'] ?? 'N/A';
     final generatedAt = item['generatedAt'] != null
         ? DateTime.parse(item['generatedAt'])
         : null;
@@ -573,6 +573,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     } else if (status.toString().toLowerCase() == 'cancelled') {
       statusColor = Colors.red;
       statusIcon = Icons.cancel;
+    } else if (status.toString().toLowerCase() == 'hold') {
+      statusColor = Colors.orange;
+      statusIcon = Icons.pause_circle_filled;
+      status = 'Skipped'; // Show "Skipped" instead of "Hold" to user
     } else {
       statusColor = Colors.grey;
       statusIcon = Icons.info;
@@ -583,6 +587,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
       eventTime = DateFormat('MMM dd, yyyy HH:mm').format(completedAt);
     } else if (cancelledAt != null) {
       eventTime = DateFormat('MMM dd, yyyy HH:mm').format(cancelledAt);
+    } else if (status == 'Skipped' && item['updatedAt'] != null) {
+       eventTime = DateFormat('MMM dd, yyyy HH:mm').format(DateTime.parse(item['updatedAt']));
     }
 
     return Card(
@@ -659,7 +665,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 (status.toString().toLowerCase() == 'completed' ||
                         status.toString().toLowerCase() == 'served')
                     ? 'completed_at'
-                    : 'cancelled_at',
+                    : (status.toString().toLowerCase() == 'skipped') 
+                      ? 'skipped_at' 
+                      : 'cancelled_at',
                 _currentLanguage,
               ),
               eventTime,

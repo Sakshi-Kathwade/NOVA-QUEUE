@@ -549,7 +549,7 @@ const getQueueHistory = async (req, res) => {
     const { adminId } = req.params;
     const { date } = req.query; // Optional date filter
 
-    let filter = { adminId, status: { $in: ['completed', 'Completed', 'cancelled', 'Cancelled'] } };
+    let filter = { adminId, status: { $in: ['completed', 'Completed', 'cancelled', 'Cancelled', 'hold', 'Hold'] } };
 
     if (date) {
       const selectedDate = new Date(date);

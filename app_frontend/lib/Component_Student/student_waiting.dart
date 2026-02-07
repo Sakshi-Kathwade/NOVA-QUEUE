@@ -48,6 +48,15 @@ class _StudentWaitingState extends State<StudentWaiting> {
   }
 
   Future<void> fetchQueueData() async {
+    if (widget.queueName.isEmpty) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+      return;
+    }
+
     final encodedQueue = Uri.encodeComponent(widget.queueName);
 
     try {
@@ -101,22 +110,24 @@ class _StudentWaitingState extends State<StudentWaiting> {
               isLoading = false;
             });
           }
-        } else if (!isLoading) {
-          showError("No token found");
+        } else {
+           if (mounted) setState(() => isLoading = false);
         }
-      } else if (!isLoading) {
-        showError("Failed to load queue data");
+      } else {
+         if (mounted) setState(() => isLoading = false);
       }
     } catch (e) {
-      if (!isLoading && mounted) showError("Server not reachable");
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   void showError(String message) {
-    setState(() => isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    if (mounted) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override

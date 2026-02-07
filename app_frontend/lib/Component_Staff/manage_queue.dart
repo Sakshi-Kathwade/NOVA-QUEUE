@@ -52,17 +52,20 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       await _fetchCurrentToken();
       _startPolling();
     } else {
-      setState(() {
-        isLoading = false;
-        errorMessage = "No active queue found";
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          errorMessage = "No active queue found";
+        });
+      }
     }
   }
 
   void _startPolling() {
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      _fetchCurrentToken();
-    });
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (timer) => _fetchCurrentToken(),
+    );
   }
 
   Future<void> _fetchActiveQueue() async {
@@ -75,7 +78,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data["success"] == true && data["queueName"] != null) {
+        if (mounted && data["success"] == true && data["queueName"] != null) {
           setState(() {
             queueName = data["queueName"];
             queueId = data["data"]?["_id"];
@@ -155,10 +158,14 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       );
 
       if (response.statusCode == 200) {
-        setState(() => queueStatus = newStatus);
+        if (mounted) {
+          setState(() => queueStatus = newStatus);
+        }
       }
     } finally {
-      setState(() => isProcessing = false);
+      if (mounted) {
+        setState(() => isProcessing = false);
+      }
     }
   }
 
@@ -176,7 +183,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
       await _fetchCurrentToken();
     } finally {
-      setState(() => isProcessing = false);
+      if (mounted) {
+        setState(() => isProcessing = false);
+      }
     }
   }
 
@@ -198,7 +207,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
       await _fetchCurrentToken();
     } finally {
-      setState(() => isProcessing = false);
+      if (mounted) {
+        setState(() => isProcessing = false);
+      }
     }
   }
 
@@ -216,7 +227,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
       await _nextToken();
     } finally {
-      setState(() => isProcessing = false);
+      if (mounted) {
+        setState(() => isProcessing = false);
+      }
     }
   }
 
@@ -224,10 +237,12 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-
       appBar: AppBar(
         backgroundColor: const Color(0xff5E35B1),
-        leading: const Icon(Icons.arrow_back, color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -240,17 +255,21 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
         ),
         actions: [
           GestureDetector(
-            onTap: _toggleQueueStatus,
+            onTap: isProcessing ? null : _toggleQueueStatus,
             child: Container(
-              margin: const EdgeInsets.only(right: 12),
+              margin: const EdgeInsets.only(right: 12, top: 10, bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.grey.shade600,
+                color: queueStatus == "Active" ? Colors.green : Colors.orange,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                   Icon(
+                    queueStatus == "Active" ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white, 
+                    size: 18
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     queueStatus,
@@ -265,126 +284,133 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Center(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.deepPurple.shade100,
-                      Colors.deepPurple.shade50,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(25),
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  top: 20,
+                  left: 16,
+                  right: 16,
+                  bottom: 20,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    /// TOKEN
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xff5E35B1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.confirmation_number,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Current Token"),
-                            Text(
-                              currentTokenNumber > 0
-                                  ? "A-$currentTokenNumber"
-                                  : "N/A",
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xff5E35B1),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade500,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            queueStatus.toUpperCase(),
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.deepPurple.shade100,
+                        Colors.deepPurple.shade50,
                       ],
                     ),
-
-                    const SizedBox(height: 20),
-
-                    /// STUDENT CARD
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Column(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
                         children: [
-                          _infoRow(Icons.person, "Student Name", studentName),
-                          const Divider(),
-                          _infoRow(Icons.description, "Purpose", purpose),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xff5E35B1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.confirmation_number,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Current Token"),
+                              Text(
+                                currentTokenNumber > 0
+                                    ? "A-$currentTokenNumber"
+                                    : "N/A",
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xff5E35B1),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: queueStatus == "Active" 
+                                ? Colors.green 
+                                : Colors.orange,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              queueStatus.toUpperCase(),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
 
-                    const SizedBox(height: 18),
+                      const SizedBox(height: 20),
 
-                    /// STATS
-                    Row(
-                      children: [
-                        _statCard(
-                          Icons.people,
-                          waitingCount,
-                          "Waiting",
-                          Colors.orange,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        const SizedBox(width: 12),
-                        _statCard(
-                          Icons.check_circle,
-                          completedCount,
-                          "Completed",
-                          Colors.green,
+                        child: Column(
+                          children: [
+                            _infoRow(Icons.person, "Student Name", studentName),
+                            const Divider(),
+                            _infoRow(Icons.description, "Purpose", purpose),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                    /// BUTTONS
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _actionBtn(Icons.skip_next, "Next", _nextToken),
-                        _actionBtn(
-                          Icons.check_circle,
-                          "Complete",
-                          _completeToken,
-                        ),
-                        _actionBtn(Icons.skip_previous, "Skip", _skipToken),
-                      ],
-                    ),
-                  ],
+                      Row(
+                        children: [
+                          _statCard(
+                            Icons.people,
+                            waitingCount,
+                            "Waiting",
+                            Colors.orange,
+                          ),
+                          const SizedBox(width: 12),
+                          _statCard(
+                            Icons.check_circle,
+                            completedCount,
+                            "Completed",
+                            Colors.green,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      isProcessing 
+                        ? const Center(child: CircularProgressIndicator()) 
+                        : Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _actionBtn(Icons.skip_next, "Next", _nextToken),
+                          _actionBtn(
+                            Icons.check_circle,
+                            "Complete",
+                            _completeToken,
+                          ),
+                          _actionBtn(Icons.skip_previous, "Skip", _skipToken),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -427,8 +453,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
   }
 
   Widget _actionBtn(IconData icon, String title, VoidCallback onTap) {
-    return GestureDetector(
+    return InkWell( // Changed from GestureDetector to InkWell for ripple effect
       onTap: onTap,
+      borderRadius: BorderRadius.circular(15),
       child: Container(
         width: 90,
         height: 60,
