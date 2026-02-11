@@ -7,4 +7,4 @@ router.post('/login', loginStudent);
 
 
 module.exports = router;
-module.exports = router;
+
