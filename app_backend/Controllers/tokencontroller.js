@@ -45,12 +45,10 @@ exports.createToken = async (req, res) => {
         message: "Queue is not active",
       });
     }
-    if (queue.startTime && now < queue.startTime) {
-      return res.status(400).json({
-        success: false,
-        message: "Queue has not started yet",
-      });
-    }
+    // Relaxed Start Time check to handle Timezone offsets
+    // If status is Active, we assume Admin wants it open.
+    // if (queue.startTime && now < queue.startTime) { ... } 
+
     if (queue.endTime && now >= queue.endTime) {
       // 1️⃣ Copy to History
       await QueueHistory.create({
@@ -76,16 +74,16 @@ exports.createToken = async (req, res) => {
       });
     }
 
-    // ✅ Capacity rule: max 30 (or queue.maxStudents) active tokens
-    const activeCount = await Token.countDocuments({
-      queueName,
-      status: { $in: ["waiting", "serving", "hold"] },
-    });
-    const capacity = Math.min(Number(queue.maxStudents || 30), 30);
-    if (activeCount >= capacity) {
+    // ✅ Capacity rule: max students allowed for the ENTIRE queue session
+    const totalTokens = await Token.countDocuments({ queueName });
+    
+    // Use queue.maxStudents if available, otherwise default to 30.
+    const capacity = Number(queue.maxStudents) || 30; 
+    
+    if (totalTokens >= capacity) {
       return res.status(409).json({
         success: false,
-        message: "Queue is full please wait",
+        message: "Queue is already full you are not join it", // ✅ Updated message as requested
       });
     }
 
@@ -109,8 +107,11 @@ exports.createToken = async (req, res) => {
       studentId,
       tokenNumber,
       studentsAhead,
+      studentsAhead,
       estimatedWaitingTime: studentsAhead * 5,
-      status: "pending", // ✅ Start as pending for admin approval
+      status: "waiting", // ✅ Start as waiting immediately
+      adminId: queue.adminId, // ✅ Save Admin ID for reports
+      serviceName: department || purpose, // ✅ Snapshot service name (department is often used as service)
     });
 
     // 6️⃣ Success response
@@ -134,8 +135,9 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
 
     // 🔹 Find student's token in THIS queue only
     const token = await Token.findOne({
+      queueName: queueName,
       studentId: studentId,
-      status: "waiting",
+      status: { $in: ["waiting", "serving", "hold"] },
     });
 
     if (!token) {
@@ -307,6 +309,7 @@ exports.markTokenMissed = async (req, res) => {
   }
 };
 
+// ✅ GET CURRENT TOKEN (Serving OR Next Waiting)
 exports.getCurrentToken = async (req, res) => {
   try {
     const { queueName } = req.params;
@@ -318,29 +321,40 @@ exports.getCurrentToken = async (req, res) => {
       });
     }
 
-    // ✅ Get current token (serving status or first waiting token)
+    // 1️⃣ Priority: Get token currently being SERVED
     let token = await Token.findOne({
       queueName,
       status: "serving",
     });
 
-    // ✅ Get counts even if no token is found
+    // 2️⃣ Fallback: If no one is serving, get the first WAITING token
+    if (!token) {
+      token = await Token.findOne({
+        queueName,
+        status: "waiting",
+      }).sort({ tokenNumber: 1 }); // Get the first one in line
+    }
+
+    // ✅ Get counts
     const totalCount = await Token.countDocuments({ queueName });
+    
     const completedCount = await Token.countDocuments({
       queueName,
       status: { $in: ["completed", "Completed"] },
+      // generatedAt: { $gte: startOfDay }, // Optional: Ensure it belongs to today's session if queue names are reused
     });
+
     const pendingCount = await Token.countDocuments({
       queueName,
-      status: "pending",
+      status: "pending", // ✅ Only count actual pending (unserved/missed) tokens matching the separate box logic
     });
 
     if (!token) {
       return res.status(200).json({
         success: true,
-        data: null, // No active token, but return counts
+        data: null, // No active token being served
         completedCount,
-        pendingCount,
+        pendingCount, // Now returns total incomplete tokens
         totalCount,
       });
     }
@@ -350,8 +364,6 @@ exports.getCurrentToken = async (req, res) => {
     const student = await Student.findById(token.studentId);
     const studentName = student ? student.name : "Unknown";
 
-    // No need to repeat counts here, they are calculated above
-
     res.status(200).json({
       success: true,
       data: {
@@ -359,6 +371,7 @@ exports.getCurrentToken = async (req, res) => {
         tokenNumber: token.tokenNumber,
         studentName: studentName,
         purpose: token.purpose,
+        status: token.status, // Return status so frontend knows if it's waiting or serving
         completedCount,
         pendingCount,
         totalCount,
@@ -387,7 +400,7 @@ exports.completeToken = async (req, res) => {
     // Update token status to completed
     const token = await Token.findByIdAndUpdate(
       tokenId,
-      { status: "completed" },
+      { status: "completed", completedAt: Date.now() }, // ✅ Set completedAt
       { new: true }
     );
 
@@ -548,9 +561,10 @@ exports.getHeldTokens = async (req, res) => {
 
 // ✅ NEXT TOKEN (skip hold tokens)
 // ✅ NEXT TOKEN (handle recalled tokens)
+// ✅ NEXT TOKEN (Move current to completed, pick next waiting/recalled)
 exports.nextToken = async (req, res) => {
   try {
-    const { queueName, currentTokenId, adminId } = req.body; // adminId is needed to fetch admin settings
+    const { queueName, currentTokenId, adminId } = req.body;
 
     if (!queueName || !adminId) {
       return res.status(400).json({
@@ -559,29 +573,51 @@ exports.nextToken = async (req, res) => {
       });
     }
 
-    let currentTokenNumber = 0;
-
-    // If current token exists, mark it as completed or update its status if recalled
+    // 1️⃣ Handle the CURRENT token (if one exists)
     if (currentTokenId) {
       const currentToken = await Token.findById(currentTokenId);
+      
       if (currentToken) {
-        currentTokenNumber = currentToken.tokenNumber;
-        if (currentToken.status === "serving" || currentToken.status === "waiting") {
-          await Token.findByIdAndUpdate(currentTokenId, {
-            status: "completed",
-            completedAt: Date.now(),
+        // 🔴 Case A: The token was just WAITING (shown in dashboard preview). 
+        // We do NOT complete it yet. We just move it to "serving".
+        if (currentToken.status === "waiting") {
+          const updated = await Token.findByIdAndUpdate(
+            currentTokenId,
+            { status: "serving", lastCalledAt: Date.now() },
+            { new: true }
+          );
+
+           // Get student name
+          const Student = require("../Models/registermodel.js");
+          const student = await Student.findById(updated.studentId);
+          const studentName = student ? student.name : "Unknown";
+
+          return res.status(200).json({
+            success: true,
+            message: "Starting to serve token",
+            data: {
+              tokenId: updated._id,
+              tokenNumber: updated.tokenNumber,
+              studentName: studentName,
+              purpose: updated.purpose,
+              status: updated.status,
+            },
           });
         }
-        // If it was a recalled token and is now being served, mark completed
-        if (currentToken.status === "recalled" && currentToken.recalledAt) {
-          await Token.findByIdAndUpdate(currentTokenId, {
+
+        // 🟢 Case B: The token was ALREADY "serving" or "recalled". Now we finish it.
+        if (currentToken.status === "serving" || currentToken.status === "recalled") {
+           await Token.findByIdAndUpdate(currentTokenId, {
             status: "completed",
-            completedAt: Date.now(),
+            completedAt: Date.now(), // ✅ Set completedAt
           });
         }
       }
     }
 
+    // 2️⃣ FIND THE *NEXT* TOKEN TO SERVE
+    // Only reach here if we completed the previous token OR if there was no current token to begin with.
+    
     // Fetch admin settings for recall wait time
     const Admin = require("../Models/adminmodel.js");
     const admin = await Admin.findById(adminId);
@@ -591,16 +627,14 @@ exports.nextToken = async (req, res) => {
         message: "Admin for this queue not found",
       });
     }
-    const missedTokenRecallWaitTimeMinutes = admin.missedTokenRecallWaitTimeMinutes || 10; // Default 10 min
-
+    const missedTokenRecallWaitTimeMinutes = admin.missedTokenRecallWaitTimeMinutes || 10;
     const now = Date.now();
 
-    // Find next available token: prioritize recalled tokens whose wait time has passed, then waiting tokens
+    // Find next available token: prioritize recalled tokens whose wait time has passed
     let nextToken = await Token.findOne({
       queueName,
       status: "recalled",
-      tokenNumber: { $gt: currentTokenNumber }, // Find tokens after current
-      recalledAt: { $lte: new Date(now - missedTokenRecallWaitTimeMinutes * 60 * 1000) }, // Wait time passed
+      recalledAt: { $lte: new Date(now - missedTokenRecallWaitTimeMinutes * 60 * 1000) },
     }).sort({ tokenNumber: 1 });
 
     if (!nextToken) {
@@ -608,7 +642,6 @@ exports.nextToken = async (req, res) => {
       nextToken = await Token.findOne({
         queueName,
         status: "waiting",
-        tokenNumber: { $gt: currentTokenNumber }, // Find tokens after current
       }).sort({ tokenNumber: 1 });
     }
 
@@ -619,7 +652,7 @@ exports.nextToken = async (req, res) => {
       });
     }
 
-    // Mark next token as serving and update lastCalledAt
+    // Mark next token as serving
     await Token.findByIdAndUpdate(nextToken._id, { status: "serving", lastCalledAt: Date.now() });
 
     // Get student name
@@ -635,9 +668,10 @@ exports.nextToken = async (req, res) => {
         tokenNumber: nextToken.tokenNumber,
         studentName: studentName,
         purpose: nextToken.purpose,
-        status: nextToken.status, // Return the status (serving or recalled)
+        status: nextToken.status,
       },
     });
+
   } catch (err) {
     console.error("Error in nextToken:", err);
     res.status(500).json({
@@ -663,17 +697,23 @@ exports.getRemainingStudents = async (req, res) => {
       });
     }
 
-    // 1️⃣ Find the first token being served (current token)
-    const currentToken = await Token.findOne({
+    // 1️⃣ Find the first serving token
+    const servingToken = await Token.findOne({
+      queueName,
+      status: "serving",
+    });
+
+    let remainingStudents = await Token.find({
       queueName,
       status: "waiting",
     }).sort({ tokenNumber: 1 });
 
-    // 2️⃣ Get all remaining waiting students (including current)
-    const remainingStudents = await Token.find({
-      queueName,
-      status: "waiting",
-    }).sort({ tokenNumber: 1 });
+    // ✅ If NO token is currently serving, the first waiting token is technically "Next/Current".
+    // The requirement says: "current serving or current token does not display in waiting".
+    // If dashboard shows Token 1 as "Current Token" (because it's next), we should HIDE it from Waiting List.
+    if (!servingToken && remainingStudents.length > 0) {
+       remainingStudents = remainingStudents.slice(1);
+    }
 
     // 3️⃣ Get student names and map to response
     const Student = require("../Models/registermodel");
@@ -719,7 +759,7 @@ exports.getStudentHistory = async (req, res) => {
 
     const tokens = await Token.find({
       studentId,
-      status: { $in: ['completed', 'cancelled', 'Completed', 'Cancelled'] },
+      status: { $in: ['completed', 'cancelled', 'Completed', 'Cancelled', 'pending', 'hold'] },
     })
       .sort({ updatedAt: -1 })
       .limit(100);
@@ -731,7 +771,7 @@ exports.getStudentHistory = async (req, res) => {
       queueName: t.queueName || 'N/A',
       tokenNumber: t.tokenNumber,
       waitingTimeMinutes: t.estimatedWaitingTime || 0,
-      status: t.status === 'completed' || t.status === 'Completed' ? 'Served' : 'Cancelled',
+      status: (t.status === 'completed' || t.status === 'Completed') ? 'Served' : (t.status === 'pending' ? 'Expired' : t.status),
     }));
 
     res.status(200).json({
@@ -757,7 +797,52 @@ exports.getCompletedToday = async (req, res) => {
         message: "queueName is required",
       });
     }
+// ✅ GET PENDING TOKENS (Unserved students after queue expiry)
+exports.getPendingTokens = async (req, res) => {
+  try {
+    const { queueName } = req.params;
 
+    if (!queueName) {
+      return res.status(400).json({
+        success: false,
+        message: "Queue name is required",
+      });
+    }
+
+    const pendingTokens = await Token.find({
+      queueName,
+      status: "pending", // ✅ Fetch only pending tokens
+    }).sort({ tokenNumber: 1 });
+
+    const Student = require("../Models/registermodel");
+    const pendingList = await Promise.all(
+      pendingTokens.map(async (t) => {
+        const student = await Student.findById(t.studentId);
+        return {
+           _id: t._id,
+          tokenNumber: t.tokenNumber,
+          studentId: {
+             name: student ? student.name : "Unknown",
+             email: student ? student.email : "",
+          },
+          purpose: t.purpose,
+          generatedAt: t.generatedAt,
+          status: t.status
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: pendingList,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
     // Get today's date range (start and end of day)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -768,11 +853,11 @@ exports.getCompletedToday = async (req, res) => {
     const completedTokens = await Token.find({
       queueName,
       status: { $in: ["completed", "Completed"] },
-      updatedAt: {
+      completedAt: { // ✅ Filter by completedAt for accuracy
         $gte: today,
         $lt: tomorrow,
       },
-    }).sort({ updatedAt: 1 });
+    }).sort({ completedAt: 1 }); // ✅ Sort by completedAt
 
     // Get student names
     const Student = require("../Models/registermodel");
@@ -785,7 +870,7 @@ exports.getCompletedToday = async (req, res) => {
           studentName: student ? student.name : "Unknown",
           purpose: token.purpose,
           department: token.department,
-          completedAt: token.updatedAt,
+          completedAt: token.completedAt, // ✅ Return completedAt
         };
       })
     );
@@ -898,6 +983,38 @@ exports.approveToken = async (req, res) => {
       return res.status(400).json({ success: false, message: "Token is not in pending state" });
     }
 
+    // 🔹 Grace Period Check (4 hours)
+    const Queue = require("../Models/create_queue_model");
+    const QueueHistory = require("../Models/queueHistoryModel");
+
+    // Try to find active queue first
+    let queue = await Queue.findOne({ queueName: token.queueName }).sort({ createdAt: -1 });
+
+    // If not active, check history (expired queue)
+    if (!queue) {
+      queue = await QueueHistory.findOne({ queueName: token.queueName }).sort({ createdAt: -1 });
+    }
+
+    if (queue && queue.endTime) {
+      const endTime = new Date(queue.endTime);
+      const now = new Date();
+      const gracePeriodEnd = new Date(endTime.getTime() + 4 * 60 * 60 * 1000); // 4 hours after end time
+
+      if (now > gracePeriodEnd) {
+         return res.status(400).json({
+           success: false,
+           message: "Grace period expired. Cannot serve this token after 4 hours of queue end time.",
+         });
+      }
+    } else {
+        // If queue record lost, maybe allow? Or block?
+        // Let's allow for now if queue is missing but token exists, or block?
+        // Safest is to allow if we can't find end time, or block if strictly needed.
+        // Given data retention, we should find it. If not, let's assume valid for manual override or token existence.
+        // But for "smart" system, let's log warning and proceed or fail.
+        // Let's proceed with a warning logic or just allow if queue missing (edge case).
+    }
+
     // Update status to waiting
     token.status = "waiting";
     await token.save();
@@ -936,6 +1053,143 @@ exports.rejectToken = async (req, res) => {
       success: true,
       message: "Token rejected",
       data: token
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ✅ GET HISTORY BY DATE (From TokenHistory)
+exports.getHistoryByDate = async (req, res) => {
+  try {
+    const { date, queueName } = req.query; // date in YYYY-MM-DD format
+
+    if (!date || !queueName) {
+      return res.status(400).json({
+        success: false,
+        message: "Date and Queue Name are required",
+      });
+    }
+
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const TokenHistory = require("../Models/tokenHistoryModel");
+    const Student = require("../Models/registermodel");
+
+    // Find tokens in history that match the queue and date (using created/generated or completed date)
+    // We'll prioritize 'completedAt' if available, otherwise 'generatedAt'
+    // BUT user wants to search by date. Let's assume we look for tokens completed OR archived on that date.
+    // Ideally, history logs "Daily" activity.
+    const historyTokens = await TokenHistory.find({
+      queueName: queueName,
+      $or: [
+        { completedAt: { $gte: startOfDay, $lte: endOfDay } },
+        { archivedAt: { $gte: startOfDay, $lte: endOfDay } } 
+      ]
+    }).sort({ tokenNumber: 1 });
+
+    const results = await Promise.all(historyTokens.map(async (t) => {
+        const student = await Student.findById(t.studentId);
+        return {
+            tokenNumber: t.tokenNumber,
+            studentName: student ? student.name : "Unknown",
+            purpose: t.purpose,
+            status: t.status,
+            completedAt: t.completedAt || t.archivedAt,
+        };
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: results.length,
+      data: results,
+    });
+
+  } catch (err) {
+    console.error("Error fetching history:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// ✅ Get pending token count by Admin ID (when no active queue)
+exports.getPendingCountByAdmin = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    if (!adminId) return res.status(400).json({ success: false, message: "Admin ID required" });
+
+    // Ensure adminId is treated as ObjectId to avoid mismatch if stored as ObjectId
+    const mongoose = require("mongoose");
+    let query = { status: "pending" };
+    try {
+        query.adminId = new mongoose.Types.ObjectId(adminId);
+    } catch(e) {
+        query.adminId = adminId;
+    }
+
+    // Try finding by ObjectId first, fallback to string if 0 (or just check carefully how tokens store adminId)
+    // Tokens store adminId reference.
+    let count = await Token.countDocuments(query);
+    if (count === 0 && typeof query.adminId !== 'string') {
+        // Fallback to string check just in case
+        count = await Token.countDocuments({ adminId: adminId, status: "pending" });
+    }
+
+    res.status(200).json({ success: true, count });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ✅ Get pending tokens list by Admin ID
+exports.getPendingTokensByAdmin = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    if (!adminId) return res.status(400).json({ success: false, message: "Admin ID required" });
+
+    const mongoose = require("mongoose");
+    let query = { status: "pending" };
+    try {
+        query.adminId = new mongoose.Types.ObjectId(adminId);
+    } catch(e) {
+        query.adminId = adminId;
+    }
+
+    let pendingTokens = await Token.find(query).sort({ generatedAt: 1 });
+    
+    // Fallback if empty and ID type might be issue
+    if (pendingTokens.length === 0 && typeof query.adminId !== 'string') {
+         pendingTokens = await Token.find({ adminId: adminId, status: "pending" }).sort({ generatedAt: 1 });
+    }
+
+    const Student = require("../Models/registermodel");
+    const pendingList = await Promise.all(
+      pendingTokens.map(async (t) => {
+        const student = await Student.findById(t.studentId);
+        return {
+           _id: t._id,
+          tokenNumber: t.tokenNumber,
+          queueName: t.queueName,
+          studentId: {
+             name: student ? student.name : "Unknown",
+             email: student ? student.email : "",
+          },
+          purpose: t.purpose,
+          generatedAt: t.generatedAt,
+          status: t.status
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: pendingList,
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

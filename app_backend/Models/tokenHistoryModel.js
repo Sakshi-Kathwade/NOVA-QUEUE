@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const tokenSchema = new mongoose.Schema({
+const tokenHistorySchema = new mongoose.Schema({
   queueId: { type: mongoose.Schema.Types.ObjectId, ref: 'Queue', required: false },
   adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: false },
   studentId: {
@@ -10,7 +10,6 @@ const tokenSchema = new mongoose.Schema({
   },
   tokenNumber: { type: Number, required: true },
   serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: false },
-  serviceName: { type: String, required: false }, // Snapshot for permanent history
   counterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Counter', required: false },
   queueName: { type: String, required: false },
   department: { type: String, required: false },
@@ -19,17 +18,18 @@ const tokenSchema = new mongoose.Schema({
   estimatedWaitingTime: { type: Number, required: false },
   status: {
     type: String,
-    enum: ['pending', 'waiting', 'serving', 'hold', 'completed', 'cancelled', 'recalled', 'Waiting', 'Calling', 'Completed', 'Cancelled'],
+    enum: ['pending', 'waiting', 'serving', 'hold', 'completed', 'cancelled', 'recalled', 'Waiting', 'Calling', 'Completed', 'Cancelled', 'Expired'],
     default: 'pending',
   },
-  generatedAt: { type: Date, default: Date.now },
+  generatedAt: { type: Date },
   calledAt: { type: Date },
   completedAt: { type: Date },
   cancelledAt: { type: Date },
   recallAttempts: { type: Number, default: 0 },
   lastCalledAt: { type: Date },
   recalledAt: { type: Date },
-  originalTokenNumberForRecall: { type: Number }, // To track original position for recall logic
+  originalTokenNumberForRecall: { type: Number },
+  archivedAt: { type: Date, default: Date.now }, // Field to track when it was moved to history
 }, { strict: false });
 
-module.exports = mongoose.models.Token || mongoose.model('Token', tokenSchema);
+module.exports = mongoose.models.TokenHistory || mongoose.model('TokenHistory', tokenHistorySchema);

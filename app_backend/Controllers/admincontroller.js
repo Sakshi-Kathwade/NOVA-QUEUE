@@ -475,11 +475,49 @@ const getCounterPerformance = async (req, res) => {
     const { adminId } = req.params;
     
     const performance = await Token.aggregate([
-      { $match: { adminId: new mongoose.Types.ObjectId(adminId), status: { $in: ['completed', 'Completed'] } } },
-      { $group: { _id: "$counterId", count: { $sum: 1 } } },
-      { $lookup: { from: 'counters', localField: '_id', foreignField: '_id', as: 'counter' } },
+      { 
+        $match: { 
+          adminId: new mongoose.Types.ObjectId(adminId), 
+          status: { $in: ['completed', 'Completed'] },
+          completedAt: { $exists: true }, // Ensure completion time exists
+          generatedAt: { $exists: true }  // Ensure generation time exists
+        } 
+      },
+      {
+        $project: {
+          counterId: 1,
+          waitTime: { $subtract: ["$completedAt", "$generatedAt"] } // Calculate wait time in ms
+        }
+      },
+      { 
+        $group: { 
+          _id: "$counterId", 
+          count: { $sum: 1 }, 
+          totalWaitTime: { $sum: "$waitTime" }
+        } 
+      },
+      { 
+        $lookup: { 
+          from: 'counters', 
+          localField: '_id', 
+          foreignField: '_id', 
+          as: 'counter' 
+        } 
+      },
       { $unwind: { path: "$counter", preserveNullAndEmptyArrays: true } },
-      { $project: { counterName: { $ifNull: ["$counter.counterName", "Unknown"] }, count: 1 } }
+      { 
+        $project: { 
+          counterName: { $ifNull: ["$counter.counterName", "Unassigned"] }, 
+          count: 1,
+          avgWaitTimeMinutes: { 
+            $cond: [ 
+              { $eq: ["$count", 0] }, 
+              0, 
+              { $round: [ { $divide: [ { $divide: ["$totalWaitTime", "$count"] }, 60000 ] }, 0 ] } // Convert ms to min and round
+            ] 
+          }
+        } 
+      }
     ]);
 
     return res.status(200).json({ success: true, performance });
@@ -529,11 +567,37 @@ const getDailyCrowdDetails = async (req, res) => {
     const days = parseInt(req.query.days) || 7;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
 
     const dailyCrowd = await Token.aggregate([
-      { $match: { adminId: new mongoose.Types.ObjectId(adminId), generatedAt: { $gte: startDate } } },
-      { $project: { date: { $dateToString: { format: "%Y-%m-%d", date: "$generatedAt" } } } },
-      { $group: { _id: "$date", count: { $sum: 1 } } },
+      { 
+        $match: { 
+          adminId: new mongoose.Types.ObjectId(adminId), 
+          generatedAt: { $gte: startDate } 
+        } 
+      },
+      { 
+        $project: { 
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$generatedAt" } },
+          status: 1
+        } 
+      },
+      { 
+        $group: { 
+          _id: "$date", 
+          generated: { $sum: 1 },
+          served: { 
+            $sum: { 
+              $cond: [ { $in: ["$status", ["completed", "Completed"]] }, 1, 0 ] 
+            } 
+          },
+          pending: { 
+            $sum: { 
+              $cond: [ { $in: ["$status", ["pending", "waiting", "waiting", "serving", "hold"]] }, 1, 0 ] 
+            } 
+          }
+        } 
+      },
       { $sort: { _id: 1 } }
     ]);
 
@@ -544,40 +608,292 @@ const getDailyCrowdDetails = async (req, res) => {
 };
 
 // =================================== HISTORY FUNCTIONS ===================================
+// =================================== HISTORY FUNCTIONS ===================================
+// =================================== HISTORY FUNCTIONS ===================================
 const getQueueHistory = async (req, res) => {
   try {
     const { adminId } = req.params;
-    const { date } = req.query; // Optional date filter
+    let { startDate, endDate, serviceId, status, counterId, search } = req.query;
 
-    let filter = { adminId, status: { $in: ['completed', 'Completed', 'cancelled', 'Cancelled', 'hold', 'Hold'] } };
-
-    if (date) {
-      const selectedDate = new Date(date);
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      filter.$or = [
-        { completedAt: { $gte: startOfDay, $lte: endOfDay } },
-        { cancelledAt: { $gte: startOfDay, $lte: endOfDay } },
-      ];
+    if (!mongoose.Types.ObjectId.isValid(adminId)) {
+        return res.status(400).json({ success: false, message: "Invalid Admin ID" });
     }
 
-    const history = await Token.find(filter)
-      .populate('serviceId', 'serviceName') // Populate service details
-      .populate('queueId', 'queueName') // Populate queue details
-      .populate('counterId', 'counterName') // Populate counter details
-      .populate('staffId', 'name email') // Populate staff details
-      .populate('studentId', 'name email') // Populate student (Register) details
-      .sort({ generatedAt: -1 });
+    // 1. Context Match (For Summary Stats - Total, Served, Pending for the day/service)
+    // This ignores the 'status' filter so that the summary cards show the BIG PICTURE.
+    let contextMatch = {
+      adminId: new mongoose.Types.ObjectId(adminId),
+    };
 
-    return res.status(200).json({ success: true, message: "Queue history data fetched successfully", history });
+    // Date Filter (Applies to both Summary and List)
+    if (startDate || endDate) {
+      let dateFilter = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (!isNaN(start.getTime())) dateFilter.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+         if (!isNaN(end.getTime())) dateFilter.$lte = end;
+      }
+      if (Object.keys(dateFilter).length > 0) {
+          contextMatch.generatedAt = dateFilter;
+      }
+    }
+
+    // Service Filter (Applies to both)
+    if (serviceId && serviceId !== 'All') {
+       if (mongoose.Types.ObjectId.isValid(serviceId)) {
+           contextMatch.serviceId = new mongoose.Types.ObjectId(serviceId);
+       }
+    }
+
+    // Counter Filter (Applies to both)
+    if (counterId && counterId !== 'All') {
+       if (mongoose.Types.ObjectId.isValid(counterId)) {
+           contextMatch.counterId = new mongoose.Types.ObjectId(counterId);
+       }
+    }
+
+    // 2. Calculate Summary Stats (Aggregation on Context Match)
+    // We do this separately so filtering by "Pending" in the list doesn't hide "Total Served" count.
+    const summaryPipeline = [
+        { $match: contextMatch },
+        {
+            $group: {
+                _id: null,
+                totalTokens: { $sum: 1 },
+                totalServed: { 
+                    $sum: { 
+                        $cond: [{ $in: [{ $toLower: "$status" }, ["completed"]] }, 1, 0] 
+                    } 
+                },
+                pendingTokens: { 
+                    $sum: { 
+                        $cond: [{ $in: [{ $toLower: "$status" }, ["pending", "waiting", "hold", "process"]] }, 1, 0] 
+                    } 
+                },
+                uniqueQueues: { $addToSet: "$queueName" },
+                totalWaitTimeMs: {
+                    $sum: {
+                        $cond: [
+                            { $and: [
+                                { $in: [{ $toLower: "$status" }, ["completed"]] },
+                                { $ne: ["$generatedAt", null] },
+                                { $ne: ["$completedAt", null] }
+                            ]},
+                            { $subtract: ["$completedAt", "$generatedAt"] },
+                            0
+                        ]
+                    }
+                },
+                servedCountForAvg: {
+                    $sum: {
+                         $cond: [
+                            { $and: [
+                                { $in: [{ $toLower: "$status" }, ["completed"]] },
+                                { $ne: ["$generatedAt", null] },
+                                { $ne: ["$completedAt", null] }
+                            ]},
+                            1,
+                            0
+                        ]
+                    }
+                }
+            }
+        }
+    ];
+
+    const summaryResult = await Token.aggregate(summaryPipeline);
+    const stats = summaryResult[0] || { 
+        totalTokens: 0, 
+        totalServed: 0, 
+        pendingTokens: 0, 
+        uniqueQueues: [], 
+        totalWaitTimeMs: 0, 
+        servedCountForAvg: 0 
+    };
+
+    const averageWaitingTimeMinutes = stats.servedCountForAvg > 0 
+      ? Math.round((stats.totalWaitTimeMs / stats.servedCountForAvg) / 60000) 
+      : 0;
+
+
+    // 3. List Match (Applies Specific Status Filter)
+    let listMatch = { ...contextMatch };
+    
+    // Apply Status Filter ONLY to the List
+    if (status && status !== 'All') {
+      if (status === 'Pending') {
+         listMatch.status = { $in: ['pending', 'waiting', 'process', 'hold'] };
+      } else if (status === 'Completed') {
+         listMatch.status = { $in: ['completed', 'Completed'] };
+      } else {
+         listMatch.status = status;
+      }
+    }
+
+    // 4. List Aggregation Pipeline
+    const pipeline = [
+      { $match: listMatch },
+      // Lookup Student
+      {
+        $lookup: {
+          from: 'registers',
+          localField: 'studentId',
+          foreignField: '_id',
+          as: 'student'
+        }
+      },
+      { $unwind: { path: '$student', preserveNullAndEmptyArrays: true } },
+      
+      // Lookup Service
+      {
+        $lookup: {
+          from: 'services',
+          localField: 'serviceId',
+          foreignField: '_id',
+          as: 'service'
+        }
+      },
+      { $unwind: { path: '$service', preserveNullAndEmptyArrays: true } },
+
+      // Lookup Queue
+      {
+        $lookup: {
+          from: 'queues',
+          localField: 'queueId',
+          foreignField: '_id',
+          as: 'queue'
+        }
+      },
+      { $unwind: { path: '$queue', preserveNullAndEmptyArrays: true } },
+
+      // Lookup Counter
+      {
+        $lookup: {
+          from: 'counters',
+          localField: 'counterId',
+          foreignField: '_id',
+          as: 'counter'
+        }
+      },
+      { $unwind: { path: '$counter', preserveNullAndEmptyArrays: true } },
+    ];
+
+    // Search Filter
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'student.name': searchRegex },
+            { 'student.email': searchRegex },
+            { 'queue.queueName': searchRegex },
+            { 'queueName': searchRegex }, // Search by snapshotted name too
+            { $expr: { $regexMatch: { input: { $toString: "$tokenNumber" }, regex: search, options: "i" } } }
+          ]
+        }
+      });
+    }
+
+    // Sort
+    pipeline.push({ $sort: { generatedAt: -1 } });
+
+    // Execute List Query
+    const history = await Token.aggregate(pipeline);
+
+    // Post-process for permanent history (Fallback to snapshotted names)
+    history.forEach(token => {
+       if (!token.queue) token.queue = {};
+       if (!token.queue.queueName) token.queue.queueName = token.queueName || "Deleted Queue";
+       
+       if (!token.service) token.service = {};
+       if (!token.service.serviceName) token.service.serviceName = token.serviceName || token.department || "General";
+    });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: "Queue history data fetched successfully", 
+      history,
+      summary: {
+        totalTokens: stats.totalTokens,
+        totalServed: stats.totalServed,
+        pendingTokens: stats.pendingTokens,
+        averageWaitingTimeMinutes,
+        totalQueues: stats.uniqueQueues.length
+      }
+    });
+
   } catch (error) {
+    console.error("History Error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: `Server Error: ${error.message}`
     });
   }
+};
+
+// ✅ GET HISTORY DATES (for Calendar Highlighting)
+const getHistoryDates = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    
+    // Aggregate to find unique dates from generatedAt or completedAt
+    const dates = await Token.aggregate([
+      { 
+        $match: { 
+          adminId: new mongoose.Types.ObjectId(adminId) 
+        } 
+      },
+      {
+        $project: {
+          dateVal: { $ifNull: ["$completedAt", "$generatedAt"] }
+        }
+      },
+      {
+         $project: {
+             // Format date as YYYY-MM-DD
+            day: { $dateToString: { format: "%Y-%m-%d", date: "$dateVal" } }
+         }
+      },
+      {
+         $group: {
+             _id: "$day"
+         }
+      },
+      { $sort: { _id: -1 } }
+    ]);
+
+    // Extract just the date strings
+    const dateList = dates.map(d => d._id).filter(d => d != null);
+
+    return res.status(200).json({
+      success: true,
+      dates: dateList
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ DELETE HISTORY TOKEN
+const deleteHistoryToken = async (req, res) => {
+    try {
+        const { tokenId } = req.params;
+        const deleted = await Token.findByIdAndDelete(tokenId);
+        
+        if (!deleted) {
+            return res.status(404).json({ success: false, message: "Token not found" });
+        }
+
+        return res.status(200).json({ success: true, message: "History record deleted successfully" });
+    } catch(error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
 };
 
 // =================================== SETTINGS - SERVICES FUNCTIONS ===================================
@@ -770,4 +1086,6 @@ module.exports = {
   deleteCounter,
   getServiceWiseData,
   getDailyCrowdDetails,
+  getHistoryDates,
+  deleteHistoryToken
 };

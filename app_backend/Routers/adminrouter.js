@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { adminLogin, createAdmin, changeAdminPassword, deleteAdmin, getAdminProfile, updateAdminProfile, uploadAdminProfile, getAdminQueueSettings, updateAdminQueueSettings, getReportsSummary, getCounterPerformance, getBusyHours, getQueueHistory, getServices, createService, updateService, deleteService, getCounters, createCounter, updateCounter, deleteCounter, getServiceWiseData, getDailyCrowdDetails } = require('../Controllers/admincontroller');
+const { adminLogin, createAdmin, changeAdminPassword, deleteAdmin, getAdminProfile, updateAdminProfile, uploadAdminProfile, getAdminQueueSettings, updateAdminQueueSettings, getReportsSummary, getCounterPerformance, getBusyHours, getQueueHistory, getServices, createService, updateService, deleteService, getCounters, createCounter, updateCounter, deleteCounter, getServiceWiseData, getDailyCrowdDetails, getHistoryDates, deleteHistoryToken } = require('../Controllers/admincontroller');
 
 // Admin Authentication Routes
 router.post('/adminLogin', adminLogin);
@@ -19,6 +19,8 @@ router.get('/admin/reports/daily-crowd/:adminId', getDailyCrowdDetails);
 
 // Admin History Routes
 router.get('/admin/history/:adminId', getQueueHistory);
+router.get('/admin/history-dates/:adminId', getHistoryDates);
+router.delete('/admin/history-token/:tokenId', deleteHistoryToken);
 
 // Admin Settings - Queue Configuration
 router.get('/admin/settings/queue/:adminId', getAdminQueueSettings);

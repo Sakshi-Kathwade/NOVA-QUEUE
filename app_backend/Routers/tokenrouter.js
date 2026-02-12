@@ -37,4 +37,8 @@ router.get("/student/pending/:studentId", tokenController.getPendingTokensForStu
 router.put("/approvetoken", tokenController.approveToken);
 router.put("/rejecttoken", tokenController.rejectToken);
 
+// ✅ Pending Tokens by Admin (when no active queue)
+router.get("/pendingcount/:adminId", tokenController.getPendingCountByAdmin);
+router.get("/pendingtokens/admin/:adminId", tokenController.getPendingTokensByAdmin);
+
 module.exports = router;
