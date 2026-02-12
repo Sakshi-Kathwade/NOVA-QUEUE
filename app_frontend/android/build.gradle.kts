@@ -1,13 +1,15 @@
-buildscript 
+plugins {
+    id("com.google.gms.google-services") version "4.4.4" apply false
+}
     repositories {
         google()
         mavenCentral()  // Already present, but ensure it's prioritized
         // Add this if needed: maven { url = uri("https://repo1.maven.org/maven2/") }
     }
-    dependencies {
+
+      dependencies {
         classpath("com.google.gms:google-services:4.4.4")
     }
-
 allprojects {
     repositories {
         google()

@@ -49,6 +49,7 @@ class _ReportScreenState extends State<ReportScreen> {
       _fetchServiceWise(),
       _fetchCounterPerformance(),
       _fetchBusyHours(),
+      _fetchActiveQueueStatus(), // ✅ Check active queue status
     ]);
     if (mounted) setState(() => _isLoading = false);
   }
@@ -165,6 +166,40 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
+  // ... existing methods
+
+  Future<void> _fetchActiveQueueStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/activequeue/${widget.adminId}"),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        bool isActive = false;
+        if (data['success'] == true && data['queueName'] != null) {
+           final queueData = data['data'];
+           if (queueData != null && queueData['endTime'] != null) {
+             final end = DateTime.parse(queueData['endTime']).toLocal();
+             if (DateTime.now().isBefore(end)) {
+               isActive = true;
+             }
+           }
+        }
+        
+        if (!isActive) {
+          if (mounted) {
+            setState(() {
+              _waitingStudents = 0; // Reset waiting if no active queue
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error checking active queue: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -191,7 +226,46 @@ class _ReportScreenState extends State<ReportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSummaryGrid(),
+                   LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.start,
+                        children: [
+                          _summaryCard(
+                            Translations.translate('total_generated', _currentLanguage),
+                            _totalTokensGenerated.toString(),
+                            Icons.confirmation_number,
+                            Colors.blue,
+                            width,
+                          ),
+                          _summaryCard(
+                            Translations.translate('completed_today', _currentLanguage),
+                            _completedServicesToday.toString(),
+                            Icons.check_circle,
+                            Colors.green,
+                            width,
+                          ),
+                          _summaryCard(
+                            Translations.translate('students_visited', _currentLanguage),
+                            _totalStudentsVisited.toString(),
+                            Icons.people,
+                            Colors.orange,
+                            width,
+                          ),
+                          _summaryCard(
+                            Translations.translate('waiting_now', _currentLanguage),
+                            _waitingStudents.toString(),
+                            Icons.hourglass_top,
+                            Colors.red,
+                            width,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                   const SizedBox(height: 24),
                   _buildSectionTitle(
                     Translations.translate('daily_progress', _currentLanguage),
@@ -223,50 +297,24 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  // Helper to build responsive summary grid
-  Widget _buildSummaryGrid() {
-    final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = width > 600 ? 4 : 2;
-    final childAspectRatio = width > 600 ? 1.5 : 1.3;
+  Widget _summaryCard(String title, String value, IconData icon, Color color, double parentWidth) {
+    // Responsive width: 
+    // If width > 600, show 4 cards (approx 23% each)
+    // If width > 350, show 2 cards (approx 47% each)
+    // Else 1 card (100%)
+    double cardWidth;
+    if (parentWidth > 800) {
+      cardWidth = (parentWidth - 36) / 4; // 3 gaps of 12
+    } else if (parentWidth > 400) {
+      cardWidth = (parentWidth - 12) / 2; // 1 gap of 12
+    } else {
+      cardWidth = parentWidth;
+    }
 
-    return GridView.count(
-      crossAxisCount: crossAxisCount,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: childAspectRatio,
-      children: [
-        _summaryCard(
-          Translations.translate('total_generated', _currentLanguage),
-          _totalTokensGenerated.toString(),
-          Icons.confirmation_number,
-          Colors.blue,
-        ),
-        _summaryCard(
-          Translations.translate('completed_today', _currentLanguage),
-          _completedServicesToday.toString(),
-          Icons.check_circle,
-          Colors.green,
-        ),
-        _summaryCard(
-          Translations.translate('students_visited', _currentLanguage),
-          _totalStudentsVisited.toString(),
-          Icons.people,
-          Colors.orange,
-        ),
-        _summaryCard(
-          Translations.translate('waiting_now', _currentLanguage),
-          _waitingStudents.toString(),
-          Icons.hourglass_top,
-          Colors.red,
-        ),
-      ],
-    );
-  }
-
-  Widget _summaryCard(String title, String value, IconData icon, Color color) {
     return Container(
+      width: cardWidth,
+      // height: 100, // Fixed height or dynamic
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -278,34 +326,33 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 20, color: color),
+                Icon(icon, size: 24, color: color),
                 const SizedBox(width: 8),
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               title,
               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

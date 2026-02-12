@@ -63,6 +63,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String? startTime; // ✅ Start time of the queue
   String? endTime; // ✅ End time of the queue
 
+  int? maxStudents; // ✅ Max students for progress bar
+  Timer? _expireCheckTimer; // ✅ Timer to check for queue expiry
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +78,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     fetchLiveQueueData(); // ✅ Fetch live queue data
     startPolling(); // ✅ Start real-time polling
     startQueuePolling(); // ✅ Start queue polling to detect changes
+    startExpiryCheck(); // ✅ Start expiry check
   }
 
   // Fetch admin profile picture and role from backend
@@ -115,6 +119,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void dispose() {
     _pollTimer?.cancel(); // ✅ Clean up timer
     _queuePollTimer?.cancel(); // ✅ Clean up queue timer
+    _expireCheckTimer?.cancel(); // ✅ Clean up expiry timer
     super.dispose();
   }
 
@@ -131,6 +136,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
           final newQueueName = jsonData["queueName"] as String;
           final queueData = jsonData["data"];
 
+          // Check if queue is expired
+          bool isExpired = false;
+          if (queueData != null && queueData["endTime"] != null) {
+             final end = DateTime.parse(queueData["endTime"]).toLocal();
+             if (DateTime.now().isAfter(end)) {
+               isExpired = true;
+             }
+          }
+
+          if (isExpired) {
+             setState(() {
+              queueName = null;
+              queueId = null;
+              queueStatus = "N/A";
+              liveQueueData = [];
+              maxStudents = null;
+             });
+             return;
+          }
+
           // ✅ Only update if queue name changed (to avoid unnecessary rebuilds)
           if (queueName != newQueueName) {
             setState(() {
@@ -142,6 +167,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
               queueStatus = queueData != null && queueData["status"] != null
                   ? queueData["status"] as String
                   : "N/A";
+              
+              // ✅ Fetch max students
+              if (queueData != null && queueData["maxStudents"] != null) {
+                 maxStudents = queueData["maxStudents"] is int 
+                    ? queueData["maxStudents"] 
+                    : int.tryParse(queueData["maxStudents"].toString());
+              }
+
               // ✅ Fetch start and end times
               if (queueData != null &&
                   queueData["startTime"] != null &&
@@ -193,6 +226,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           queueId = null;
           queueStatus = "N/A";
           liveQueueData = [];
+          maxStudents = null;
         });
       }
     } catch (e) {
@@ -208,44 +242,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
     });
   }
 
+  /// ✅ Start expiry check (every 30 seconds)
+  void startExpiryCheck() {
+    _expireCheckTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      if (queueName != null) {
+        // Force refresh to check expiry
+        fetchQueueName();
+      }
+    });
+  }
+
   /// ✅ REAL-TIME: Fetch dashboard data (waiting count, current token, completed today)
   Future<void> fetchDashboardData() async {
-    // ✅ If no active queue, fetch ONLY pending count (stateless) and reset others
+    // ✅ If no active queue, reset data
     if (queueName == null || queueName!.isEmpty) {
-      if (adminId != null) {
-        try {
-          final pendingResponse = await http.get(
-            Uri.parse("${ApiConfig.baseUrl}/pendingcount/$adminId"),
-          );
-          if (pendingResponse.statusCode == 200) {
-            final data = json.decode(pendingResponse.body);
-            if (mounted) {
-              setState(() {
-                pendingCount = data['count'] ?? 0;
-                waitingCount = 0;
-                currentToken = "N/A";
-                completedToday = 0;
-                averageWaitingTime = 0;
-              });
-            }
-          }
-        } catch (e) {
-          debugPrint("Error fetching pending count: $e");
-        }
-      } else {
-         setState(() {
+        setState(() {
           waitingCount = 0;
           currentToken = "N/A";
           completedToday = 0;
-          pendingCount = 0;
+          pendingCount = 0; // Reset pending as well if queue is finished
           averageWaitingTime = 0;
         });
-      }
       return;
     }
 
     try {
-      // Fetch waiting
+      // Fetch waiting count
       // count
       final waitingResponse = await http.get(
         Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$queueName"),
@@ -648,6 +670,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               screen: CurrentTokenScreen(
                 queueName: queueName ?? "",
                 adminId: adminId,
+                maxStudents: maxStudents, // ✅ Pass maxStudents
               ),
             ),
             _drawerItem(
@@ -725,7 +748,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               value: currentToken,
               icon: Icons.confirmation_number,
               color: Colors.blue,
-              navigateTo: CurrentTokenScreen(queueName: queueName ?? ""),
+              navigateTo: CurrentTokenScreen(
+                queueName: queueName ?? "",
+                maxStudents: maxStudents, // ✅ Pass maxStudents
+              ),
             ),
 
             _dashboardCard(
