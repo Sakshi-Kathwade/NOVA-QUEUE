@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../services/api_config.dart';
+
 class JoinQueueScreen extends StatefulWidget {
   final String studentId; // ✅ Auto-filled from login (userId from backend)
 
@@ -51,7 +53,7 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
   // 🔹 FETCH QUEUES
   Future<void> fetchQueues() async {
     try {
-      final res = await http.get(Uri.parse("http://localhost:8000/api/queue"));
+      final res = await http.get(Uri.parse("${ApiConfig.baseUrl}/queue"));
       final decoded = jsonDecode(res.body);
 
       if (res.statusCode == 200 && decoded["data"] != null) {
@@ -77,7 +79,7 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:8000/api/token"),
+        Uri.parse("${ApiConfig.baseUrl}/token"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "queueName": selectedQueue,

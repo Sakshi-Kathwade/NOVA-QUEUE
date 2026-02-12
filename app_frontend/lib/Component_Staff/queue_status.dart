@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import '../services/api_config.dart';
 
 class QueueStatus extends StatefulWidget {
   final String? adminId;
@@ -56,7 +57,7 @@ class _QueueStatusState extends State<QueueStatus> {
     try {
       // ✅ Fetch active queue instead of all queues
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/activequeue/${widget.adminId ?? ''}"),
+        Uri.parse("${ApiConfig.baseUrl}/activequeue/${widget.adminId ?? ''}"),
       );
       final data = jsonDecode(response.body);
 
@@ -93,7 +94,7 @@ class _QueueStatusState extends State<QueueStatus> {
     try {
       // Fetch waiting students count
       final waitingResponse = await http.get(
-        Uri.parse("http://localhost:8000/api/remainingtoken/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$queueName"),
       );
 
       if (waitingResponse.statusCode == 200) {
@@ -106,7 +107,7 @@ class _QueueStatusState extends State<QueueStatus> {
 
       // Fetch current token and completed count
       final tokenResponse = await http.get(
-        Uri.parse("http://localhost:8000/api/currenttoken/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/currenttoken/$queueName"),
       );
 
       if (tokenResponse.statusCode == 200) {
@@ -137,7 +138,7 @@ class _QueueStatusState extends State<QueueStatus> {
   String _formatTime(String? isoTime) {
     if (isoTime == null || isoTime.isEmpty) return "--";
     try {
-      final dateTime = DateTime.parse(isoTime);
+      final dateTime = DateTime.parse(isoTime).toLocal(); // ✅ Convert to local time
       return DateFormat('hh:mm a').format(dateTime); // Format: 09:30 AM
     } catch (e) {
       return isoTime; // Return as is if parsing fails
@@ -153,7 +154,7 @@ class _QueueStatusState extends State<QueueStatus> {
   Future<void> updateQueueStatus(bool value) async {
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/queuestatus/${queueData!["_id"]}"),
+        Uri.parse("${ApiConfig.baseUrl}/queuestatus/${queueData!["_id"]}"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"status": value ? "Active" : "Inactive"}),
       );

@@ -20,7 +20,7 @@ import 'pending_student.dart';
 import 'waiting_card.dart';
 import 'queue_preview.dart';
 import 'admin_live_queue.dart';
-import 'history.dart';
+import 'admin_history.dart';
 import '../screen/login.dart';
 import '../screen/home.dart';
 import '../services/language_service.dart';
@@ -60,6 +60,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String? _adminName; // ✅ Admin name fetched from backend
   String? _adminProfilePictureUrl; // Admin profile picture URL
   String? _adminRole; // Admin role fetched from backend
+  String? startTime; // ✅ Start time of the queue
+  String? endTime; // ✅ End time of the queue
 
   @override
   void initState() {
@@ -140,7 +142,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
               queueStatus = queueData != null && queueData["status"] != null
                   ? queueData["status"] as String
                   : "N/A";
+              // ✅ Fetch start and end times
+              if (queueData != null &&
+                  queueData["startTime"] != null &&
+                  queueData["endTime"] != null) {
+                try {
+                  final start = DateTime.parse(
+                    queueData["startTime"],
+                  ).toLocal();
+                  final end = DateTime.parse(queueData["endTime"]).toLocal();
+                  String format(DateTime dt) {
+                    int hour = dt.hour;
+                    String ampm = hour >= 12 ? "PM" : "AM";
+                    hour = hour % 12;
+                    if (hour == 0) hour = 12;
+                    return "${hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} $ampm";
+                  }
+
+                  startTime = format(start);
+                  endTime = format(end);
+                } catch (e) {
+                  startTime = null;
+                  endTime = null;
+                }
+              } else {
+                startTime = null;
+                endTime = null;
+              }
             });
+
             // ✅ Refresh dashboard data when queue changes
             fetchDashboardData();
             fetchLiveQueueData(); // ✅ Fetch live queue data
@@ -180,20 +210,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   /// ✅ REAL-TIME: Fetch dashboard data (waiting count, current token, completed today)
   Future<void> fetchDashboardData() async {
-    // ✅ Don't fetch if no active queue
+    // ✅ If no active queue, fetch ONLY pending count (stateless) and reset others
     if (queueName == null || queueName!.isEmpty) {
-      setState(() {
-        waitingCount = 0;
-        currentToken = "N/A";
-        completedToday = 0;
-        pendingCount = 0;
-        averageWaitingTime = 0;
-      });
+      if (adminId != null) {
+        try {
+          final pendingResponse = await http.get(
+            Uri.parse("${ApiConfig.baseUrl}/pendingcount/$adminId"),
+          );
+          if (pendingResponse.statusCode == 200) {
+            final data = json.decode(pendingResponse.body);
+            if (mounted) {
+              setState(() {
+                pendingCount = data['count'] ?? 0;
+                waitingCount = 0;
+                currentToken = "N/A";
+                completedToday = 0;
+                averageWaitingTime = 0;
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint("Error fetching pending count: $e");
+        }
+      } else {
+         setState(() {
+          waitingCount = 0;
+          currentToken = "N/A";
+          completedToday = 0;
+          pendingCount = 0;
+          averageWaitingTime = 0;
+        });
+      }
       return;
     }
 
     try {
-      // Fetch waiting students count
+      // Fetch waiting
+      // count
       final waitingResponse = await http.get(
         Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$queueName"),
       );
@@ -398,12 +451,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             Text(
               queueName != null
                   ? queueName!
-                  : (adminEmail != null
-                        ? adminEmail!
-                        : Translations.translate(
-                            'no_active_queue',
-                            currentLanguage,
-                          )),
+                  : Translations.translate(
+                      'no_active_queue',
+                      currentLanguage,
+                    ),
               style: const TextStyle(color: Colors.white70, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -616,7 +667,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               context,
               Icons.history,
               Translations.translate('history', currentLanguage),
-              screen: HistoryScreen(adminEmail: adminEmail, adminId: adminId),
+              screen: AdminHistoryScreen(queueName: queueName, adminId: adminId),
             ),
             _drawerItem(
               context,

@@ -1,9 +1,11 @@
-// ignore_for_file: use_build_context_synchronously, prefer_typing_uninitialized_variables, prefer_interpolation_to_compose_strings
+// ignore_for_file: use_build_context_synchronously, prefer_typing_uninitialized_variables, prefer_interpolation_to_compose_strings, unnecessary_string_interpolations, deprecated_member_use
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../screen/login.dart';
+import '../services/api_config.dart';
 import 'join_queue.dart';
 import 'my_current_queue.dart';
 import 'queue_history.dart';
@@ -13,6 +15,7 @@ import '../services/language_service.dart';
 import '../services/translations.dart';
 import 'edit_student_profile_screen.dart';
 import 'my_pending_today.dart';
+import 'completed_today.dart';
 
 class QueueStatusScreen extends StatefulWidget {
   final String studentId;
@@ -34,14 +37,39 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   String studentEmail = "";
   String studentRole = "Student";
   String? _studentProfilePictureUrl;
+  String currentToken = "--";
+  String nowServingToken = "--";
+  int waitingCount = 0;
   String currentLanguage = 'english';
+  
+  int activePendingCount = 0; // ✅ New state for Pending Today
+  int activeCompletedCount = 0; // ✅ New state for Completed Today
+  
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadLanguage(); // Load user's language preference
+    _loadLanguage();
     fetchQueueStatus();
     fetchStudentDetails();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (queueData != null && queueData!["queueName"] != null) {
+        fetchMyToken(queueData!["queueName"]);
+        fetchNowServingToken(queueData!["queueName"]);
+        fetchWaitingCount(queueData!["queueName"]);
+      }
+    });
   }
 
   // ✅ Load user's language preference
@@ -56,9 +84,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   Future<void> fetchStudentDetails() async {
     try {
       final response = await http.get(
-        Uri.parse(
-          "http://localhost:8000/api/student/profile/${widget.studentId}",
-        ),
+        Uri.parse("${ApiConfig.baseUrl}/student/profile/${widget.studentId}"),
         headers: {"Content-Type": "application/json"},
       );
 
@@ -81,19 +107,38 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
 
   Future<void> fetchQueueStatus() async {
     try {
-      final response = await http.get(
-        Uri.parse("http://localhost:8000/api/queue"),
-      );
+      final response = await http.get(Uri.parse("${ApiConfig.baseUrl}/queue"));
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 &&
           data["data"] != null &&
           data["data"].isNotEmpty) {
-        setState(() {
-          queueData = data["data"][0];
-          isLoading = false;
-        });
+        List<dynamic> queues = data["data"];
+        bool tokenFound = false;
+
+        // Iterate to find where the student has a token
+        for (var q in queues) {
+          String qName = q["queueName"];
+          bool hasToken = await fetchMyToken(qName);
+          if (hasToken) {
+            setState(() {
+              queueData = q;
+              isLoading = false;
+            });
+            tokenFound = true;
+            break;
+          }
+        }
+
+        if (!tokenFound) {
+          setState(() {
+            queueData = queues[0];
+            isLoading = false;
+            // Clear token data
+            currentToken = "--";
+          });
+        }
       } else {
         setState(() {
           errorMsg = "No queue available";
@@ -106,6 +151,80 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         isLoading = false;
       });
     }
+  }
+
+  Future<void> fetchNowServingToken(String queueName) async {
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/currenttoken/$queueName"),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (mounted) {
+           setState(() {
+              // Update Now Serving
+              if (data["success"] == true && data["data"] != null) {
+                nowServingToken = "A-${data["data"]["tokenNumber"]}";
+              } else {
+                nowServingToken = "--";
+              }
+              
+              // ✅ Update Pending & Completed Counts
+              activePendingCount = data["pendingCount"] ?? 0;
+              activeCompletedCount = data["completedCount"] ?? 0;
+           });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching current token: $e");
+    }
+  }
+
+  Future<void> fetchWaitingCount(String queueName) async {
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$queueName"),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data["success"] == true) {
+          setState(() {
+            waitingCount = data["waitingCount"] ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching waiting count: $e");
+    }
+  }
+
+  // Modified fetchMyToken to return success status
+  Future<bool> fetchMyToken(String queueName) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "${ApiConfig.baseUrl}/tokenget/$queueName/${widget.studentId}",
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data["success"] == true) {
+          setState(() {
+            currentToken = data["tokenNumber"].toString();
+          });
+          return true; // Token found
+        }
+      } else {
+        setState(() {
+          currentToken = "--";
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching token: $e");
+    }
+    return false; // Not found
   }
 
   @override
@@ -164,7 +283,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                         _studentProfilePictureUrl != null &&
                             _studentProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "http://localhost:8000" +
+                                "${ApiConfig.baseUrl.replaceAll('/api', '')}" +
                                     _studentProfilePictureUrl!,
                               )
                               as ImageProvider
@@ -225,15 +344,16 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             _drawerItem(
               Icons.add_circle_outline,
               "Join Queue",
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                Navigator.push(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) =>
                         JoinQueueScreen(studentId: widget.studentId),
                   ),
                 );
+                fetchQueueStatus(); // Refresh dashboard
               },
             ),
             _drawerItem(
@@ -280,49 +400,65 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                       ),
                     );
                   },
-                  child: const _InfoCard(
-                    title: "Student Waiting",
-                    value: "--",
+                  child: _InfoCard(
+                    title: "Students Waiting",
+                    value: waitingCount > 0 ? waitingCount.toString() : "--",
                     icon: Icons.people,
                     color: Colors.orange,
                   ),
                 ),
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MyCurrentQueueScreen(
-                          queueName: queueData?["queueName"] ?? "",
-                          studentId: widget.studentId,
+                    if (currentToken != "--") {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MyCurrentQueueScreen(
+                            queueName: queueData?["queueName"] ?? "",
+                            studentId: widget.studentId,
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    }
                   },
-                  child: const _InfoCard(
-                    title: "Current Token",
-                    value: "--",
-                    icon: Icons.confirmation_number,
-                    color: Colors.blue,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          spreadRadius: 2,
+                          blurRadius: 5,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.confirmation_number,
+                          size: 36,
+                          color: Colors.blue,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          currentToken == "--" ? "--" : "A-$currentToken",
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text("My Token", textAlign: TextAlign.center),
+                      ],
+                    ),
                   ),
                 ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            QueueHistoryScreen(studentId: widget.studentId),
-                      ),
-                    );
-                  },
-                  child: const _InfoCard(
-                    title: "Completed Today",
-                    value: "--",
-                    icon: Icons.check_circle,
-                    color: Colors.purple,
-                  ),
-                ),
+
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -336,14 +472,29 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     );
                   },
                   child: _InfoCard(
-                    title: Translations.translate(
-                      'student_pending_today',
-                      currentLanguage,
-                    ),
-                    value:
-                        "--", // We could fetch this if needed, for now just navigates
+                    title: "Pending Today",
+                    value: activePendingCount.toString(),
                     icon: Icons.pending_actions,
                     color: Colors.red,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CompletedTodayScreen(
+                          queueName: queueData?["queueName"] ?? "",
+                          studentId: widget.studentId,
+                        ),
+                      ),
+                    );
+                  },
+                  child: _InfoCard(
+                    title: "Completed Today",
+                    value: activeCompletedCount.toString(),
+                    icon: Icons.check_circle,
+                    color: Colors.green,
                   ),
                 ),
               ],
@@ -363,7 +514,8 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 _studentProfilePictureUrl != null &&
                     _studentProfilePictureUrl!.isNotEmpty
                 ? NetworkImage(
-                        "http://localhost:8000" + _studentProfilePictureUrl!,
+                        "${ApiConfig.baseUrl.replaceAll('/api', '')}" +
+                            _studentProfilePictureUrl!,
                       )
                       as ImageProvider
                 : null,

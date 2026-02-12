@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../services/translations.dart';
+import '../../services/api_config.dart';
 
 class ReportScreen extends StatefulWidget {
   final String? adminId;
@@ -55,24 +56,24 @@ class _ReportScreenState extends State<ReportScreen> {
   Future<void> _fetchReportsSummary() async {
     try {
       final response = await http.get(
-        Uri.parse(
-          "http://localhost:8000/api/admin/reports/summary/${widget.adminId}",
-        ),
+        Uri.parse("${ApiConfig.baseUrl}/admin/reports/summary/${widget.adminId}"),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          setState(() {
-            _totalTokensGenerated = data['totalTokensGenerated'] ?? 0;
-            _completedServicesToday = data['completedServicesToday'] ?? 0;
-            _totalStudentsVisited = data['totalStudentsVisited'] ?? 0;
-            _waitingStudents = data['waitingTokensCount'] ?? 0;
-            _averageWaitingTimeMinutes = data['averageWaitingTimeMinutes'] ?? 0;
-          });
+          if (mounted) {
+            setState(() {
+              _totalTokensGenerated = data['totalTokensGenerated'] ?? 0;
+              _completedServicesToday = data['completedServicesToday'] ?? 0;
+              _totalStudentsVisited = data['totalStudentsVisited'] ?? 0;
+              _waitingStudents = data['waitingTokensCount'] ?? 0;
+              _averageWaitingTimeMinutes = data['averageWaitingTimeMinutes'] ?? 0;
+            });
+          }
         }
       }
     } catch (e) {
-      print(e);
+      debugPrint("Error fetching summary: $e");
     }
   }
 
@@ -80,19 +81,21 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/admin/reports/daily-crowd/${widget.adminId}?days=7",
+          "${ApiConfig.baseUrl}/admin/reports/daily-crowd/${widget.adminId}?days=7",
         ),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          setState(() {
-            _dailyCrowd = data['dailyCrowd'];
-          });
+          if (mounted) {
+             setState(() {
+              _dailyCrowd = data['dailyCrowd'];
+            });
+          }
         }
       }
     } catch (e) {
-      print(e);
+      debugPrint("Error fetching daily crowd: $e");
     }
   }
 
@@ -100,19 +103,21 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/admin/reports/service-wise/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/reports/service-wise/${widget.adminId}",
         ),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          setState(() {
-            _serviceData = data['serviceData'];
-          });
+          if (mounted) {
+            setState(() {
+              _serviceData = data['serviceData'];
+            });
+          }
         }
       }
     } catch (e) {
-      print(e);
+      debugPrint("Error fetching service wise: $e");
     }
   }
 
@@ -120,19 +125,21 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/admin/reports/counter-performance/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/reports/counter-performance/${widget.adminId}",
         ),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          setState(() {
-            _counterPerformance = data['performance'];
-          });
+          if (mounted) {
+            setState(() {
+              _counterPerformance = data['performance'];
+            });
+          }
         }
       }
     } catch (e) {
-      print(e);
+      debugPrint("Error fetching counter performance: $e");
     }
   }
 
@@ -140,19 +147,21 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/admin/reports/busy-hours/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/reports/busy-hours/${widget.adminId}",
         ),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          setState(() {
-            _busyHours = data['busyHours'];
-          });
+          if (mounted) {
+            setState(() {
+              _busyHours = data['busyHours'];
+            });
+          }
         }
       }
     } catch (e) {
-      print(e);
+      debugPrint("Error fetching busy hours: $e");
     }
   }
 
@@ -214,35 +223,40 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
+  // Helper to build responsive summary grid
   Widget _buildSummaryGrid() {
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width > 600 ? 4 : 2;
+    final childAspectRatio = width > 600 ? 1.5 : 1.3;
+
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: crossAxisCount,
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.5,
+      childAspectRatio: childAspectRatio,
       children: [
         _summaryCard(
-          'Total Generated',
+          Translations.translate('total_generated', _currentLanguage),
           _totalTokensGenerated.toString(),
           Icons.confirmation_number,
           Colors.blue,
         ),
         _summaryCard(
-          'Completed Today',
+          Translations.translate('completed_today', _currentLanguage),
           _completedServicesToday.toString(),
           Icons.check_circle,
           Colors.green,
         ),
         _summaryCard(
-          'Students Visited',
+          Translations.translate('students_visited', _currentLanguage),
           _totalStudentsVisited.toString(),
           Icons.people,
           Colors.orange,
         ),
         _summaryCard(
-          'Waiting Now',
+          Translations.translate('waiting_now', _currentLanguage),
           _waitingStudents.toString(),
           Icons.hourglass_top,
           Colors.red,
@@ -297,170 +311,278 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildLineChart() {
-    if (_dailyCrowd.isEmpty)
+    if (_dailyCrowd.isEmpty) {
       return const SizedBox(
         height: 200,
         child: Center(child: Text("No data available")),
       );
+    }
 
     return Container(
-      height: 240,
+      height: 300,
       padding: const EdgeInsets.fromLTRB(16, 32, 32, 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: LineChart(
-        LineChartData(
-          gridData: const FlGridData(show: false),
-          titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  int idx = value.toInt();
-                  if (idx >= 0 && idx < _dailyCrowd.length) {
-                    final date = DateTime.parse(_dailyCrowd[idx]['_id']);
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        DateFormat('dd/MM').format(date),
-                        style: const TextStyle(fontSize: 10),
-                      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+               _chartLegend("Generated", Colors.blue),
+               const SizedBox(width: 12),
+               _chartLegend("Served", Colors.green),
+               const SizedBox(width: 12),
+               _chartLegend("Pending", Colors.orange),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: Colors.grey.withOpacity(0.2),
+                      strokeWidth: 1,
                     );
-                  }
-                  return const Text('');
-                },
+                  },
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: 5,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          value.toInt().toString(),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        int idx = value.toInt();
+                        if (idx >= 0 && idx < _dailyCrowd.length) {
+                          final dateStr = _dailyCrowd[idx]['_id']; // YYYY-MM-DD
+                          final date = DateTime.tryParse(dateStr) ?? DateTime.now();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              DateFormat('MM/dd').format(date),
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                lineBarsData: [
+                  // Generated Line
+                  LineChartBarData(
+                    spots: _dailyCrowd.asMap().entries.map((e) {
+                      return FlSpot(e.key.toDouble(), (e.value['generated'] ?? 0).toDouble());
+                    }).toList(),
+                    isCurved: true,
+                    color: Colors.blue,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                  ),
+                  // Served Line
+                  LineChartBarData(
+                    spots: _dailyCrowd.asMap().entries.map((e) {
+                      return FlSpot(e.key.toDouble(), (e.value['served'] ?? 0).toDouble());
+                    }).toList(),
+                    isCurved: true,
+                    color: Colors.green,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                  ),
+                  // Pending Line
+                  LineChartBarData(
+                    spots: _dailyCrowd.asMap().entries.map((e) {
+                      return FlSpot(e.key.toDouble(), (e.value['pending'] ?? 0).toDouble());
+                    }).toList(),
+                    isCurved: true,
+                    color: Colors.orange,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                  ),
+                ],
               ),
             ),
           ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: _dailyCrowd
-                  .asMap()
-                  .entries
-                  .map(
-                    (e) =>
-                        FlSpot(e.key.toDouble(), e.value['count'].toDouble()),
-                  )
-                  .toList(),
-              isCurved: true,
-              color: Colors.deepPurple,
-              barWidth: 4,
-              isStrokeCapRound: true,
-              dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(
-                show: true,
-                color: Colors.deepPurple.withOpacity(0.1),
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
+  Widget _chartLegend(String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+      ],
+    );
+  }
+
   Widget _buildPieChart() {
-    if (_serviceData.isEmpty)
+    if (_serviceData.isEmpty) {
       return const SizedBox(
         height: 200,
         child: Center(child: Text("No data available")),
       );
+    }
 
     final colors = [
       Colors.blue,
-      Colors.green,
+      Colors.teal,
       Colors.orange,
-      Colors.red,
+      Colors.redAccent,
       Colors.purple,
       Colors.cyan,
     ];
 
     return Container(
-      height: 240,
+      height: 300,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 4,
-          centerSpaceRadius: 40,
-          sections: _serviceData.asMap().entries.map((e) {
-            final color = colors[e.key % colors.length];
-            return PieChartSectionData(
-              color: color,
-              value: e.value['count'].toDouble(),
-              title: '${e.value['count']}',
-              radius: 60,
-              titleStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+      child: Column(
+        children: [
+          Expanded(
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 2,
+                centerSpaceRadius: 50,
+                sections: _serviceData.asMap().entries.map((e) {
+                  final color = colors[e.key % colors.length];
+                  final count = e.value['count'] ?? 0;
+                  // Calculate total for percentage if needed, but count is fine
+                  return PieChartSectionData(
+                    color: color,
+                    value: count.toDouble(),
+                    title: '$count',
+                    radius: 60,
+                    titleStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    badgeWidget: _Badge(
+                      e.value['serviceName'] ?? 'Unknown',
+                      size: 40,
+                      borderColor: color,
+                    ),
+                    badgePositionPercentageOffset: 1.4,
+                  );
+                }).toList(),
               ),
-              badgeWidget: _Badge(
-                e.value['serviceName'],
-                size: 40,
-                borderColor: color,
-              ),
-              badgePositionPercentageOffset: 1.3,
-            );
-          }).toList(),
-        ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            "Distribution by Service Type", 
+             style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildCounterBars() {
-    if (_counterPerformance.isEmpty)
+    if (_counterPerformance.isEmpty) {
       return const SizedBox(
         height: 100,
         child: Center(child: Text("No data available")),
       );
+    }
 
-    return Column(
-      children: _counterPerformance.map((data) {
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey[200]!),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Colors.deepPurple,
-              child: Icon(Icons.computer, color: Colors.white, size: 20),
-            ),
-            title: Text(
-              data['counterName'],
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple[50],
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                "${data['count']} Done",
-                style: const TextStyle(
-                  color: Colors.deepPurple,
-                  fontWeight: FontWeight.bold,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DataTable(
+            columnSpacing: 10, // Compress columns if needed
+            headingRowColor: MaterialStateProperty.all(Colors.deepPurple.shade50),
+            columns: const [
+              DataColumn(label: Text('Counter', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Served', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Avg Time', style: TextStyle(fontWeight: FontWeight.bold))),
+            ],
+            rows: _counterPerformance.map((data) {
+              return DataRow(cells: [
+                DataCell(
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 100),
+                    child: Text(
+                      data['counterName'] ?? "N/A",
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
                 ),
-              ),
-            ),
+                DataCell(Text("${data['count'] ?? 0}")),
+                DataCell(Text("${data['avgWaitTimeMinutes'] ?? 0} min")),
+              ]);
+            }).toList(),
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
 }

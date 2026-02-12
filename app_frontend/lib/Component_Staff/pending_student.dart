@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import '../services/api_config.dart'; // ✅ Import ApiConfig
 import '../services/language_service.dart';
 import '../services/translations.dart';
 
@@ -43,35 +44,42 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
   }
 
   Future<void> _fetchPendingTokens() async {
+    // ✅ If queueName is empty, fetch pending by Admin ID (fallback mode)
+    String url;
     if (widget.queueName.isEmpty) {
-       if (mounted) {
-        setState(() {
-          _pendingTokens = [];
-          _isLoading = false;
-        });
-      }
-      return;
+        if (widget.adminId.isNotEmpty) {
+             url = "${ApiConfig.baseUrl}/pendingtokens/admin/${widget.adminId}";
+        } else {
+             // No context to fetch
+             if (mounted) {
+                setState(() {
+                  _pendingTokens = [];
+                  _isLoading = false;
+                });
+             }
+             return;
+        }
+    } else {
+        url = "${ApiConfig.baseUrl}/pendingtokens/${widget.queueName}";
     }
 
     setState(() => _isLoading = true);
     try {
-      final response = await http.get(
-        Uri.parse(
-          "http://localhost:8000/api/pendingtokens/${widget.queueName}",
-        ),
-      );
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          _pendingTokens = data["data"] ?? [];
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _pendingTokens = data["data"] ?? [];
+            _isLoading = false;
+          });
+        }
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

@@ -1,8 +1,11 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
+import '../services/api_config.dart';
 
 class MyCurrentQueueScreen extends StatefulWidget {
   final String queueName;
@@ -27,11 +30,25 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
   int studentsAhead = 0;
   int estimatedWaitMinutes = 0;
   String status = "";
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     fetchQueueData();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      fetchQueueData();
+    });
   }
 
   // 🔹 FETCH QUEUE DATA
@@ -39,7 +56,7 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
     final encodedQueue = Uri.encodeComponent(widget.queueName);
 
     final apiUrl =
-        "http://localhost:8000/api/tokenget/$encodedQueue/${widget.studentId}";
+        "${ApiConfig.baseUrl}/tokenget/$encodedQueue/${widget.studentId}";
 
     try {
       final response = await http.get(Uri.parse(apiUrl));
@@ -57,7 +74,10 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
             isLoading = false;
           });
         } else {
-          showError("No token found");
+          // If token not found anymore (e.g. was finished), go back
+          if (mounted) {
+            Navigator.pop(context);
+          }
         }
       } else {
         showError("Failed to load data");
@@ -72,7 +92,7 @@ class _MyCurrentQueueScreenState extends State<MyCurrentQueueScreen> {
     final encodedQueue = Uri.encodeComponent(widget.queueName);
 
     final deleteUrl =
-        "http://localhost:8000/api/tokendelete/$encodedQueue/$tokenNumber";
+        "${ApiConfig.baseUrl}/tokendelete/$encodedQueue/$tokenNumber";
 
     try {
       final response = await http.delete(Uri.parse(deleteUrl));
