@@ -680,11 +680,30 @@ const getQueueHistory = async (req, res) => {
     if (counterId && counterId !== 'All') {
        if (mongoose.Types.ObjectId.isValid(counterId)) {
            contextMatch.counterId = new mongoose.Types.ObjectId(counterId);
+       } else {
+           // If not a valid ObjectId, assume it's a counterName
+           // This will be matched later after lookup if we use pipeline, 
+           // but for contextMatch (summary), we might need to lookup first or just use a regex on a joined field.
+           // However, for simplicity, if it's "Exam", "Admission", "Fees", we can match by counterName in the pipeline.
        }
     }
 
+    let counterNameFilter = null;
+    if (counterId && !mongoose.Types.ObjectId.isValid(counterId) && counterId !== 'All') {
+        // If not a valid ObjectId, find the counter by name first for efficiency
+        const foundCounter = await mongoose.model('Counter').findOne({ 
+            counterName: new RegExp(counterId, 'i'),
+            adminId: new mongoose.Types.ObjectId(adminId)
+        });
+        if (foundCounter) {
+            contextMatch.counterId = foundCounter._id;
+        } else {
+            // If no counter found by that name, force no results by using a fake ID
+            contextMatch.counterId = new mongoose.Types.ObjectId();
+        }
+    }
+
     // 2. Calculate Summary Stats (Aggregation on Context Match)
-    // We do this separately so filtering by "Pending" in the list doesn't hide "Total Served" count.
     const summaryPipeline = [
         { $match: contextMatch },
         {

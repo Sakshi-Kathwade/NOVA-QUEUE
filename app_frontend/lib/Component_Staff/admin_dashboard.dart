@@ -25,6 +25,7 @@ import '../screen/login.dart';
 import '../screen/home.dart';
 import '../services/language_service.dart';
 import '../services/translations.dart';
+import '../screen/about_us.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String? adminEmail; // ✅ Store admin email
@@ -697,6 +698,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 onLanguageChanged:
                     _loadLanguage, // ✅ Callback to refresh language
               ),
+            ),
+            _drawerItem(
+              context,
+              Icons.info_outline,
+              "About",
+              screen: const AboutUsScreen(),
             ),
           ],
         ),

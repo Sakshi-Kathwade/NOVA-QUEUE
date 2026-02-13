@@ -16,6 +16,7 @@ import '../services/translations.dart';
 import 'edit_student_profile_screen.dart';
 import 'my_pending_today.dart';
 import 'completed_today.dart';
+import '../screen/about_us.dart';
 
 class QueueStatusScreen extends StatefulWidget {
   final String studentId;
@@ -374,6 +375,11 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               Icons.settings,
               "Settings",
               screen: StudentSettingScreen(studentId: widget.studentId),
+            ),
+            _drawerItem(
+              Icons.info_outline,
+              "About",
+              screen: const AboutUsScreen(),
             ),
           ],
         ),
