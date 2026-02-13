@@ -670,7 +670,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Translations.translate('current_token', currentLanguage),
               screen: CurrentTokenScreen(
                 queueName: queueName ?? "",
-                adminId: adminId,
+                adminId: adminId, // ✅ Pass adminId explicitly
                 maxStudents: maxStudents, // ✅ Pass maxStudents
               ),
             ),
@@ -752,6 +752,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               color: Colors.blue,
               navigateTo: CurrentTokenScreen(
                 queueName: queueName ?? "",
+                adminId: adminId,
                 maxStudents: maxStudents, // ✅ Pass maxStudents
               ),
             ),

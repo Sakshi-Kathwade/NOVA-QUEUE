@@ -36,11 +36,12 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   
   final TextEditingController _searchController = TextEditingController();
   
-  String _selectedService = "All"; 
-  List<String> _serviceOptions = ["All", "Exam", "Admission", "Fees", "General"];
+  String _selectedCounter = "All"; 
+  // Options explicitly requested by user + General fallback
+  final List<String> _counterOptions = ["All", "Exam", "Admission", "Fees", "General"];
 
   String _selectedStatus = "All";
-  List<String> _statusOptions = ["All", "Completed", "Pending", "Cancelled"];
+  final List<String> _statusOptions = ["All", "Completed", "Pending", "Cancelled"];
 
   // UI State
   bool _isLoading = false;
@@ -50,6 +51,9 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchHistory();
+    });
   }
 
   // Pick Date
@@ -134,8 +138,10 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       queryParams['startDate'] = range['start']!.toIso8601String();
       queryParams['endDate'] = range['end']!.toIso8601String();
 
-      if (_selectedService != "All") {
-         queryParams['counterId'] = _selectedService; 
+      // Passing selected counter as counterId. 
+      // Backend is updated to check Service Name if Counter Name not found.
+      if (_selectedCounter != "All") {
+         queryParams['counterId'] = _selectedCounter; 
       }
 
       if (_selectedStatus != "All") {
@@ -259,7 +265,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                         DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['generatedAt']).toLocal()),
                         "A-${item['tokenNumber']}",
                         item['student']?['name'] ?? 'Guest',
-                        item['service']?['serviceName'] ?? '-',
+                        "${item['department'] ?? item['service']?['serviceName'] ?? '-'} ${item['counter'] != null ? '(${item['counter']['counterName']})' : ''}",
                         item['status'],
                         _calculateWait(item)
                       ]),
@@ -304,7 +310,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
 
         sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['student']?['name'] ?? 'Guest');
 
-        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['service']?['serviceName'] ?? '-');
+        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: i+1)).value = excel_pkg.TextCellValue("${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}");
 
         sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['status']);
         
@@ -328,7 +334,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
         DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(token['generatedAt']).toLocal()),
         "A-${token['tokenNumber']}",
         token['student']?['name'] ?? 'Guest',
-        token['service']?['serviceName'] ?? '-',
+        "${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}",
         token['status'],
         _calculateWait(token)
       ]);
@@ -354,6 +360,9 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -386,7 +395,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                     children: [
                       // Frequency Dropdown
                       Expanded(
-                        flex: 1,
+                        flex: 2,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
@@ -405,9 +414,9 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      // Date Picker (Context aware based on frequency would be complex, keeping simple date input)
+                      // Date Picker
                       Expanded(
-                        flex: 2,
+                        flex: 3,
                         child: InkWell(
                           onTap: _pickDate,
                           child: Container(
@@ -434,18 +443,20 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   ),
                   const SizedBox(height: 10),
                   
-                  // FILTERS ROW
+                  // FILTERS ROW (Status & Counter)
                   Row(
                     children: [
+                      // Counter Filter
                       Expanded(
                         child: _buildDropdown(
-                          value: _selectedService, 
-                          items: _serviceOptions, 
-                          label: "Service",
-                          onChanged: (val) => setState(() => _selectedService = val!),
+                          value: _selectedCounter, 
+                          items: _counterOptions, 
+                          label: "Counter",
+                          onChanged: (val) => setState(() => _selectedCounter = val!),
                         ),
                       ),
                       const SizedBox(width: 10),
+                      // Status Filter
                       Expanded(
                         child: _buildDropdown(
                           value: _selectedStatus, 
@@ -461,15 +472,16 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   // SEARCH BUTTON
                   SizedBox(
                     width: double.infinity,
-                    height: 45,
-                    child: ElevatedButton(
+                    height: 50,
+                    child: ElevatedButton.icon(
                       onPressed: _fetchHistory,
+                      icon: const Icon(Icons.search, color: Colors.white),
+                      label: const Text("SEARCH", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text("GENERATE REPORT", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
                     ),
                   ),
                 ],
@@ -479,7 +491,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
             const SizedBox(height: 16),
   
             // EXPORT ACTIONS (Visible if searched)
-            if (_hasSearched && !_isLoading)
+            if (_hasSearched && !_isLoading && _historyTokens.isNotEmpty)
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: SingleChildScrollView(
@@ -505,56 +517,96 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _historyTokens.isEmpty
                     ? Center(
-                        child: Text(
-                          _hasSearched ? "No records found." : "Select filters to view data.",
-                          style: TextStyle(color: Colors.grey.shade500),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _hasSearched ? Icons.search_off : Icons.filter_alt_outlined,
+                              size: 60,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              _hasSearched ? "No matching records found." : "Select filters and click Search to view history.",
+                              style: TextStyle(color: Colors.grey.shade500),
+                            ),
+                          ],
                         ),
                       )
                     : Card(
                         elevation: 2,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.zero,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
                           child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
-                              columns: const [
-                                DataColumn(label: Text('Date & Time', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Token', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Student', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Service', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Wait', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
-                              ],
-                              rows: _historyTokens.map((token) {
-                                return DataRow(
-                                  cells: [
-                                    DataCell(Text(DateFormat('MM/dd HH:mm').format(DateTime.parse(token['generatedAt']).toLocal()))),
-                                    DataCell(
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.deepPurple.shade50,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text("A-${token['tokenNumber']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
-                                      ),
-                                    ),
-                                    DataCell(Text(token['student']?['name'] ?? 'Guest')),
-                                    DataCell(Text(token['service']?['serviceName'] ?? '-')),
-                                    DataCell(_statusBadge(token['status'])),
-                                    DataCell(Text(_calculateWait(token))),
-                                    DataCell(
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                                        onPressed: () => _confirmDelete(token['_id']),
-                                      ),
-                                    ),
+                            scrollDirection: Axis.vertical,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(minWidth: screenWidth - 32),
+                                child: DataTable(
+                                  headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
+                                  columnSpacing: isSmallScreen ? 20 : 50,
+                                  dataRowHeight: 60,
+                                  columns: const [
+                                    DataColumn(label: Text('Date & Time', style: TextStyle(fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Token', style: TextStyle(fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Student', style: TextStyle(fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Service / Counter', style: TextStyle(fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Wait', style: TextStyle(fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
                                   ],
-                                );
-                              }).toList(),
+                                  rows: _historyTokens.map((token) {
+                                    return DataRow(
+                                      cells: [
+                                        DataCell(
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text(DateFormat('MMM d, yyyy').format(DateTime.parse(token['generatedAt']).toLocal()), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                              Text(DateFormat('hh:mm a').format(DateTime.parse(token['generatedAt']).toLocal()), style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                                            ],
+                                          )
+                                        ),
+                                        DataCell(
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.deepPurple.shade50,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: Colors.deepPurple.shade200)
+                                            ),
+                                            child: Text("A-${token['tokenNumber']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                                          ),
+                                        ),
+                                        DataCell(Text(token['student']?['name'] ?? 'Guest', style: const TextStyle(fontWeight: FontWeight.w500))),
+                                        DataCell(
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text(token['department'] ?? token['service']?['serviceName'] ?? token['purpose'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                              if (token['counter'] != null)
+                                                Text("Counter: ${token['counter']['counterName']}", style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                                            ],
+                                          )
+                                        ),
+                                        DataCell(_statusBadge(token['status'])),
+                                        DataCell(Text(_calculateWait(token), style: TextStyle(color: Colors.grey.shade800))),
+                                        DataCell(
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline, size: 22, color: Colors.redAccent),
+                                            onPressed: () => _confirmDelete(token['_id']),
+                                            tooltip: "Delete Record",
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -567,56 +619,80 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   }
 
   Widget _buildDropdown({required String value, required List<String> items, required String label, required Function(String?) onChanged}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          hint: Text(label),
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
-          onChanged: onChanged,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+        const SizedBox(height: 4),
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              isExpanded: true,
+              hint: Text(label),
+              items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _exportBtn(IconData icon, Color color, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: Colors.grey.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
         ),
       ),
     );
   }
 
-  Widget _exportBtn(IconData icon, Color color, String label, VoidCallback onTap) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18, color: color),
-      label: Text(label, style: TextStyle(color: Colors.grey.shade800, fontSize: 12)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        elevation: 1,
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
-    );
-  }
-
   Widget _statusBadge(String status) {
-    Color color = Colors.grey;
+    Color bg = Colors.grey.shade100;
+    Color text = Colors.grey.shade700;
     String s = status.toLowerCase();
     
-    if (s == 'completed') color = Colors.green;
-    else if (s.contains('pending')) color = Colors.orange;
-    else if (s == 'cancelled') color = Colors.red;
+    if (s == 'completed') {
+      bg = Colors.green.shade50;
+      text = Colors.green.shade700;
+    } else if (s.contains('pending') || s == 'waiting' || s == 'process') {
+      bg = Colors.orange.shade50;
+      text = Colors.orange.shade800;
+    } else if (s.contains('cancel') || s.contains('reject')) {
+      bg = Colors.red.shade50;
+      text = Colors.red.shade700;
+    }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: text.withOpacity(0.3))
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(color: text, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }

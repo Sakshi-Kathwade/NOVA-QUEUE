@@ -677,33 +677,16 @@ const getQueueHistory = async (req, res) => {
     }
 
     // Counter Filter (Applies to both)
+    // We will handle specific ID matches here, but TEXT matches (Service/Queue names) must happen AFTER lookups
     if (counterId && counterId !== 'All') {
        if (mongoose.Types.ObjectId.isValid(counterId)) {
            contextMatch.counterId = new mongoose.Types.ObjectId(counterId);
-       } else {
-           // If not a valid ObjectId, assume it's a counterName
-           // This will be matched later after lookup if we use pipeline, 
-           // but for contextMatch (summary), we might need to lookup first or just use a regex on a joined field.
-           // However, for simplicity, if it's "Exam", "Admission", "Fees", we can match by counterName in the pipeline.
        }
     }
 
-    let counterNameFilter = null;
-    if (counterId && !mongoose.Types.ObjectId.isValid(counterId) && counterId !== 'All') {
-        // If not a valid ObjectId, find the counter by name first for efficiency
-        const foundCounter = await mongoose.model('Counter').findOne({ 
-            counterName: new RegExp(counterId, 'i'),
-            adminId: new mongoose.Types.ObjectId(adminId)
-        });
-        if (foundCounter) {
-            contextMatch.counterId = foundCounter._id;
-        } else {
-            // If no counter found by that name, force no results by using a fake ID
-            contextMatch.counterId = new mongoose.Types.ObjectId();
-        }
-    }
-
     // 2. Calculate Summary Stats (Aggregation on Context Match)
+    // Note: Summary currently only filters by Date, Admin, and Valid CounterID. 
+    // It does NOT filter by fuzzy Service Name (e.g. "Exam") to keep it fast/simple for now.
     const summaryPipeline = [
         { $match: contextMatch },
         {
@@ -717,7 +700,7 @@ const getQueueHistory = async (req, res) => {
                 },
                 pendingTokens: { 
                     $sum: { 
-                        $cond: [{ $in: [{ $toLower: "$status" }, ["pending", "waiting", "hold", "process"]] }, 1, 0] 
+                        $cond: [{ $in: [{ $toLower: "$status" }, ["pending", "waiting", "hold", "process", "serving", "missed", "recalled"]] }, 1, 0] 
                     } 
                 },
                 uniqueQueues: { $addToSet: "$queueName" },
@@ -771,12 +754,15 @@ const getQueueHistory = async (req, res) => {
     
     // Apply Status Filter ONLY to the List
     if (status && status !== 'All') {
-      if (status === 'Pending') {
-         listMatch.status = { $in: ['pending', 'waiting', 'process', 'hold'] };
-      } else if (status === 'Completed') {
+      const s = status.toLowerCase();
+      if (s === 'pending') {
+         listMatch.status = { $in: ['pending', 'waiting', 'process', 'hold', 'serving', 'missed', 'recalled'] };
+      } else if (s === 'completed') {
          listMatch.status = { $in: ['completed', 'Completed'] };
+      } else if (s === 'cancelled') {
+         listMatch.status = { $in: ['cancelled', 'Cancelled', 'reject', 'discarded'] };
       } else {
-         listMatch.status = status;
+         listMatch.status = new RegExp(status, 'i');
       }
     }
 
@@ -827,6 +813,25 @@ const getQueueHistory = async (req, res) => {
       },
       { $unwind: { path: '$counter', preserveNullAndEmptyArrays: true } },
     ];
+
+    // 5. Post-Lookup Filtering (For fuzzy Counter/Service Name matching)
+    // If counterId was passed but NOT a valid ObjectId, we treat it as a Service/Queue/Counter Name filter
+    if (counterId && counterId !== 'All' && !mongoose.Types.ObjectId.isValid(counterId)) {
+       const regex = new RegExp(counterId, 'i');
+       pipeline.push({
+         $match: {
+            $or: [
+               { 'counter.counterName': regex },
+               { 'service.serviceName': regex },
+               { 'queue.queueName': regex },
+               { 'serviceName': regex },
+               { 'queueName': regex },
+               { 'department': regex },
+               { 'purpose': regex }
+            ]
+         }
+       });
+    }
 
     // Search Filter
     if (search) {

@@ -78,47 +78,51 @@ class AboutUsScreen extends StatelessWidget {
                   children: [
                     _buildTeamMemberCard(
                       context,
-                      name: "Rahul Sharma",
+                      name: "Sakshi Kathawde",
                       role: "Full Stack Developer",
                       roleColor: Colors.blue,
                       description:
                           "Responsible for backend architecture, API integration, and ensuring system security and performance.",
                       skills: ["Node.js", "MongoDB", "Express"],
-                      instagramId: "rahul_dev",
+                      instagramId: "sakshi_kathawde",
                       avatarColor: Colors.blue.shade50,
+                      imageAsset: "assets/sakshi.jpeg",
                     ),
                     _buildTeamMemberCard(
                       context,
-                      name: "Priya Patel",
+                      name: "Unnati Surana",
                       role: "Frontend Developer",
                       roleColor: Colors.pinkAccent,
                       description:
                           "Focuses on creating responsive, user-friendly mobile interfaces using Flutter and ensuring cross-platform compatibility.",
                       skills: ["Flutter", "Dart", "Material"],
-                      instagramId: "priya_codes",
+                      instagramId: "unnati_jain99",
                       avatarColor: Colors.pink.shade50,
+                      imageAsset: "assets/unnati.jpeg",
                     ),
                     _buildTeamMemberCard(
                       context,
-                      name: "Amit Verma",
+                      name: "Mohini Jagtap",
                       role: "UI/UX Designer",
                       roleColor: Colors.orange,
                       description:
                           "Designs the visual layout, color schemes, and user experience flows to create an intuitive and engaging app.",
                       skills: ["Figma", "Canva", "Prototyping"],
-                      instagramId: "amit_designs",
+                      instagramId: "mohinijagtap6062",
                       avatarColor: Colors.orange.shade50,
+                      imageAsset: "assets/mohini.jpeg",
                     ),
                     _buildTeamMemberCard(
                       context,
-                      name: "Sneha Gupta",
+                      name: "Vaishali Bade",
                       role: "QA & Documentation",
                       roleColor: Colors.teal,
                       description:
                           "Manages testing, bug tracking, and preparing comprehensive project documentation and user guides.",
                       skills: ["Testing", "Docs", "Analysis"],
-                      instagramId: "sneha_qa",
+                      instagramId: "vaishali_bade",
                       avatarColor: Colors.teal.shade50,
+                      imageAsset: "assets/vaishali.jpeg",
                     ),
                   ],
                 );
@@ -256,10 +260,18 @@ class AboutUsScreen extends StatelessWidget {
             child: CircleAvatar(
               radius: 35,
               backgroundColor: Colors.blue.shade50,
-              child: const Icon(
-                Icons.school,
-                size: 35,
-                color: Colors.blueAccent,
+              child: ClipOval(
+                child: Image.asset(
+                  "assets/sakshi.jpeg", // Mentor Image
+                  width: 70,
+                  height: 70,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.school,
+                    size: 35,
+                    color: Colors.blueAccent,
+                  ),
+                ),
               ),
             ),
           ),
@@ -375,6 +387,7 @@ class AboutUsScreen extends StatelessWidget {
     required List<String> skills,
     required String instagramId,
     required Color avatarColor,
+    required String imageAsset, // ✅ Changed to Asset Path
   }) {
     return Container(
       width: 300,
@@ -397,10 +410,18 @@ class AboutUsScreen extends StatelessWidget {
           CircleAvatar(
             radius: 40,
             backgroundColor: avatarColor,
-            child: Icon(
-              Icons.person,
-              size: 40,
-              color: roleColor.withOpacity(0.8),
+            child: ClipOval(
+              child: Image.asset(
+                imageAsset,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.person,
+                  size: 40,
+                  color: roleColor.withOpacity(0.8),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 12),

@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, prefer_interpolation_to_compose_strings
+// ignore_for_file: use_build_context_synchronously, prefer_interpolation_to_compose_strings, unused_element
 
 import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
 import 'package:flutter/material.dart';
@@ -738,11 +738,6 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
               currentLanguage,
             ),
             onTap: () => _showMissedTokenRetriesDialog(),
-          ),
-          _settingTile(
-            icon: Icons.hourglass_empty,
-            title: Translations.translate('recall_wait_time', currentLanguage),
-            onTap: () => _showRecallWaitTimeDialog(),
           ),
 
           const SizedBox(height: 16),

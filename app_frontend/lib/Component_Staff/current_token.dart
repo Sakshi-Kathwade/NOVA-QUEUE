@@ -9,12 +9,13 @@ import '../services/api_config.dart';
 class CurrentTokenScreen extends StatefulWidget {
   final String queueName;
   final int? maxStudents; // ✅ Max students for progress bar
+  final String? adminId; // ✅ Pass admin ID for settings lookup
 
   const CurrentTokenScreen({
     super.key,
     required this.queueName,
     this.maxStudents,
-    String? adminId,
+    this.adminId,
   });
 
   @override
@@ -430,6 +431,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
         body: jsonEncode({
           "queueName": widget.queueName,
           "currentTokenId": tokenId,
+          "adminId": widget.adminId, // ✅ Required for settings lookup
         }),
       );
 

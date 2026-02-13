@@ -99,19 +99,24 @@ exports.createToken = async (req, res) => {
 
     const tokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
 
+    // ✅ Get Admin Settings for Estimated Time
+    const Admin = require("../Models/adminmodel");
+    const admin = await Admin.findById(queue.adminId);
+    const estimatedTimePerStudent = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
+
     // 5️⃣ Create new token
     const token = await Token.create({
       queueName,
-      department,
-      purpose,
+      department: department || queue.department,
+      purpose: purpose,
       studentId,
       tokenNumber,
-      studentsAhead,
-      studentsAhead,
-      estimatedWaitingTime: studentsAhead * 5,
+      serviceId: queue.serviceId, // ✅ Save Service ID from Queue
+      studentsAhead, // Initially equal to number of waiting students
+      estimatedWaitingTime: studentsAhead * estimatedTimePerStudent, // ✅ Use dynamic time
       status: "waiting", // ✅ Start as waiting immediately
       adminId: queue.adminId, // ✅ Save Admin ID for reports
-      serviceName: department || purpose, // ✅ Snapshot service name (department is often used as service)
+      serviceName: (department || queue.department) || purpose, // ✅ Snapshot service name (department is often used as service)
     });
 
     // 6️⃣ Success response
@@ -155,7 +160,11 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
     });
 
     // 🔹 Calculate estimated waiting time
-    const AVG_TIME_PER_STUDENT = 5; // minutes (adjust if needed)
+    const Admin = require("../Models/adminmodel");
+    // Find admin associated with the token (if available) or queue
+    const admin = await Admin.findById(token.adminId);
+    const AVG_TIME_PER_STUDENT = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
+    
     const estimatedWaitingTime = studentsAhead * AVG_TIME_PER_STUDENT;
 
     res.status(200).json({
@@ -194,6 +203,11 @@ exports.deleteToken = async (req, res) => {
       });
     }
 
+    // Get estimated time to subtract
+    const Admin = require("../Models/adminmodel");
+    const admin = await Admin.findById(deletedToken.adminId);
+    const timeToSubtract = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
+
     // Update tokens after the deleted one
     const tokensAfter = await Token.find({
       queueName,
@@ -203,8 +217,8 @@ exports.deleteToken = async (req, res) => {
 
     for (const token of tokensAfter) {
       await Token.findByIdAndUpdate(token._id, {
-        studentsAhead: token.studentsAhead - 1,
-        estimatedWaitingTime: token.estimatedWaitingTime - 5,
+        studentsAhead: Math.max(0, token.studentsAhead - 1),
+        estimatedWaitingTime: Math.max(0, token.estimatedWaitingTime - timeToSubtract),
       });
     }
 
@@ -588,7 +602,11 @@ exports.nextToken = async (req, res) => {
         if (currentToken.status === "waiting") {
           const updated = await Token.findByIdAndUpdate(
             currentTokenId,
-            { status: "serving", lastCalledAt: Date.now() },
+            { 
+              status: "serving", 
+              lastCalledAt: Date.now(),
+              ...(req.body.counterId && { counterId: req.body.counterId }) // ✅ Update counter if provided
+            },
             { new: true }
           );
 
@@ -665,18 +683,7 @@ exports.nextToken = async (req, res) => {
       }).sort({ tokenNumber: 1 });
     }
 
-    if (!nextToken) {
-      // Priority 3: Fallback to old recall logic if still used
-      const Admin = require("../Models/adminmodel.js");
-      const admin = await Admin.findById(adminId);
-      const waitTime = admin?.missedTokenRecallWaitTimeMinutes || 10;
-      
-      nextToken = await Token.findOne({
-        queueName,
-        status: "recalled",
-        recalledAt: { $lte: new Date(now - waitTime * 60 * 1000) },
-      }).sort({ tokenNumber: 1 });
-    }
+
 
     if (!nextToken) {
       return res.status(404).json({
@@ -689,7 +696,8 @@ exports.nextToken = async (req, res) => {
     await Token.findByIdAndUpdate(nextToken._id, { 
       status: "serving", 
       lastCalledAt: Date.now(),
-      isMissed: false // Clear missed status when they show up
+      isMissed: false, // Clear missed status when they show up
+      ...(req.body.counterId && { counterId: req.body.counterId }) // ✅ Update counter if provided
     });
 
     // Get student name
