@@ -19,9 +19,12 @@ const tokenSchema = new mongoose.Schema({
   estimatedWaitingTime: { type: Number, required: false },
   status: {
     type: String,
-    enum: ['pending', 'waiting', 'serving', 'hold', 'completed', 'cancelled', 'recalled', 'Waiting', 'Calling', 'Completed', 'Cancelled'],
+    enum: ['pending', 'waiting', 'serving', 'hold', 'completed', 'cancelled', 'recalled', 'Waiting', 'Calling', 'Completed', 'Cancelled', 'missed'],
     default: 'pending',
   },
+  isMissed: { type: Boolean, default: false },
+  isRetried: { type: Boolean, default: false },
+  waitStudentsLeft: { type: Number, default: 0 },
   generatedAt: { type: Date, default: Date.now },
   calledAt: { type: Date },
   completedAt: { type: Date },

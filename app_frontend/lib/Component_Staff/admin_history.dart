@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 import '../services/api_config.dart';
 
@@ -24,81 +25,85 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   // Data
   List<dynamic> _historyTokens = [];
   Map<String, dynamic> _summary = {};
+  
+  // Calendar Data
+  List<DateTime> _historyDates = [];
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+  DateTime _focusedDay = DateTime.now();
 
   // Form Filters
-  final TextEditingController _dateController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
-  DateTime? _selectedDate;
+  DateTime _selectedDate = DateTime.now();
   String? _selectedServiceId;
   String _selectedStatus = "All"; // Default
-
-  // Dropdown Data
-  List<dynamic> _services = [];
+  String _currentReportType = "Daily";
 
   // UI State
   bool _isLoading = false;
-  bool _hasSearched = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _fetchDropdownData();
-    // Pre-fill today's date but do NOT auto-fetch unless requested?
-    // User requested "when we click search". So initial state can be empty or today's data.
-    // I will load today's data initially as a good UX practice, but make the search explicit for changes.
-    _selectedDate = DateTime.now();
-    _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-    _fetchHistory();
+    _fetchHistoryDates(); // Fetch dates for calendar
+    _fetchHistory();      // Fetch initial data (Today)
   }
 
-  Future<void> _fetchDropdownData() async {
+  // Fetch Dates for Calendar Highlights
+  Future<void> _fetchHistoryDates() async {
     if (widget.adminId == null) return;
     try {
-      final serviceRes = await http.get(
-        Uri.parse("${ApiConfig.baseUrl}/services/${widget.adminId}"),
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/admin/history-dates/${widget.adminId}"),
       );
-      if (serviceRes.statusCode == 200) {
-        setState(() {
-          _services = json.decode(serviceRes.body)['services'] ?? [];
-        });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final dates = (data['dates'] as List).map((d) {
+             return DateTime.parse(d);
+          }).toList();
+          setState(() {
+            _historyDates = dates;
+          });
+        }
       }
     } catch (e) {
-      debugPrint("Error fetching dropdown data: $e");
+      debugPrint("Error fetching history dates: $e");
     }
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-        _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
-      });
-    }
-  }
-
+  // Main Fetch Function
   Future<void> _fetchHistory() async {
     if (widget.adminId == null) return;
 
     setState(() {
       _isLoading = true;
       _error = null;
-      _hasSearched = true;
     });
 
     try {
       final queryParams = <String, String>{};
 
-      if (_selectedDate != null) {
-        queryParams['startDate'] = _selectedDate!.toIso8601String();
-        queryParams['endDate'] = _selectedDate!.toIso8601String();
+      // Handle Date Filters
+      DateTime start = _selectedDate;
+      DateTime end = _selectedDate;
+
+      if (_currentReportType == 'Daily') {
+         // Already single day
+      } else if (_currentReportType == 'Weekly') {
+         // Find start of week (Monday = 1)
+         start = start.subtract(Duration(days: start.weekday - 1));
+         end = start.add(const Duration(days: 6));
+      } else if (_currentReportType == 'Monthly') {
+         start = DateTime(start.year, start.month, 1);
+         end = DateTime(start.year, start.month + 1, 0);
+      } else if (_currentReportType == 'Yearly') {
+         start = DateTime(start.year, 1, 1);
+         end = DateTime(start.year, 12, 31);
       }
+
+      queryParams['startDate'] = start.toIso8601String();
+      queryParams['endDate'] = end.toIso8601String();
 
       if (_selectedServiceId != null && _selectedServiceId != 'All') {
         queryParams['serviceId'] = _selectedServiceId!;
@@ -146,6 +151,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
     }
   }
 
+  // Delete Token
   Future<void> _deleteToken(String tokenId) async {
     try {
       final response = await http.delete(
@@ -156,7 +162,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Record deleted successfully")),
         );
-        _fetchHistory();
+        _fetchHistory(); // Refresh
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Failed to delete: ${response.body}")),
@@ -193,6 +199,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
     );
   }
 
+  // PDF Export
   Future<void> _exportToPdf() async {
     final pdf = pw.Document();
 
@@ -208,14 +215,14 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      "Queue History Report",
+                      "$_currentReportType Report",
                       style: pw.TextStyle(
                         fontSize: 24,
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
                     pw.Text(
-                      "Date: ${_dateController.text}",
+                      "Generated: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}",
                       style: const pw.TextStyle(fontSize: 14),
                     ),
                   ],
@@ -227,32 +234,16 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                 children: [
                   _pdfSummaryItem("Total", "${_summary['totalTokens'] ?? 0}"),
                   _pdfSummaryItem("Served", "${_summary['totalServed'] ?? 0}"),
-                  _pdfSummaryItem(
-                    "Pending",
-                    "${_summary['pendingTokens'] ?? 0}",
-                  ),
-                  _pdfSummaryItem(
-                    "Avg Wait",
-                    "${_summary['averageWaitingTimeMinutes'] ?? 0}m",
-                  ),
+                  _pdfSummaryItem("Pending", "${_summary['pendingTokens'] ?? 0}"),
+                  _pdfSummaryItem("Avg Wait", "${_summary['averageWaitingTimeMinutes'] ?? 0}m"),
                 ],
               ),
               pw.SizedBox(height: 20),
               pw.Table.fromTextArray(
-                headers: [
-                  'Date',
-                  'Queue',
-                  'Service',
-                  'Student',
-                  'Token',
-                  'Counter',
-                  'Status',
-                  'Wait',
-                ],
+                headers: ['Date', 'Token', 'Student', 'Service', 'Counter', 'Status', 'Wait'],
                 data: _historyTokens.map((token) {
                   String waitTime = "-";
-                  if (token['generatedAt'] != null &&
-                      token['completedAt'] != null) {
+                  if (token['generatedAt'] != null && token['completedAt'] != null) {
                     final gen = DateTime.parse(token['generatedAt']);
                     final comp = DateTime.parse(token['completedAt']);
                     final diff = comp.difference(gen).inMinutes;
@@ -260,20 +251,15 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   }
                   return [
                     DateFormat('yyyy-MM-dd').format(DateTime.parse(token['generatedAt']).toLocal()),
-                    token['queue']?['queueName'] ?? token['queueName'] ?? 'Deleted Queue',
-                    token['service']?['serviceName'] ?? token['serviceName'] ?? token['department'] ?? 'General',
-                    token['student']?['name'] ?? 'Unknown',
                     "A-${token['tokenNumber']}",
+                    token['student']?['name'] ?? 'Guest',
+                    token['service']?['serviceName'] ?? 'General',
                     token['counter']?['counterName'] ?? '-',
                     token['status'],
                     waitTime,
                   ];
                 }).toList(),
-                headerStyle: pw.TextStyle(
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.white,
-                  fontSize: 10,
-                ),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 10),
                 headerDecoration: pw.BoxDecoration(color: PdfColors.deepPurple),
                 cellStyle: const pw.TextStyle(fontSize: 9),
                 cellAlignment: pw.Alignment.centerLeft,
@@ -298,17 +284,18 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       ),
       child: pw.Column(
         children: [
-          pw.Text(
-            value,
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
-          ),
-          pw.Text(
-            title,
-            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
-          ),
+          pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+          pw.Text(title, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
         ],
       ),
     );
+  }
+
+  void _onReportTypeChanged(String type) {
+      setState(() {
+          _currentReportType = type;
+      });
+      _fetchHistory();
   }
 
   @override
@@ -324,402 +311,258 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       ),
       body: Column(
         children: [
-          // 1. FILTER SECTION (Form)
+           // CALENDAR SECTION
+           Container(
+             color: Colors.white,
+             padding: const EdgeInsets.only(bottom: 8),
+             child: TableCalendar(
+                firstDay: DateTime.utc(2020, 10, 16),
+                lastDay: DateTime.utc(2130, 3, 14),
+                focusedDay: _focusedDay,
+                calendarFormat: _calendarFormat,
+                availableCalendarFormats: const {
+                  CalendarFormat.month: 'Month',
+                  CalendarFormat.week: 'Week',
+                },
+                selectedDayPredicate: (day) {
+                  return isSameDay(_selectedDate, day);
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDate = selectedDay;
+                    _focusedDay = focusedDay;
+                    _currentReportType = 'Daily'; // Reset to daily on explicit select
+                  });
+                  _fetchHistory();
+                },
+                onFormatChanged: (format) {
+                  setState(() {
+                    _calendarFormat = format;
+                  });
+                },
+                onPageChanged: (focusedDay) {
+                  _focusedDay = focusedDay;
+                },
+                eventLoader: (day) {
+                    for (var d in _historyDates) {
+                        if (isSameDay(d, day)) return [true];
+                    }
+                    return [];
+                },
+                calendarStyle: const CalendarStyle(
+                   markerDecoration: BoxDecoration(
+                       color: Colors.deepPurple,
+                       shape: BoxShape.circle,
+                   ),
+                   todayDecoration: BoxDecoration(
+                       color: Colors.purpleAccent,
+                       shape: BoxShape.circle,
+                   ),
+                   selectedDecoration: BoxDecoration(
+                       color: Colors.deepPurple,
+                       shape: BoxShape.circle,
+                   ),
+                ),
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: true,
+                  titleCentered: true,
+                ),
+             ),
+           ),
+
+          const SizedBox(height: 10),
+
+          // REPORT GENERATION & FILTERS
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             color: Colors.white,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Row 1: Date & Service
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _dateController,
-                        readOnly: true,
-                        onTap: () => _selectDate(context),
-                        decoration: InputDecoration(
-                          labelText: "Select Date",
-                          hintText: "YYYY-MM-DD",
-                          suffixIcon: const Icon(
-                            Icons.calendar_today,
-                            color: Colors.deepPurple,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedServiceId,
-                            hint: const Text("Service"),
-                            isExpanded: true,
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text("All Services"),
-                              ),
-                              ..._services.map(
-                                (s) => DropdownMenuItem(
-                                  value: s['_id'].toString(),
-                                  child: Text(s['serviceName']),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) =>
-                                setState(() => _selectedServiceId = val),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // Row 2: Status & Search Button
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedStatus,
-                            isExpanded: true,
-                            items: const [
-                              DropdownMenuItem(
-                                value: "All",
-                                child: Text("All Status"),
-                              ),
-                              DropdownMenuItem(
-                                value: "Completed",
-                                child: Text("Completed"),
-                              ),
-                              DropdownMenuItem(
-                                value: "Pending",
-                                child: Text("Pending"),
-                              ),
-                            ],
-                            onChanged: (val) =>
-                                setState(() => _selectedStatus = val!),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 3,
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          labelText: "Search (Optional)",
-                          hintText: "Name or Token",
-                          prefixIcon: const Icon(Icons.search),
-                          isDense: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Search Button
-                ElevatedButton.icon(
-                  onPressed: _fetchHistory,
-                  icon: const Icon(Icons.search),
-                  label: const Text("Search History"),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
+                  const Text("Report Generation", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                         _reportChip("Daily"),
+                         const SizedBox(width: 8),
+                         _reportChip("Weekly"),
+                         const SizedBox(width: 8),
+                         _reportChip("Monthly"),
+                         const SizedBox(width: 8),
+                         _reportChip("Yearly"),
+                      ],
+                  )),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 10),
+
+          // FILTERS ROW
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade400),
                     ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedStatus,
+                        isExpanded: true,
+                        items: const [
+                           DropdownMenuItem(value: "All", child: Text("All Status")),
+                           DropdownMenuItem(value: "Completed", child: Text("Completed")),
+                           DropdownMenuItem(value: "Pending", child: Text("Pending")),
+                           DropdownMenuItem(value: "Cancelled", child: Text("Cancelled")),
+                        ],
+                        onChanged: (val) {
+                            setState(() => _selectedStatus = val!);
+                            _fetchHistory();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                       labelText: "Search",
+                       filled: true,
+                       fillColor: Colors.white,
+                       suffixIcon: IconButton(
+                           icon: const Icon(Icons.search),
+                           onPressed: _fetchHistory,
+                       ),
+                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                       contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    onSubmitted: (_) => _fetchHistory(),
                   ),
                 ),
               ],
             ),
           ),
 
-          const Divider(height: 1),
+          const SizedBox(height: 10),
 
-          // 2. Summary Cards
-          if (_historyTokens.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 12,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      "Tokens",
-                      "${_summary['totalTokens'] ?? 0}",
-                      Icons.confirmation_number,
-                      Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      "Pending",
-                      "${_summary['pendingTokens'] ?? 0}",
-                      Icons.hourglass_empty,
-                      Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      "Avg Wait",
-                      "${_summary['averageWaitingTimeMinutes'] ?? 0}m",
-                      Icons.timer,
-                      Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // 3. Results Area
+          // RESULTS TABLE
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                ? Center(
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  )
                 : _historyTokens.isEmpty
-                ? _buildEmptyState()
-                : _buildHistoryTable(),
-          ),
-        ],
-      ),
-      floatingActionButton: _historyTokens.isNotEmpty
-          ? FloatingActionButton(
-              backgroundColor: Colors.deepPurple,
-
-              child: const Icon(Icons.picture_as_pdf, color: Colors.white),
-              onPressed: _exportToPdf,
-            )
-          : null,
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.event_busy, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text(
-            "No data available for this date",
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Please create a queue or adjust your filters.",
-            style: TextStyle(color: Colors.grey.shade500),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            title,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: DataTable(
-            headingRowColor: MaterialStateProperty.all(
-              Colors.deepPurple.withOpacity(0.05),
-            ),
-            columnSpacing: 20,
-            horizontalMargin: 12,
-            border: TableBorder(borderRadius: BorderRadius.circular(8)),
-            columns: const [
-              DataColumn(
-                label: Text(
-                  'Time',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Token',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Student',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Service',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Status',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Action',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-            rows: _historyTokens.map((token) {
-              final status = token['status'] ?? 'Unknown';
-              Color statusColor = Colors.grey;
-              if (status.toLowerCase().contains('completed'))
-                statusColor = Colors.green;
-              else if (status.toLowerCase().contains('pending') ||
-                  status.toLowerCase().contains('waiting'))
-                statusColor = Colors.orange;
-
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      DateFormat(
-                        'HH:mm',
-                      ).format(DateTime.parse(token['generatedAt']).toLocal()),
-                    ),
-                  ),
-                  DataCell(
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        "A-${token['tokenNumber']}",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple,
+                  ? Center(child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history, size: 60, color: Colors.grey.shade300),
+                        const SizedBox(height: 10),
+                        Text("No records found", style: TextStyle(color: Colors.grey.shade600))
+                      ],
+                    ))
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columnSpacing: 20,
+                          headingRowColor: MaterialStateProperty.all(Colors.deepPurple.shade50),
+                          columns: const [
+                             DataColumn(label: Text("Date", style: TextStyle(fontWeight: FontWeight.bold))),
+                             DataColumn(label: Text("Token", style: TextStyle(fontWeight: FontWeight.bold))),
+                             DataColumn(label: Text("Name", style: TextStyle(fontWeight: FontWeight.bold))),
+                             DataColumn(label: Text("Service", style: TextStyle(fontWeight: FontWeight.bold))),
+                             DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
+                             DataColumn(label: Text("Wait", style: TextStyle(fontWeight: FontWeight.bold))),
+                             DataColumn(label: Text("Action", style: TextStyle(fontWeight: FontWeight.bold))),
+                          ],
+                          rows: _historyTokens.map((token) {
+                             return DataRow(cells: [
+                                DataCell(Text(DateFormat('dd-MM HH:mm').format(DateTime.parse(token['generatedAt']).toLocal()))),
+                                DataCell(Text("A-${token['tokenNumber']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple))),
+                                DataCell(Text(token['student']?['name'] ?? 'Guest')),
+                                DataCell(Text(token['service']?['serviceName'] ?? 'General')),
+                                DataCell(_statusBadge(token['status'])),
+                                DataCell(Text(_calculateWait(token))),
+                                DataCell(
+                                    IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                        onPressed: () => _confirmDelete(token['_id'])
+                                    )
+                                ),
+                             ]);
+                          }).toList(),
                         ),
                       ),
-                    ),
                   ),
-                  DataCell(Text(token['student']?['name'] ?? 'Guest')),
-                  DataCell(Text(token['service']?['serviceName'] ?? 'General')),
-                  DataCell(
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        status.toUpperCase(),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.red,
-                        size: 20,
-                      ),
-                      onPressed: () => _confirmDelete(token['_id']),
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
           ),
-        ),
+        ],
       ),
+      floatingActionButton: _historyTokens.isNotEmpty 
+        ? FloatingActionButton.extended(
+            onPressed: _exportToPdf,
+            label: const Text("Export Report"),
+            icon: const Icon(Icons.picture_as_pdf),
+            backgroundColor: Colors.deepPurple,
+          )
+        : null,
     );
+  }
+
+  Widget _reportChip(String type) {
+     final isSelected = _currentReportType == type;
+     return ChoiceChip(
+       label: Text(type),
+       selected: isSelected,
+       onSelected: (selected) {
+          if (selected) _onReportTypeChanged(type);
+       },
+       selectedColor: Colors.deepPurple,
+       backgroundColor: Colors.grey.shade200,
+       labelStyle: TextStyle(
+          color: isSelected ? Colors.white : Colors.black,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+       ),
+     );
+  }
+
+  Widget _statusBadge(String status) {
+     Color color = Colors.grey;
+     String s = status.toLowerCase();
+     if (s == 'completed') color = Colors.green;
+     else if (s.contains('pending') || s.contains('waiting') || s.contains('hold')) color = Colors.orange;
+     else if (s == 'cancelled') color = Colors.red;
+
+     return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+       decoration: BoxDecoration(
+           color: color.withOpacity(0.1), 
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: color.withOpacity(0.5))
+       ),
+       child: Text(
+           status.toUpperCase(), 
+           style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)
+       ),
+     );
+  }
+
+  String _calculateWait(dynamic token) {
+      if (token['generatedAt'] != null && token['completedAt'] != null) {
+          final gen = DateTime.parse(token['generatedAt']);
+          final comp = DateTime.parse(token['completedAt']);
+          final diff = comp.difference(gen).inMinutes;
+          return "${diff}m";
+      }
+      return "-";
   }
 }

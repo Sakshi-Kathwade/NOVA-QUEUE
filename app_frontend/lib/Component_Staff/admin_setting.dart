@@ -34,6 +34,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
   String? adminRole; // Admin role fetched from backend
   int _estimatedServiceTime = 5;
   int _missedTokenRecalls = 2;
+  int _missedTokenRetries = 3;
   int _missedTokenRecallWaitTimeMinutes = 10;
 
   @override
@@ -82,6 +83,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             _estimatedServiceTime =
                 data['settings']['estimatedServiceTimePerStudent'] ?? 5;
             _missedTokenRecalls = data['settings']['missedTokenRecalls'] ?? 2;
+            _missedTokenRetries = data['settings']['missedTokenRetries'] ?? 3;
             _missedTokenRecallWaitTimeMinutes =
                 data['settings']['missedTokenRecallWaitTimeMinutes'] ?? 10;
           });
@@ -265,6 +267,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
         body: jsonEncode({
           "estimatedServiceTimePerStudent": _estimatedServiceTime,
           "missedTokenRecalls": _missedTokenRecalls,
+          "missedTokenRetries": _missedTokenRetries,
           "missedTokenRecallWaitTimeMinutes": _missedTokenRecallWaitTimeMinutes,
         }),
       );
@@ -518,21 +521,21 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
           Translations.translate('missed_token_retries', currentLanguage),
         ),
         content: DropdownButton<int>(
-          value: _missedTokenRecalls,
+          value: _missedTokenRetries,
           onChanged: (int? newValue) {
             if (newValue != null) {
               setState(() {
-                _missedTokenRecalls = newValue;
+                _missedTokenRetries = newValue;
               });
             }
           },
           items:
-              List.generate(6, (index) => index) // 0 to 5 retries
+              List.generate(6, (index) => index + 1) // 1 to 6 students to wait
                   .map<DropdownMenuItem<int>>((int value) {
                     return DropdownMenuItem<int>(
                       value: value,
                       child: Text(
-                        '$value ${Translations.translate('retries', currentLanguage)}',
+                        '$value ${Translations.translate('students_waiting', currentLanguage)}',
                       ),
                     );
                   })

@@ -12,7 +12,7 @@ import 'completed_today.dart';
 import 'create_queue.dart';
 
 import 'current_token.dart';
-import 'report.dart';
+
 import 'admin_setting.dart';
 import '../services/translations.dart';
 import 'edit_admin_profile_screen.dart';
@@ -673,12 +673,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 maxStudents: maxStudents, // ✅ Pass maxStudents
               ),
             ),
-            _drawerItem(
-              context,
-              Icons.bar_chart,
-              Translations.translate('reports', currentLanguage),
-              screen: ReportScreen(adminId: adminId, adminEmail: adminEmail),
-            ),
+
             _drawerItem(
               context,
               Icons.bar_chart,

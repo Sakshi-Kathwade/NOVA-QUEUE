@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
 
 class CurrentTokenScreen extends StatefulWidget {
   final String queueName;
@@ -31,6 +32,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
   String service = "";
   int completed = 0;
   int total = 0;
+  bool isRetried = false;
   bool isProcessing = false; // ✅ Prevent multiple clicks
 
   @override
@@ -81,7 +83,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       // The original code had: "http://localhost:8000/api/currenttoken/${widget.queueName}"
 
       final url = Uri.parse(
-        "http://localhost:8000/api/currenttoken/${widget.queueName}",
+        "${ApiConfig.baseUrl}/currenttoken/${widget.queueName}",
       );
 
       final response = await http.get(url);
@@ -105,6 +107,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
             service = data['purpose'] ?? "";
             completed = data['completedCount'] ?? 0;
             total = data['totalCount'] ?? 0;
+            isRetried = data['isRetried'] ?? false;
             isLoading = false;
             error = null; // Clear error if successful
           });
@@ -166,12 +169,34 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
                           const SizedBox(height: 8),
                           Text(
                             error != null ? "No Token" : "Token - $tokenNumber",
-                            style: TextStyle(
-                              fontSize: 36,
+                            style: const TextStyle(
+                              fontSize: 28,
                               fontWeight: FontWeight.bold,
                               color: Colors.deepPurple,
                             ),
                           ),
+                          if (isRetried) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade100,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.red),
+                              ),
+                              child: const Text(
+                                "RETRIED TOKEN",
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 8),
                           Text(
                             error != null
@@ -310,7 +335,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
 
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/completetoken"),
+        Uri.parse("${ApiConfig.baseUrl}/completetoken"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"queueName": widget.queueName, "tokenId": tokenId}),
       );
@@ -355,7 +380,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
 
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/holdtoken"),
+        Uri.parse("${ApiConfig.baseUrl}/holdtoken"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"queueName": widget.queueName, "tokenId": tokenId}),
       );
@@ -400,7 +425,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
 
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/nexttoken"),
+        Uri.parse("${ApiConfig.baseUrl}/nexttoken"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "queueName": widget.queueName,
@@ -444,7 +469,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
   Future<void> showHeldTokensDialog() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/heldtokens/${widget.queueName}"),
+        Uri.parse("${ApiConfig.baseUrl}/heldtokens/${widget.queueName}"),
       );
 
       final data = jsonDecode(response.body);
@@ -532,7 +557,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
 
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/unholdtoken"),
+        Uri.parse("${ApiConfig.baseUrl}/unholdtoken"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "queueName": widget.queueName,

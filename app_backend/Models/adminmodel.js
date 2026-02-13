@@ -27,6 +27,10 @@ const adminSchema = new mongoose.Schema(
       type: Number,
       default: 2, // Default to 2 retries for missed tokens
     },
+    missedTokenRetries: {
+      type: Number,
+      default: 3, // Default to 3 students to wait before recalling
+    },
     missedTokenRecallWaitTimeMinutes: {
       type: Number,
       default: 10, // Default to 10 minutes wait before recalling

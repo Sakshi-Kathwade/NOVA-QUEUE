@@ -3,10 +3,11 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const Service = require('../Models/serviceModel.js');
-const Token = require('../Models/tokenModel.js'); // Import Token model
+const Token = require('../Models/tokenmodel.js'); // Import Token model
 const Counter = require('../Models/counterModel.js'); // Import Counter model
 const Staff = require('../Models/staffModel.js'); // Import Staff model
 const Register = require('../Models/registermodel.js'); // Import Register model (acting as Student)
+const Queue = require('../Models/create_queue_model.js'); // Import Queue model for active queue details
 
 const adminLogin = async (req, res) => {
   try {
@@ -293,7 +294,7 @@ const getAdminQueueSettings = async (req, res) => {
     }
 
     const admin = await Admin.findById(adminId).select(
-      "estimatedServiceTimePerStudent missedTokenRecalls missedTokenRecallWaitTimeMinutes"
+      "estimatedServiceTimePerStudent missedTokenRecalls missedTokenRetries missedTokenRecallWaitTimeMinutes"
     );
 
     if (!admin) {
@@ -308,6 +309,7 @@ const getAdminQueueSettings = async (req, res) => {
       settings: {
         estimatedServiceTimePerStudent: admin.estimatedServiceTimePerStudent,
         missedTokenRecalls: admin.missedTokenRecalls,
+        missedTokenRetries: admin.missedTokenRetries,
         missedTokenRecallWaitTimeMinutes: admin.missedTokenRecallWaitTimeMinutes,
       },
     });
@@ -323,7 +325,7 @@ const getAdminQueueSettings = async (req, res) => {
 const updateAdminQueueSettings = async (req, res) => {
   try {
     const { adminId } = req.params;
-    const { estimatedServiceTimePerStudent, missedTokenRecalls, missedTokenRecallWaitTimeMinutes } = req.body;
+    const { estimatedServiceTimePerStudent, missedTokenRecalls, missedTokenRetries, missedTokenRecallWaitTimeMinutes } = req.body;
 
     if (!adminId) {
       return res.status(400).json({
@@ -346,6 +348,9 @@ const updateAdminQueueSettings = async (req, res) => {
     if (missedTokenRecalls !== undefined) {
       admin.missedTokenRecalls = missedTokenRecalls;
     }
+    if (missedTokenRetries !== undefined) {
+      admin.missedTokenRetries = missedTokenRetries;
+    }
     if (missedTokenRecallWaitTimeMinutes !== undefined) {
       admin.missedTokenRecallWaitTimeMinutes = missedTokenRecallWaitTimeMinutes;
     }
@@ -358,6 +363,7 @@ const updateAdminQueueSettings = async (req, res) => {
       settings: {
         estimatedServiceTimePerStudent: admin.estimatedServiceTimePerStudent,
         missedTokenRecalls: admin.missedTokenRecalls,
+        missedTokenRetries: admin.missedTokenRetries,
         missedTokenRecallWaitTimeMinutes: admin.missedTokenRecallWaitTimeMinutes,
       },
     });
@@ -416,7 +422,25 @@ const getReportsSummary = async (req, res) => {
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
 
-    // Total tokens generated (all time)
+    // 1. Get Active Queue Details (For "Joined / Max" display)
+    const activeQueue = await Queue.findOne({
+      adminId,
+      status: 'Active',
+      endTime: { $gt: new Date() } // Not expired
+    }).sort({ createdAt: -1 });
+
+    let activeQueueMax = 0;
+    let activeQueueJoined = 0;
+
+    if (activeQueue) {
+      activeQueueMax = activeQueue.maxStudents;
+      activeQueueJoined = await Token.countDocuments({
+        adminId,
+        queueId: activeQueue._id
+      });
+    }
+
+    // Total tokens generated (all time) - Existing logic
     const totalTokensGenerated = await Token.countDocuments({ adminId });
 
     // Completed services (today)
@@ -432,7 +456,7 @@ const getReportsSummary = async (req, res) => {
     // Waiting students (currently in queue)
     const waitingTokensCount = await Token.countDocuments({
       adminId,
-      status: { $in: ['waiting', 'pending', 'Waiting', 'pending'] }
+      status: { $in: ['waiting', 'pending', 'Waiting', 'pending', 'hold', 'serving'] } // Added 'serving' and 'hold'
     });
 
     // Average waiting time (for completed tokens today)
@@ -461,6 +485,8 @@ const getReportsSummary = async (req, res) => {
       totalStudentsVisited,
       waitingTokensCount,
       averageWaitingTimeMinutes,
+      activeQueueMax,      // New field
+      activeQueueJoined    // New field
     });
   } catch (error) {
     return res.status(500).json({

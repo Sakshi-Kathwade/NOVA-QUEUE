@@ -24,6 +24,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
   int currentTokenNumber = 0;
   String studentName = "N/A";
   String purpose = "N/A";
+  bool isRetried = false;
 
   int waitingCount = 0;
   int completedCount = 0;
@@ -116,11 +117,13 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
               currentTokenNumber = data["data"]["tokenNumber"] ?? 0;
               studentName = data["data"]["studentName"] ?? "N/A";
               purpose = data["data"]["purpose"] ?? "N/A";
+              isRetried = data["data"]["isRetried"] ?? false;
             } else {
               currentTokenId = null;
               currentTokenNumber = 0;
               studentName = "N/A";
               purpose = "N/A";
+              isRetried = false;
             }
             // Update stats from the same API call
             completedCount = data["data"]?["completedCount"] ?? 0;
@@ -423,15 +426,41 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text("Current Token"),
-                              Text(
-                                currentTokenNumber > 0
-                                    ? "A-$currentTokenNumber"
-                                    : "N/A",
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xff5E35B1),
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    currentTokenNumber > 0
+                                        ? "A-$currentTokenNumber"
+                                        : "N/A",
+                                    style: const TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xff5E35B1),
+                                    ),
+                                  ),
+                                  if (isRetried) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade100,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.red),
+                                      ),
+                                      child: const Text(
+                                        "RETRIED",
+                                        style: TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),

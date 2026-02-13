@@ -372,6 +372,7 @@ exports.getCurrentToken = async (req, res) => {
         studentName: studentName,
         purpose: token.purpose,
         status: token.status, // Return status so frontend knows if it's waiting or serving
+        isRetried: token.isRetried || false, // Visual indicator for retried tokens
         completedCount,
         pendingCount,
         totalCount,
@@ -400,7 +401,11 @@ exports.completeToken = async (req, res) => {
     // Update token status to completed
     const token = await Token.findByIdAndUpdate(
       tokenId,
-      { status: "completed", completedAt: Date.now() }, // ✅ Set completedAt
+      { 
+        status: "completed", 
+        completedAt: Date.now(),
+        isMissed: false 
+      }, // ✅ Set completedAt and clear missed flag
       { new: true }
     );
 
@@ -605,43 +610,71 @@ exports.nextToken = async (req, res) => {
           });
         }
 
-        // 🟢 Case B: The token was ALREADY "serving" or "recalled". Now we finish it.
+        // 🟢 Case B: The token was ALREADY "serving" or "recalled". 
+        // In this flow, clicking 'Next' while a token is serving means it was MISSED.
         if (currentToken.status === "serving" || currentToken.status === "recalled") {
-           await Token.findByIdAndUpdate(currentTokenId, {
-            status: "completed",
-            completedAt: Date.now(), // ✅ Set completedAt
-          });
+          const Admin = require("../Models/adminmodel.js");
+          const admin = await Admin.findById(adminId);
+          const missedTokenRetries = admin?.missedTokenRetries || 3;
+          const maxRecalls = admin?.missedTokenRecalls || 2;
+          const currentAttempts = currentToken.recallAttempts || 0;
+
+          if (currentAttempts < maxRecalls) {
+            await Token.findByIdAndUpdate(currentTokenId, {
+              status: "missed",
+              isMissed: true,
+              isRetried: true, 
+              waitStudentsLeft: missedTokenRetries,
+              recallAttempts: currentAttempts + 1,
+              lastCalledAt: Date.now(),
+            });
+          } else {
+            // Max recalls reached, cancel the token
+            await Token.findByIdAndUpdate(currentTokenId, {
+              status: "cancelled",
+              cancelledAt: Date.now(),
+              isMissed: false
+            });
+          }
         }
       }
     }
 
     // 2️⃣ FIND THE *NEXT* TOKEN TO SERVE
-    // Only reach here if we completed the previous token OR if there was no current token to begin with.
-    
-    // Fetch admin settings for recall wait time
-    const Admin = require("../Models/adminmodel.js");
-    const admin = await Admin.findById(adminId);
-    if (!admin) {
-      return res.status(404).json({
-        success: false,
-        message: "Admin for this queue not found",
-      });
-    }
-    const missedTokenRecallWaitTimeMinutes = admin.missedTokenRecallWaitTimeMinutes || 10;
+    // Decrement wait counter for all currently missed tokens in this queue
+    await Token.updateMany(
+      { queueName, isMissed: true, waitStudentsLeft: { $gt: 0 } },
+      { $inc: { waitStudentsLeft: -1 } }
+    );
+
     const now = Date.now();
 
-    // Find next available token: prioritize recalled tokens whose wait time has passed
+    // Priority 1: Pick a missed token that is ready (waitStudentsLeft <= 0)
     let nextToken = await Token.findOne({
       queueName,
-      status: "recalled",
-      recalledAt: { $lte: new Date(now - missedTokenRecallWaitTimeMinutes * 60 * 1000) },
-    }).sort({ tokenNumber: 1 });
+      isMissed: true,
+      waitStudentsLeft: { $lte: 0 },
+      status: "missed"
+    }).sort({ lastCalledAt: 1 });
 
     if (!nextToken) {
-      // If no recalled token ready, find the next waiting token
+      // Priority 2: Pick the next waiting token
       nextToken = await Token.findOne({
         queueName,
         status: "waiting",
+      }).sort({ tokenNumber: 1 });
+    }
+
+    if (!nextToken) {
+      // Priority 3: Fallback to old recall logic if still used
+      const Admin = require("../Models/adminmodel.js");
+      const admin = await Admin.findById(adminId);
+      const waitTime = admin?.missedTokenRecallWaitTimeMinutes || 10;
+      
+      nextToken = await Token.findOne({
+        queueName,
+        status: "recalled",
+        recalledAt: { $lte: new Date(now - waitTime * 60 * 1000) },
       }).sort({ tokenNumber: 1 });
     }
 
@@ -653,7 +686,11 @@ exports.nextToken = async (req, res) => {
     }
 
     // Mark next token as serving
-    await Token.findByIdAndUpdate(nextToken._id, { status: "serving", lastCalledAt: Date.now() });
+    await Token.findByIdAndUpdate(nextToken._id, { 
+      status: "serving", 
+      lastCalledAt: Date.now(),
+      isMissed: false // Clear missed status when they show up
+    });
 
     // Get student name
     const Student = require("../Models/registermodel.js");
