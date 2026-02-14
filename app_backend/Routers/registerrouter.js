@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage }).single('profilePicture');
 
 // Import controller correctly
-const { addstudent, deleteStudent, changePassword, getStudentProfile, updateStudentProfile, uploadStudentProfilePicture, registerWithGoogle } = require('../Controllers/registercontroller');
+const { addstudent, deleteStudent, changePassword, getStudentProfile, updateStudentProfile, uploadStudentProfilePicture, registerWithGoogle, updateFcmToken } = require('../Controllers/registercontroller');
 
 // REGISTER USER
 router.post('/register', upload, addstudent);
@@ -37,6 +37,7 @@ router.put('/changepassword/:studentID', changePassword);
 // STUDENT PROFILE ROUTES
 router.get("/student/profile/:studentID", getStudentProfile);
 router.put("/student/profile/:studentID", upload, updateStudentProfile);
-router.post("/student/profile/picture/:studentID", upload, uploadStudentProfilePicture);
+// FCM TOKEN UPDATE
+router.put('/fcm-token/:studentID', updateFcmToken);
 
 module.exports = router;

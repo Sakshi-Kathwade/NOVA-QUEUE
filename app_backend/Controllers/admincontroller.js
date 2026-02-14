@@ -646,10 +646,44 @@ const getQueueHistory = async (req, res) => {
     }
 
     // 1. Context Match (For Summary Stats - Total, Served, Pending for the day/service)
-    // This ignores the 'status' filter so that the summary cards show the BIG PICTURE.
     let contextMatch = {
       adminId: new mongoose.Types.ObjectId(adminId),
     };
+
+    // 🔴 LOGIC UPDATE: Only show history for queues that are EXPIRED or finished > 20 mins ago
+    // We need to find valid Queue IDs first
+    const twentyMinsAgo = new Date(Date.now() - 20 * 60 * 1000); // 20 mins buffer
+    
+    // Find queues that are explicitly Expired OR time has passed 20 mins ago
+    // Note: If you want to include manually "Completed" or "Inactive" queues, add that status too.
+    const expiredQueues = await Queue.find({
+        adminId: adminId,
+        $or: [
+            { status: "Expired" },
+            { endTime: { $lte: twentyMinsAgo } }
+        ]
+    }).select('_id');
+
+    const expiredQueueIds = expiredQueues.map(q => q._id);
+
+    // If no expired queues, return empty history immediately (optimization)
+    if (expiredQueueIds.length === 0) {
+         return res.status(200).json({ 
+            success: true, 
+            message: "No history available (all queues are active or recent)", 
+            history: [],
+            summary: {
+                totalTokens: 0,
+                totalServed: 0,
+                pendingTokens: 0,
+                averageWaitingTimeMinutes: 0,
+                totalQueues: 0
+            }
+        });
+    }
+
+    // Add QueueID filter to context
+    contextMatch.queueId = { $in: expiredQueueIds };
 
     // Date Filter (Applies to both Summary and List)
     if (startDate || endDate) {
@@ -677,7 +711,6 @@ const getQueueHistory = async (req, res) => {
     }
 
     // Counter Filter (Applies to both)
-    // We will handle specific ID matches here, but TEXT matches (Service/Queue names) must happen AFTER lookups
     if (counterId && counterId !== 'All') {
        if (mongoose.Types.ObjectId.isValid(counterId)) {
            contextMatch.counterId = new mongoose.Types.ObjectId(counterId);

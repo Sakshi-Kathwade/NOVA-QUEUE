@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
 import 'register.dart';
+import 'forgot_password.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -234,6 +235,26 @@ class _LoginScreenState extends State<LoginScreen> {
                           validator: (v) => v == null || v.length < 6
                               ? "Minimum 6 characters"
                               : null,
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              "Forgot Password?",
+                              style: TextStyle(
+                                color: Colors.deepPurple,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 24),
                         SizedBox(

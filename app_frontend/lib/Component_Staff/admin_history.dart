@@ -36,9 +36,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   
   final TextEditingController _searchController = TextEditingController();
   
-  String _selectedCounter = "All"; 
-  // Options explicitly requested by user + General fallback
-  final List<String> _counterOptions = ["All", "Exam", "Admission", "Fees", "General"];
+
 
   String _selectedStatus = "All";
   final List<String> _statusOptions = ["All", "Completed", "Pending", "Cancelled"];
@@ -138,11 +136,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       queryParams['startDate'] = range['start']!.toIso8601String();
       queryParams['endDate'] = range['end']!.toIso8601String();
 
-      // Passing selected counter as counterId. 
-      // Backend is updated to check Service Name if Counter Name not found.
-      if (_selectedCounter != "All") {
-         queryParams['counterId'] = _selectedCounter; 
-      }
+
 
       if (_selectedStatus != "All") {
         queryParams['status'] = _selectedStatus.toLowerCase();
@@ -390,72 +384,35 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   Text("Report Settings", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple.shade700)),
                   const SizedBox(height: 10),
                   
-                  // FREQUENCY & DATE ROW
-                  Row(
-                    children: [
-                      // Frequency Dropdown
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _reportFrequency,
-                              isExpanded: true,
-                              items: _frequencyOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                              onChanged: (val) => setState(() => _reportFrequency = val!),
-                            ),
-                          ),
-                        ),
+                  // DATE PICKER
+                  InkWell(
+                    onTap: _pickDate,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
                       ),
-                      const SizedBox(width: 10),
-                      // Date Picker
-                      Expanded(
-                        flex: 3,
-                        child: InkWell(
-                          onTap: _pickDate,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  DateFormat('MMM d, yyyy').format(_selectedDate),
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                const Icon(Icons.calendar_month, color: Colors.deepPurple, size: 20),
-                              ],
-                            ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            DateFormat('MMM d, yyyy').format(_selectedDate),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        ),
+                          const Icon(Icons.calendar_month, color: Colors.deepPurple, size: 20),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 10),
                   
                   // FILTERS ROW (Status & Counter)
                   Row(
                     children: [
-                      // Counter Filter
-                      Expanded(
-                        child: _buildDropdown(
-                          value: _selectedCounter, 
-                          items: _counterOptions, 
-                          label: "Counter",
-                          onChanged: (val) => setState(() => _selectedCounter = val!),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
+
                       // Status Filter
                       Expanded(
                         child: _buildDropdown(

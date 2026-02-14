@@ -1,7 +1,8 @@
-
 const Token = require("../Models/tokenmodel");
 const Queue = require("../Models/create_queue_model");
 const QueueHistory = require("../Models/queueHistoryModel");
+const notificationService = require("../utils/notificationService"); // ✅ Import Notification Service
+const Student = require("../Models/registermodel"); 
 
 exports.createToken = async (req, res) => {
   try {
@@ -118,6 +119,21 @@ exports.createToken = async (req, res) => {
       adminId: queue.adminId, // ✅ Save Admin ID for reports
       serviceName: (department || queue.department) || purpose, // ✅ Snapshot service name (department is often used as service)
     });
+
+    // 🔔 SEND NOTIFICATION: Token Confirmation
+    try {
+        const studentData = await Student.findById(studentId);
+        if (studentData && studentData.fcmToken) {
+            await notificationService.sendNotification(
+                studentData.fcmToken,
+                "Token Confirmed! 🎉",
+                `Your token A-${tokenNumber} is generated for ${queueName}. Estimated wait: ${token.estimatedWaitingTime} mins.`,
+                { type: "token_created", tokenId: token._id.toString() }
+            );
+        }
+    } catch (e) {
+        console.error("Error sending token creation notification:", e.message);
+    }
 
     // 6️⃣ Success response
     res.status(201).json({
@@ -699,6 +715,41 @@ exports.nextToken = async (req, res) => {
       isMissed: false, // Clear missed status when they show up
       ...(req.body.counterId && { counterId: req.body.counterId }) // ✅ Update counter if provided
     });
+
+    // 🔔 SEND NOTIFICATION: It's Your Turn!
+    try {
+        const student = await Student.findById(nextToken.studentId);
+        if (student && student.fcmToken) {
+            await notificationService.sendNotification(
+                student.fcmToken,
+                "It's Your Turn! 🚀",
+                `Please proceed to Counter ${req.body.counterId || 'Assigned Counter'} for ${queueName}.`,
+                { type: "your_turn", tokenId: nextToken._id.toString() }
+            );
+        }
+
+        // 🔔 SEND REMINDERS: Next 2 students in line
+        const upcomingTokens = await Token.find({
+            queueName,
+            status: "waiting",
+            tokenNumber: { $gt: nextToken.tokenNumber } 
+        }).sort({ tokenNumber: 1 }).limit(2);
+
+        for (const t of upcomingTokens) {
+            const s = await Student.findById(t.studentId);
+            if (s && s.fcmToken) {
+                 await notificationService.sendNotification(
+                    s.fcmToken,
+                    "Get Ready! ⏳",
+                    `Only ${t.tokenNumber - nextToken.tokenNumber} students ahead of you. Please be near the counter.`,
+                    { type: "upcoming_turn", tokenId: t._id.toString() }
+                );
+            }
+        }
+
+    } catch (e) {
+        console.error("Error sending next token notifications:", e.message);
+    }
 
     // Get student name
     const Student = require("../Models/registermodel.js");

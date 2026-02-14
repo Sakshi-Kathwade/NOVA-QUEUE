@@ -11,6 +11,7 @@ import 'my_current_queue.dart';
 import 'queue_history.dart';
 import 'student_setting.dart';
 import 'student_waiting.dart';
+import '../services/notification_service.dart';
 import '../services/language_service.dart';
 import '../services/translations.dart';
 import 'edit_student_profile_screen.dart';
@@ -53,8 +54,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     super.initState();
     _loadLanguage();
     fetchQueueStatus();
+    fetchQueueStatus();
     fetchStudentDetails();
     _startPolling();
+    NotificationService.initNotifications(widget.studentId); // ✅ Initialize Notifications
   }
 
   @override

@@ -11,6 +11,11 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    phoneNumber: {
+      type: String, 
+      unique: true,
+      sparse: true, // Allow multiple nulls if not provided initially
+    },
     role: {
       type: String,
       default: "admin", // ✅ added role

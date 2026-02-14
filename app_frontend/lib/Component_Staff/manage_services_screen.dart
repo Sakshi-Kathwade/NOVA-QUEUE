@@ -68,17 +68,17 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
           });
         }
       } else {
-        _showSnackBar(
+        _showResultDialog(
           '${Translations.translate('failed_to_load_services', _currentLanguage)}: ${data['message']}',
-          Colors.red,
+          false,
         );
       }
     } catch (e) {
       if (mounted) {
         // Only show snackbar if mounted
-        _showSnackBar(
+        _showResultDialog(
           '${Translations.translate('server_error', _currentLanguage)}: $e',
-          Colors.red,
+          false,
         );
       }
     } finally {
@@ -95,9 +95,9 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     final description = _serviceDescriptionController.text.trim();
 
     if (serviceName.isEmpty) {
-      _showSnackBar(
+      _showResultDialog(
         Translations.translate('service_name_required', _currentLanguage),
-        Colors.red,
+        false,
       );
       return;
     }
@@ -118,29 +118,29 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
 
       final data = json.decode(response.body);
       if (response.statusCode == 201 && data['success'] == true) {
-        _showSnackBar(
+        _showResultDialog(
           Translations.translate(
             'service_added_successfully',
             _currentLanguage,
           ),
-          Colors.green,
+          true,
         );
         _serviceNameController.clear();
         _serviceDescriptionController.clear();
         Navigator.pop(context); // Close dialog
         _fetchServices(); // Refresh the list
       } else {
-        _showSnackBar(
+        _showResultDialog(
           data['message'] ??
               Translations.translate('failed_to_add_service', _currentLanguage),
-          Colors.red,
+          false,
         );
       }
     } catch (e) {
       if (!mounted) return; // Add mounted check
-      _showSnackBar(
+      _showResultDialog(
         '${Translations.translate('server_error', _currentLanguage)}: $e',
-        Colors.red,
+        false,
       );
     }
   }
@@ -150,9 +150,9 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     final description = _serviceDescriptionController.text.trim();
 
     if (serviceName.isEmpty) {
-      _showSnackBar(
+      _showResultDialog(
         Translations.translate('service_name_required', _currentLanguage),
-        Colors.red,
+        false,
       );
       return;
     }
@@ -173,32 +173,32 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
 
       final data = json.decode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
-        _showSnackBar(
+        _showResultDialog(
           Translations.translate(
             'service_updated_successfully',
             _currentLanguage,
           ),
-          Colors.green,
+          true,
         );
         _serviceNameController.clear();
         _serviceDescriptionController.clear();
         Navigator.pop(context); // Close dialog
         _fetchServices(); // Refresh the list
       } else {
-        _showSnackBar(
+        _showResultDialog(
           data['message'] ??
               Translations.translate(
                 'failed_to_update_service',
                 _currentLanguage,
               ),
-          Colors.red,
+          false,
         );
       }
     } catch (e) {
       if (!mounted) return; // Add mounted check
-      _showSnackBar(
+      _showResultDialog(
         '${Translations.translate('server_error', _currentLanguage)}: $e',
-        Colors.red,
+        false,
       );
     }
   }
@@ -245,29 +245,29 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
 
         final data = json.decode(response.body);
         if (response.statusCode == 200 && data['success'] == true) {
-          _showSnackBar(
+          _showResultDialog(
             Translations.translate(
               'service_deleted_successfully',
               _currentLanguage,
             ),
-            Colors.green,
+            true,
           );
           _fetchServices(); // Refresh the list
         } else {
-          _showSnackBar(
+          _showResultDialog(
             data['message'] ??
                 Translations.translate(
                   'failed_to_delete_service',
                   _currentLanguage,
                 ),
-            Colors.red,
+            false,
           );
         }
       } catch (e) {
         if (!mounted) return; // Add mounted check
-        _showSnackBar(
+        _showResultDialog(
           '${Translations.translate('server_error', _currentLanguage)}: $e',
-          Colors.red,
+          false,
         );
       }
     }
@@ -343,10 +343,45 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     );
   }
 
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
+  void _showResultDialog(String message, bool isSuccess) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle : Icons.error, 
+                color: isSuccess ? Colors.green : Colors.red, 
+                size: 60
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isSuccess ? "Success" : "Error", 
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)
+              ),
+              const SizedBox(height: 8),
+              Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSuccess ? Colors.deepPurple : Colors.red,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override

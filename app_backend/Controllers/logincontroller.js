@@ -1,4 +1,5 @@
 const User = require('../Models/registermodel');
+const Admin = require('../Models/adminmodel'); // Import Admin model
 
 // LOGIN USER (STUDENT / ADMIN)
 const loginStudent = async (req, res) => {
@@ -47,7 +48,41 @@ const loginStudent = async (req, res) => {
   }
 };
 
+// RESET PASSWORD
+const resetPassword = async (req, res) => {
+  try {
+    const { phoneNumber, newPassword } = req.body;
 
+    if (!phoneNumber || !newPassword) {
+      return res.status(400).json({ success: false, message: "Phone number and new password required" });
+    }
 
+    // Check Student
+    let user = await User.findOne({ phoneNumber });
+    let role = 'student';
 
-module.exports = { loginStudent };
+    if (!user) {
+      // Check Admin
+      user = await Admin.findOne({ phoneNumber });
+      role = 'admin';
+    }
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User with this phone number not found" });
+    }
+
+    // Update password
+    user.password = newPassword;
+    if (role === 'student' && user.confirmPassword !== undefined) {
+        user.confirmPassword = newPassword; 
+    }
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Password reset successfully" });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { loginStudent, resetPassword };

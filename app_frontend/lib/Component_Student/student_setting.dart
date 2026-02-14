@@ -11,7 +11,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/language_service.dart';
 import '../services/translations.dart';
-import 'edit_student_profile_screen.dart'; // Import the new screen
+import 'edit_student_profile_screen.dart';
+import '../services/notification_service.dart';
 
 class StudentSettingScreen extends StatefulWidget {
   final String studentId;
@@ -348,7 +349,17 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
             value: notificationsEnabled,
             title: Text(Translations.translate('notifications', currentLanguage)),
             secondary: const Icon(Icons.notifications),
-            onChanged: (value) => setState(() => notificationsEnabled = value),
+            onChanged: (value) {
+              setState(() => notificationsEnabled = value);
+              if (value) {
+                NotificationService.initNotifications(widget.studentId);
+              } else {
+                // In a real app we might delete token from backend or locally unsubscribe
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Notifications Disabled (Mock)")),
+                );
+              }
+            },
           ),
 
           const SizedBox(height: 16),

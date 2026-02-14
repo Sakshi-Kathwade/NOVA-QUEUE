@@ -18,6 +18,6 @@ class ApiConfig {
     }
 
     // 🔹 Default for Desktop/iOS Simulator
-    return "http://localhost:8000/api";
+    return "http://127.0.0.1:8000/api";
   }
 }

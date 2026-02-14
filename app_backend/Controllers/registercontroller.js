@@ -385,6 +385,37 @@ const registerWithGoogle = async (req, res) => {
   }
 };
 
+// 🔄 UPDATE FCM TOKEN
+const updateFcmToken = async (req, res) => {
+  try {
+    const { studentID } = req.params;
+    const { fcmToken } = req.body;
+
+    if (!studentID) return res.status(400).json({ success: false, message: "Student ID missing" });
+
+    // Assuming we want to support both Student (Register) AND Admin?
+    // For now, let's update Student as requested ("user generates a token")
+    // But Admin might need it too. Let's look up User (Register) first.
+    
+    let user = await User.findById(studentID);
+    if (!user) {
+        // Fallback or specific logic if admins need notifications too
+        // For this task, "User" implies the Student/End-User.
+        return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    user.fcmToken = fcmToken;
+    await user.save();
+
+    console.log(`✅ FCM Token updated for user ${user.name}`);
+
+    return res.status(200).json({ success: true, message: "FCM Token updated" });
+  } catch (error) {
+    console.error("Error updating FCM token:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   addstudent,
   deleteStudent,
@@ -392,5 +423,6 @@ module.exports = {
   getStudentProfile,
   updateStudentProfile,
   uploadStudentProfilePicture,
-  registerWithGoogle
+  registerWithGoogle,
+  updateFcmToken // ✅ Export new function
 };
