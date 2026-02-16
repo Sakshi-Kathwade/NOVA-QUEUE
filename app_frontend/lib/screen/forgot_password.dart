@@ -1,8 +1,6 @@
-
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -13,176 +11,124 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final _phoneController = TextEditingController();
-  final _otpController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  String? _verificationId;
-  int _step = 1; // 1: Phone, 2: OTP, 3: Password
+  bool _isEmailVerified = false;
   bool _isLoading = false;
+  String? _studentId;
+  String? _studentName;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // 1. Send OTP
-  Future<void> _sendOtp() async {
-    String phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
-      _showResultDialog("Please enter phone number", false);
-      return;
-    }
-    // Simple validation (must ensure country code if using Firebase)
-    if (!phone.startsWith('+')) {
-       _showResultDialog("Please enter phone number with Country Code (e.g. +91...)", false);
-       return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _auth.verifyPhoneNumber(
-        phoneNumber: phone,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-           // Auto-retrieval on Android
-           await _auth.signInWithCredential(credential);
-           setState(() {
-             _step = 3;
-             _isLoading = false;
-           });
-           _showResultDialog("Phone Verified Automatically!", true);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          setState(() => _isLoading = false);
-          _showResultDialog(e.message ?? "Verification Failed", false);
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          setState(() {
-            _verificationId = verificationId;
-            _step = 2;
-            _isLoading = false;
-          });
-          _showResultDialog("OTP Sent Successfully", true);
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          _verificationId = verificationId;
-        },
-      );
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _showResultDialog("Error: $e", false);
-    }
-  }
-
-  // 2. Verify OTP
-  Future<void> _verifyOtp() async {
-    String smsCode = _otpController.text.trim();
-    if (smsCode.isEmpty) {
-      _showResultDialog("Enter OTP", false);
+  // 1. Verify Email
+  Future<void> _verifyEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showSnack("Please enter your email", Colors.red);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: smsCode,
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}/forgot-password"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email}),
       );
 
-      // Sign in to verify ownership
-      await _auth.signInWithCredential(credential);
-      
-      setState(() {
-        _step = 3;
-        _isLoading = false;
-      });
-      _showResultDialog("Phone Verified!", true);
+      final data = jsonDecode(response.body);
 
+      if (response.statusCode == 200 && data['success'] == true) {
+        setState(() {
+          _isEmailVerified = true;
+          _studentId = data['studentId'];
+          _studentName = data['name'];
+        });
+        _showSnack("Email verified successfully", Colors.green);
+      } else {
+        _showSnack(data['message'] ?? "Email not found", Colors.red);
+      }
     } catch (e) {
+      _showSnack("Server Error: $e", Colors.red);
+    } finally {
       setState(() => _isLoading = false);
-      _showResultDialog("Invalid OTP", false);
     }
   }
 
-  // 3. Reset Password
+  // 2. Reset Password
   Future<void> _resetPassword() async {
-    String password = _passwordController.text;
-    String confirm = _confirmPasswordController.text;
+    final password = _passwordController.text;
+    final confirm = _confirmPasswordController.text;
 
-    if (password.length < 6) {
-      _showResultDialog("Password must be at least 6 characters", false);
+    if (password.isEmpty || confirm.isEmpty) {
+      _showSnack("Please fill all password fields", Colors.red);
       return;
     }
     if (password != confirm) {
-      _showResultDialog("Passwords do not match", false);
+      _showSnack("Passwords do not match", Colors.red);
+      return;
+    }
+    if (password.length < 6) {
+      _showSnack("Password must be at least 6 characters", Colors.red);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-       final response = await http.post(
-         Uri.parse("${ApiConfig.baseUrl}/reset-password"),
-         headers: {"Content-Type": "application/json"},
-         body: jsonEncode({
-           "phoneNumber": _phoneController.text.trim(),
-           "newPassword": password
-         })
-       );
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}/reset-password"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": _emailController.text.trim(),
+          "newPassword": password
+        }),
+      );
 
-       final data = jsonDecode(response.body);
-       
-       if (response.statusCode == 200 && data['success'] == true) {
-         _showResultDialog("Password Reset Successfully!", true);
-         await Future.delayed(const Duration(seconds: 2));
-         if (mounted) Navigator.pop(context); // Go back to login
-       } else {
-         _showResultDialog(data['message'] ?? "Failed to reset password", false);
-       }
+      final data = jsonDecode(response.body);
 
+      if (response.statusCode == 200 && data['success'] == true) {
+        _showSuccessDialog();
+      } else {
+        _showSnack(data['message'] ?? "Failed to update password", Colors.red);
+      }
     } catch (e) {
-      _showResultDialog("Server Error: $e", false);
+      _showSnack("Server Error: $e", Colors.red);
+    } finally {
+      setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
-  void _showResultDialog(String message, bool isSuccess) {
+  void _showSnack(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+  }
+
+  void _showSuccessDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isSuccess ? Icons.check_circle : Icons.error, 
-                color: isSuccess ? Colors.green : Colors.red, 
-                size: 60
-              ),
-              const SizedBox(height: 16),
-              Text(
-                isSuccess ? "Success" : "Error", 
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)
-              ),
-              const SizedBox(height: 8),
-              Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isSuccess ? Colors.deepPurple : Colors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text("OK", style: TextStyle(color: Colors.white)),
-                ),
-              )
-            ],
-          ),
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Column(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 60),
+            SizedBox(height: 10),
+            Text("Success"),
+          ],
         ),
+        content: const Text(
+          "Password updated successfully!\nYou can now login with your new password.",
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(context); // Go back to login
+            },
+            child: const Text("Go to Login", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
@@ -190,12 +136,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Forgot Password"),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -203,29 +147,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           children: [
             const Icon(Icons.lock_reset, size: 80, color: Colors.deepPurple),
             const SizedBox(height: 20),
-            Text(
-              _step == 1 ? "Enter Phone Number" : _step == 2 ? "Verify OTP" : "Reset Password",
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              _step == 1 
-                 ? "We will send an OTP to your phone number to reset your password." 
-                 : _step == 2 
-                    ? "Enter the OTP sent to ${_phoneController.text}"
-                    : "Create a new strong password.",
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 30),
-
-            if (_step == 1) ...[
+            
+            // EMAIL VERIFICATION STEP
+            if (!_isEmailVerified) ...[
+               const Text(
+                "Enter your registered email to find your account.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 30),
               TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  labelText: "Phone Number (+91...)",
-                  prefixIcon: const Icon(Icons.phone),
+                  labelText: "Email Address",
+                  prefixIcon: const Icon(Icons.email),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -234,39 +170,57 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _sendOtp,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Send OTP", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  onPressed: _isLoading ? null : _verifyEmail,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple, 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                  ),
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : const Text("Verify Email", style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ),
             ]
-            else if (_step == 2) ...[
-              TextField(
-                controller: _otpController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: "Enter OTP",
-                  prefixIcon: const Icon(Icons.sms),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            
+            // RESET PASSWORD STEP
+            else ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.deepPurple.shade200)
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Account Found:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.person, size: 20, color: Colors.grey),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text("Student ID: $_studentId", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                      ],
+                    ),
+                    if (_studentName != null) ...[
+                      const SizedBox(height: 4),
+                       Row(
+                        children: [
+                          const Icon(Icons.badge, size: 20, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text("Name: $_studentName", style: const TextStyle(fontWeight: FontWeight.w500))),
+                        ],
+                      ),
+                    ]
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _verifyOtp,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Verify OTP", style: TextStyle(color: Colors.white, fontSize: 16)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                 onPressed: () => setState(() => _step = 1),
-                 child: const Text("Change Phone Number"),
-              )
-            ]
-            else if (_step == 3) ...[
+              const Text("Create a New Password", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              
               TextField(
                 controller: _passwordController,
                 obscureText: true,
@@ -292,11 +246,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _resetPassword,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Reset Password", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple, 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                  ),
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : const Text("Update Password", style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ),
-            ]
+            ],
           ],
         ),
       ),

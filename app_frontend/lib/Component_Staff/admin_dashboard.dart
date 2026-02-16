@@ -778,6 +778,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               navigateTo: AdminLiveQueueScreen(
                 adminId: adminId!,
                 queueName: queueName ?? "",
+                maxStudents: maxStudents, // ✅ Pass maxStudents
               ),
             ),
 

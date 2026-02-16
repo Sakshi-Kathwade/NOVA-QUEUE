@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
       builder: (context, isDark, _) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'QueueNova',
+          title: 'Nova Queue',
           theme: ThemeData.light(),
           darkTheme: ThemeData.dark(),
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,

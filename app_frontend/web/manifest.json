@@ -1,11 +1,11 @@
 {
-    "name": "app_frontend",
-    "short_name": "app_frontend",
+    "name": "Nova Queue",
+    "short_name": "Nova Queue",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#673AB7",
+    "description": "Smart Queue Management Application",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -230,63 +230,74 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   // --- EXPORT FUNCTIONS ---
 
   Future<void> _downloadPdf() async {
-    final pdf = pw.Document();
-    final range = _calculateDateRange();
-    final dateStr = "${DateFormat('yyyy-MM-dd').format(range['start']!)} to ${DateFormat('yyyy-MM-dd').format(range['end']!)}";
+    try {
+      final pdf = pw.Document();
+      final range = _calculateDateRange();
+      final dateStr = "${DateFormat('yyyy-MM-dd').format(range['start']!)} to ${DateFormat('yyyy-MM-dd').format(range['end']!)}";
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4.landscape,
-        build: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("SmartQ $_reportFrequency Report", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
-                    pw.Text(dateStr),
-                  ],
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4.landscape,
+          build: (pw.Context context) {
+            return pw.Column(
+              children: [
+                pw.Header(
+                  level: 0,
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text("SmartQ $_reportFrequency Report", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
+                      pw.Text(dateStr),
+                    ],
+                  ),
                 ),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Table.fromTextArray(
-                context: context,
-                data: <List<String>>[
-                  <String>['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time'],
-                  ..._historyTokens.map((item) => [
-                        DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['generatedAt']).toLocal()),
-                        "A-${item['tokenNumber']}",
-                        item['student']?['name'] ?? 'Guest',
-                        "${item['department'] ?? item['service']?['serviceName'] ?? '-'} ${item['counter'] != null ? '(${item['counter']['counterName']})' : ''}",
-                        item['status'],
-                        _calculateWait(item)
-                      ]),
-                ],
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
-                rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
-                cellAlignments: {
-                  0: pw.Alignment.centerLeft,
-                  1: pw.Alignment.center,
-                  2: pw.Alignment.centerLeft,
-                  3: pw.Alignment.centerLeft,
-                  4: pw.Alignment.center,
-                  5: pw.Alignment.centerRight,
-                },
-              ),
-            ],
-          );
-        },
-      ),
-    );
+                pw.SizedBox(height: 20),
+                pw.Table.fromTextArray(
+                  context: context,
+                  data: <List<String>>[
+                    <String>['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time'],
+                    ..._historyTokens.map((item) => [
+                          DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['generatedAt']).toLocal()),
+                          "A-${item['tokenNumber']}",
+                          item['student']?['name'] ?? 'Guest',
+                          "${item['department'] ?? item['service']?['serviceName'] ?? '-'} ${item['counter'] != null ? '(${item['counter']['counterName']})' : ''}",
+                          item['status'],
+                          _calculateWait(item)
+                        ]),
+                  ],
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
+                  rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
+                  cellAlignments: {
+                    0: pw.Alignment.centerLeft,
+                    1: pw.Alignment.center,
+                    2: pw.Alignment.centerLeft,
+                    3: pw.Alignment.centerLeft,
+                    4: pw.Alignment.center,
+                    5: pw.Alignment.centerRight,
+                  },
+                ),
+              ],
+            );
+          },
+        ),
+      );
 
-    // Save and Share/Download
-    final output = await getApplicationDocumentsDirectory();
-    final file = File("${output.path}/admin_report_${DateTime.now().millisecondsSinceEpoch}.pdf");
-    await file.writeAsBytes(await pdf.save());
-    await Share.shareXFiles([XFile(file.path)], text: 'Admin History PDF');
+      // Use Printing package to share/save the PDF directly.
+      // This is more robust than manual path handling on some platforms and avoids MissingPluginException for path_provider if Printing is working.
+      await Printing.sharePdf(bytes: await pdf.save(), filename: 'admin_report_${DateTime.now().millisecondsSinceEpoch}.pdf');
+
+    } catch (e) {
+      if (mounted) {
+        String errorMsg = 'Error downloading PDF: $e';
+        if (e.toString().contains('MissingPluginException')) {
+           errorMsg = 'Please restart the app completely to enable downloads.';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _printPdf() async {
@@ -350,37 +361,52 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   }
 
   Future<void> _exportToExcel() async {
-    var excel = excel_pkg.Excel.createExcel();
-    excel_pkg.Sheet sheetObject = excel['Report'];
-    
-    List<String> headers = ['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time'];
-    for(int i=0; i<headers.length; i++) {
-        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = excel_pkg.TextCellValue(headers[i]);
+    try {
+      var excel = excel_pkg.Excel.createExcel();
+      excel_pkg.Sheet sheetObject = excel['Report'];
+      
+      List<String> headers = ['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time'];
+      for(int i=0; i<headers.length; i++) {
+          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = excel_pkg.TextCellValue(headers[i]);
 
-    }
+      }
 
-    for (int i = 0; i < _historyTokens.length; i++) {
-        var token = _historyTokens[i];
-        
-        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: i+1)).value = excel_pkg.TextCellValue(DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(token['generatedAt']).toLocal()));
+      for (int i = 0; i < _historyTokens.length; i++) {
+          var token = _historyTokens[i];
+          
+          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: i+1)).value = excel_pkg.TextCellValue(DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(token['generatedAt']).toLocal()));
 
-        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: i+1)).value = excel_pkg.TextCellValue("A-${token['tokenNumber']}");
+          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: i+1)).value = excel_pkg.TextCellValue("A-${token['tokenNumber']}");
 
-        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['student']?['name'] ?? 'Guest');
+          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['student']?['name'] ?? 'Guest');
 
-        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: i+1)).value = excel_pkg.TextCellValue("${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}");
+          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: i+1)).value = excel_pkg.TextCellValue("${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}");
 
-        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['status']);
-        
-        sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: i+1)).value = excel_pkg.TextCellValue(_calculateWait(token));
-    }
+          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['status']);
+          
+          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: i+1)).value = excel_pkg.TextCellValue(_calculateWait(token));
+      }
 
-    var fileBytes = excel.save();
-    if(fileBytes != null) {
-       final directory = await getApplicationDocumentsDirectory();
-       final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.xlsx');
-       await file.writeAsBytes(fileBytes);
-       await Share.shareXFiles([XFile(file.path)], text: 'Exported Excel Report');
+      var fileBytes = excel.save();
+      if(fileBytes != null) {
+         final directory = await getApplicationDocumentsDirectory();
+         final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.xlsx');
+         await file.writeAsBytes(fileBytes);
+         
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Excel downloaded to Documents folder')),
+           );
+         }
+
+         await Share.shareXFiles([XFile(file.path)], text: 'Exported Excel Report');
+      }
+    } catch (e) {
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Error downloading Excel: $e'), backgroundColor: Colors.red),
+         );
+       }
     }
   }
 

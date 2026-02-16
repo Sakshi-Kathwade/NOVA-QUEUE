@@ -11,11 +11,13 @@ import '../services/translations.dart';
 class AdminLiveQueueScreen extends StatefulWidget {
   final String adminId;
   final String queueName;
+  final int? maxStudents; // ✅ Accept maxStudents
 
   const AdminLiveQueueScreen({
     Key? key,
     required this.adminId,
     required this.queueName,
+    this.maxStudents,
   }) : super(key: key);
 
   @override
@@ -149,10 +151,15 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // For Admin progress, maybe serving / total tokens today?
+    // For Admin progress
+    // Use maxStudents if available, otherwise totalToday
     int totalToday = completedToday + liveQueueList.length;
-    double progress = totalToday > 0
-        ? (completedToday / totalToday).clamp(0.0, 1.0)
+    int denominator = (widget.maxStudents != null && widget.maxStudents! > 0) 
+        ? widget.maxStudents! 
+        : totalToday;
+
+    double progress = denominator > 0
+        ? (completedToday / denominator).clamp(0.0, 1.0)
         : 0.0;
 
     return Scaffold(
@@ -375,7 +382,7 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "$completedToday out of $totalToday students served today",
+                            "$completedToday out of ${widget.maxStudents ?? totalToday} students served today",
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey.shade600,

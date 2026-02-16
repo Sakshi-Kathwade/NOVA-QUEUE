@@ -404,7 +404,7 @@ exports.getCurrentToken = async (req, res) => {
 
     const pendingCount = await Token.countDocuments({
       queueName,
-      status: "pending", // ✅ Only count actual pending (unserved/missed) tokens matching the separate box logic
+      status: { $in: ["waiting", "serving", "hold", "missed", "pending"] }, // ✅ Count all active tokens
     });
 
     if (!token) {

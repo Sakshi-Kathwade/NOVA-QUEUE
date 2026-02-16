@@ -143,64 +143,67 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
   // --- EXPORT FUNCTIONS ---
 
   Future<void> _downloadPdf() async {
-    final pdf = pw.Document();
-    final data = _filteredHistory;
+    try {
+      final pdf = pw.Document();
+      final data = _filteredHistory;
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4.landscape,
-        build: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("My Queue History", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
-                    pw.Text(_selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : "All Records"),
-                  ],
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4.landscape,
+          build: (pw.Context context) {
+            return pw.Column(
+              children: [
+                pw.Header(
+                  level: 0,
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text("My Queue History", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
+                      pw.Text(_selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : "All Records"),
+                    ],
+                  ),
                 ),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Table.fromTextArray(
-                context: context,
-                data: <List<String>>[
-                  <String>['Date', 'Queue', 'Token', 'Department', 'Purpose', 'Status', 'Wait Time'],
-                  ...data.map((item) {
-                    final d = DateTime.parse(item["date"]).toLocal();
-                    return [
-                      DateFormat('yyyy-MM-dd HH:mm').format(d),
-                      item['queueName'].toString(),
-                      "A-${item['tokenNumber']}",
-                      item['department'].toString(),
-                      item['purpose'].toString(),
-                      item['status'].toString(),
-                      "${item['waitingTimeMinutes']} min",
-                    ];
-                  }),
-                ],
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    // Save and Share/Download
-    final output = await getApplicationDocumentsDirectory();
-    final file = File("${output.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.pdf");
-    await file.writeAsBytes(await pdf.save());
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PDF downloaded to Documents folder')),
+                pw.SizedBox(height: 20),
+                pw.Table.fromTextArray(
+                  context: context,
+                  data: <List<String>>[
+                    <String>['Date', 'Queue', 'Token', 'Department', 'Purpose', 'Status', 'Wait Time'],
+                    ...data.map((item) {
+                      final d = DateTime.parse(item["date"]).toLocal();
+                      return [
+                        DateFormat('yyyy-MM-dd HH:mm').format(d),
+                        item['queueName'].toString(),
+                        "A-${item['tokenNumber']}",
+                        item['department'].toString(),
+                        item['purpose'].toString(),
+                        item['status'].toString(),
+                        "${item['waitingTimeMinutes']} min",
+                      ];
+                    }),
+                  ],
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
+                ),
+              ],
+            );
+          },
+        ),
       );
-    }
 
-    await Share.shareXFiles([XFile(file.path)], text: 'History PDF');
+      // Use Printing package to share/save the PDF directly.
+      await Printing.sharePdf(bytes: await pdf.save(), filename: 'queue_history_${DateTime.now().millisecondsSinceEpoch}.pdf');
+
+    } catch (e) {
+      if (mounted) {
+        String errorMsg = 'Error downloading PDF: $e';
+        if (e.toString().contains('MissingPluginException')) {
+           errorMsg = 'Please restart the app completely to enable downloads.';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _printPdf() async {
@@ -261,126 +264,142 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
   }
 
   Future<void> _exportToExcel() async {
-    var excelFile = Excel.createExcel();
-    Sheet sheetObject = excelFile['QueueHistory'];
+    try {
+      var excelFile = Excel.createExcel();
+      Sheet sheetObject = excelFile['QueueHistory'];
 
-    List<String> headers = [
-      'Date',
-      'Queue',
-      'Token',
-      'Department',
-      'Purpose',
-      'Status',
-      'Wait Time',
-    ];
-    for (int i = 0; i < headers.length; i++) {
-      sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-        ..value = TextCellValue(headers[i])
-        ..cellStyle = CellStyle(bold: true);
-    }
+      List<String> headers = [
+        'Date',
+        'Queue',
+        'Token',
+        'Department',
+        'Purpose',
+        'Status',
+        'Wait Time',
+      ];
+      for (int i = 0; i < headers.length; i++) {
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+          ..value = TextCellValue(headers[i])
+          ..cellStyle = CellStyle(bold: true);
+      }
 
-    final data = _filteredHistory;
-    for (int i = 0; i < data.length; i++) {
-      var item = data[i];
-      final d = DateTime.parse(item["date"]).toLocal();
+      final data = _filteredHistory;
+      for (int i = 0; i < data.length; i++) {
+        var item = data[i];
+        final d = DateTime.parse(item["date"]).toLocal();
 
-      sheetObject
-          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: i + 1))
-          .value = TextCellValue(
-        DateFormat('yyyy-MM-dd HH:mm').format(d),
-      );
-      sheetObject
-          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: i + 1))
-          .value = TextCellValue(
-        item['queueName'].toString(),
-      );
-      sheetObject
-          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: i + 1))
-          .value = TextCellValue(
-        "A-${item['tokenNumber']}",
-      );
-      sheetObject
-          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: i + 1))
-          .value = TextCellValue(
-        item['department'].toString(),
-      );
-      sheetObject
-          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: i + 1))
-          .value = TextCellValue(
-        item['purpose'].toString(),
-      );
-      sheetObject
-          .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: i + 1))
-          .value = TextCellValue(
-        item['status'].toString(),
-      );
-      sheetObject
-          .cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: i + 1))
-          .value = IntCellValue(
-        item['waitingTimeMinutes'],
-      );
-    }
-
-    var fileBytes = excelFile.save();
-    if (fileBytes != null) {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File(
-        '${directory.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.xlsx',
-      );
-      await file.writeAsBytes(fileBytes);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Excel downloaded to Documents folder')),
+        sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: i + 1))
+            .value = TextCellValue(
+          DateFormat('yyyy-MM-dd HH:mm').format(d),
+        );
+        sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: i + 1))
+            .value = TextCellValue(
+          item['queueName'].toString(),
+        );
+        sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: i + 1))
+            .value = TextCellValue(
+          "A-${item['tokenNumber']}",
+        );
+        sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: i + 1))
+            .value = TextCellValue(
+          item['department'].toString(),
+        );
+        sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: i + 1))
+            .value = TextCellValue(
+          item['purpose'].toString(),
+        );
+        sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: i + 1))
+            .value = TextCellValue(
+          item['status'].toString(),
+        );
+        sheetObject
+            .cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: i + 1))
+            .value = IntCellValue(
+          item['waitingTimeMinutes'],
         );
       }
 
-      await Share.shareXFiles([
-        XFile(file.path),
-      ], text: 'Exported Excel History');
+      var fileBytes = excelFile.save();
+      if (fileBytes != null) {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File(
+          '${directory.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        );
+        await file.writeAsBytes(fileBytes);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Excel downloaded to Documents folder')),
+          );
+        }
+
+        await Share.shareXFiles([
+          XFile(file.path),
+        ], text: 'Exported Excel History');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error downloading Excel: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
   Future<void> _exportToCsv() async {
-    List<List<dynamic>> rows = [];
-    rows.add([
-      'Date',
-      'Queue',
-      'Token',
-      'Department',
-      'Purpose',
-      'Status',
-      'Wait Time',
-    ]);
-
-    final data = _filteredHistory;
-    for (var item in data) {
-      final d = DateTime.parse(item["date"]).toLocal();
+    try {
+      List<List<dynamic>> rows = [];
       rows.add([
-        DateFormat('yyyy-MM-dd HH:mm').format(d),
-        item['queueName'],
-        "A-${item['tokenNumber']}",
-        item['department'],
-        item['purpose'],
-        item['status'],
-        "${item['waitingTimeMinutes']} min",
+        'Date',
+        'Queue',
+        'Token',
+        'Department',
+        'Purpose',
+        'Status',
+        'Wait Time',
       ]);
-    }
 
-    String csv = const ListToCsvConverter().convert(rows);
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File(
-      '${directory.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.csv',
-    );
-    await file.writeAsString(csv);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CSV downloaded to Documents folder')),
+      final data = _filteredHistory;
+      for (var item in data) {
+        final d = DateTime.parse(item["date"]).toLocal();
+        rows.add([
+          DateFormat('yyyy-MM-dd HH:mm').format(d),
+          item['queueName'],
+          "A-${item['tokenNumber']}",
+          item['department'],
+          item['purpose'],
+          item['status'],
+          "${item['waitingTimeMinutes']} min",
+        ]);
+      }
+
+      String csv = const ListToCsvConverter().convert(rows);
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File(
+        '${directory.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.csv',
       );
+      await file.writeAsString(csv);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('CSV downloaded to Documents folder')),
+        );
+      }
+      
+      await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV History');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error downloading CSV: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
-    
-    await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV History');
   }
 
   @override
