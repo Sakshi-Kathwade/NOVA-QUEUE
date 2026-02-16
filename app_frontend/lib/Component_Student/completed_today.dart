@@ -137,7 +137,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     final isMobile = screenWidth < 600;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,8 +212,6 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                     _buildTotalCompletedCard(isTablet),
                     const SizedBox(height: 24),
 
-
-
                     // ✅ COMPLETED TOKENS LIST - Responsive
                     if (completedTokens.isNotEmpty) ...[
                       _buildCompletedTokensList(isTablet),
@@ -233,10 +231,11 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
   Widget _buildTotalCompletedCard(bool isTablet) {
     return Card(
       elevation: 2,
-      color: Colors.white,
+
+      color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: Theme.of(context).dividerColor),
       ),
       child: Padding(
         padding: EdgeInsets.all(isTablet ? 32 : 24),
@@ -245,7 +244,9 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.deepPurple.withOpacity(0.2)
+                    : Colors.deepPurple.shade50,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -263,7 +264,8 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                     Translations.translate('completed_tokens', currentLanguage),
                     style: TextStyle(
                       fontSize: isTablet ? 20 : 16,
-                      color: Colors.grey.shade700,
+
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -281,7 +283,8 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                     Translations.translate('today', currentLanguage),
                     style: TextStyle(
                       fontSize: isTablet ? 16 : 14,
-                      color: Colors.grey.shade500,
+
+                      color: Theme.of(context).textTheme.bodySmall?.color,
                     ),
                   ),
                 ],
@@ -292,8 +295,6 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
       ),
     );
   }
-
-
 
   // ✅ Completed Tokens List - Responsive
   Widget _buildCompletedTokensList(bool isTablet) {
@@ -334,16 +335,21 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: EdgeInsets.all(isTablet ? 16 : 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200, width: 1),
+                  border: Border.all(
+                    color: Theme.of(context).dividerColor,
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.deepPurple.shade100,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.deepPurple.withOpacity(0.2)
+                            : Colors.deepPurple.shade100,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(

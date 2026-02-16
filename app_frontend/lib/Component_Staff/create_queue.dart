@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use, unused_element
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -59,13 +59,18 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
         }),
       );
 
-      final respBody = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      final respBody = response.body.isNotEmpty
+          ? jsonDecode(response.body)
+          : null;
       final message = respBody is Map && respBody["message"] != null
           ? respBody["message"].toString()
           : null;
 
       if (response.statusCode == 201) {
-        ToastService.showSuccess(context, message ?? "Queue Created Successfully! 🎉");
+        ToastService.showSuccess(
+          context,
+          message ?? "Queue Created Successfully! 🎉",
+        );
 
         _formKey.currentState!.reset();
         queueName.clear();
@@ -95,21 +100,33 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
             children: [
               const Icon(Icons.check_circle, color: Colors.green, size: 60),
               const SizedBox(height: 16),
-              const Text("Success", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text(
+                "Success",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    "OK",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -118,7 +135,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
   }
 
   void _showErrorDialog(String message) {
-     showDialog(
+    showDialog(
       context: context,
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -129,21 +146,33 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
             children: [
               const Icon(Icons.error, color: Colors.red, size: 60),
               const SizedBox(height: 16),
-              const Text("Error", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text(
+                "Error",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text("Close", style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    "Close",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
-              )
+              ),
             ],
           ),
         ),

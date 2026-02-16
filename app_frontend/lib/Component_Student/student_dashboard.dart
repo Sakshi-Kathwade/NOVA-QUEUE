@@ -243,7 +243,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
-        title: const Text("NovaQueue – Student"),
+        title: Text(
+          "NovaQueue – ${Translations.translate('student', currentLanguage)}",
+        ),
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
@@ -253,7 +255,14 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             icon: const Icon(Icons.notifications_none),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("No new notifications")),
+                SnackBar(
+                  content: Text(
+                    Translations.translate(
+                      'no_new_notifications',
+                      currentLanguage,
+                    ),
+                  ),
+                ),
               );
             },
           ),
@@ -344,12 +353,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             _drawerHeader(),
             _drawerItem(
               Icons.home,
-              "Dashboard",
+              Translations.translate('dashboard', currentLanguage),
               screen: QueueStatusScreen(studentId: widget.studentId),
             ),
             _drawerItem(
               Icons.add_circle_outline,
-              "Join Queue",
+              Translations.translate('Join Queue', currentLanguage),
               onTap: () async {
                 Navigator.pop(context);
                 await Navigator.push(
@@ -364,7 +373,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             ),
             _drawerItem(
               Icons.access_time,
-              "My Current Queue",
+              Translations.translate('My Token', currentLanguage),
               screen: MyCurrentQueueScreen(
                 queueName: queueData?["queueName"] ?? "",
 
@@ -373,17 +382,17 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             ),
             _drawerItem(
               Icons.history,
-              "Queue History",
+              Translations.translate('history', currentLanguage),
               screen: QueueHistoryScreen(studentId: widget.studentId),
             ),
             _drawerItem(
               Icons.settings,
-              "Settings",
+              Translations.translate('settings', currentLanguage),
               screen: StudentSettingScreen(studentId: widget.studentId),
             ),
             _drawerItem(
               Icons.info_outline,
-              "About",
+              Translations.translate('About', currentLanguage),
               screen: const AboutUsScreen(),
             ),
           ],
@@ -412,7 +421,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     );
                   },
                   child: _InfoCard(
-                    title: "Students Waiting",
+                    title: Translations.translate(
+                      'students_waiting',
+                      currentLanguage,
+                    ),
                     value: waitingCount > 0 ? waitingCount.toString() : "--",
                     icon: Icons.people,
                     color: Colors.orange,
@@ -435,11 +447,11 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.black.withOpacity(0.1),
                           spreadRadius: 2,
                           blurRadius: 5,
                           offset: const Offset(0, 3),
@@ -464,7 +476,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text("My Token", textAlign: TextAlign.center),
+                        Text(
+                          Translations.translate('my Token', currentLanguage),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
                   ),
@@ -483,7 +498,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     );
                   },
                   child: _InfoCard(
-                    title: "Pending Today",
+                    title: Translations.translate(
+                      'Pending Today',
+                      currentLanguage,
+                    ),
                     value: activePendingCount.toString(),
                     icon: Icons.pending_actions,
                     color: Colors.red,
@@ -502,7 +520,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     );
                   },
                   child: _InfoCard(
-                    title: "Completed Today",
+                    title: Translations.translate(
+                      'completed_today',
+                      currentLanguage,
+                    ),
                     value: activeCompletedCount.toString(),
                     icon: Icons.check_circle,
                     color: Colors.green,
@@ -626,6 +647,7 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 4,
+      color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -641,7 +663,13 @@ class _InfoCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(title, textAlign: TextAlign.center),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodyMedium?.color,
+            ),
+          ),
         ],
       ),
     );

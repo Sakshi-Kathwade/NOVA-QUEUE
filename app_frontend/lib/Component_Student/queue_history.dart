@@ -59,7 +59,8 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
     try {
       // Use localhost for emulator (10.0.2.2) or correct IP if device
       // Assuming web or windows for now based on context
-      String url = "${ApiConfig.baseUrl}/student/history/${widget.studentId}?timeFrame=$_timeFrame";
+      String url =
+          "${ApiConfig.baseUrl}/student/history/${widget.studentId}?timeFrame=$_timeFrame";
       if (_timeFrame == 'daily' && _selectedDate != null) {
         url += "&date=${DateFormat('yyyy-MM-dd').format(_selectedDate!)}";
       }
@@ -158,8 +159,18 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                   child: pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text("My Queue History", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
-                      pw.Text(_selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : "All Records"),
+                      pw.Text(
+                        "My Queue History",
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      pw.Text(
+                        _selectedDate != null
+                            ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
+                            : "All Records",
+                      ),
                     ],
                   ),
                 ),
@@ -167,7 +178,15 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                 pw.Table.fromTextArray(
                   context: context,
                   data: <List<String>>[
-                    <String>['Date', 'Queue', 'Token', 'Department', 'Purpose', 'Status', 'Wait Time'],
+                    <String>[
+                      'Date',
+                      'Queue',
+                      'Token',
+                      'Department',
+                      'Purpose',
+                      'Status',
+                      'Wait Time',
+                    ],
                     ...data.map((item) {
                       final d = DateTime.parse(item["date"]).toLocal();
                       return [
@@ -181,8 +200,13 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                       ];
                     }),
                   ],
-                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                  headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
+                  headerStyle: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.white,
+                  ),
+                  headerDecoration: const pw.BoxDecoration(
+                    color: PdfColors.deepPurple,
+                  ),
                 ),
               ],
             );
@@ -191,13 +215,15 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
       );
 
       // Use Printing package to share/save the PDF directly.
-      await Printing.sharePdf(bytes: await pdf.save(), filename: 'queue_history_${DateTime.now().millisecondsSinceEpoch}.pdf');
-
+      await Printing.sharePdf(
+        bytes: await pdf.save(),
+        filename: 'queue_history_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
     } catch (e) {
       if (mounted) {
         String errorMsg = 'Error downloading PDF: $e';
         if (e.toString().contains('MissingPluginException')) {
-           errorMsg = 'Please restart the app completely to enable downloads.';
+          errorMsg = 'Please restart the app completely to enable downloads.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
@@ -207,12 +233,12 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
   }
 
   Future<void> _printPdf() async {
-     final pdf = pw.Document();
-     final data = _filteredHistory;
-     // Re-use generation logic or simple duplicates for now to avoid complexity in this tool call
-     // For brevity, I will copy-paste the generation logic since I cannot extract a common method easily in one tool call without full rewrite
-     // Actually, Printing.layoutPdf requires a callback.
-     
+    final pdf = pw.Document();
+    final data = _filteredHistory;
+    // Re-use generation logic or simple duplicates for now to avoid complexity in this tool call
+    // For brevity, I will copy-paste the generation logic since I cannot extract a common method easily in one tool call without full rewrite
+    // Actually, Printing.layoutPdf requires a callback.
+
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async {
         final doc = pw.Document();
@@ -220,42 +246,65 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
           pw.Page(
             pageFormat: PdfPageFormat.a4.landscape,
             build: (pw.Context context) {
-                 return pw.Column(
-                  children: [
-                    pw.Header(
-                      level: 0,
-                      child: pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Text("My Queue History", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
-                          pw.Text(_selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : "All Records"),
-                        ],
-                      ),
-                    ),
-                    pw.SizedBox(height: 20),
-                    pw.Table.fromTextArray(
-                      context: context,
-                      data: <List<String>>[
-                         <String>['Date', 'Queue', 'Token', 'Department', 'Purpose', 'Status', 'Wait Time'],
-                        ...data.map((item) {
-                          final d = DateTime.parse(item["date"]).toLocal();
-                          return [
-                            DateFormat('yyyy-MM-dd HH:mm').format(d),
-                            item['queueName'].toString(),
-                            "A-${item['tokenNumber']}",
-                            item['department'].toString(),
-                            item['purpose'].toString(),
-                            item['status'].toString(),
-                            "${item['waitingTimeMinutes']} min",
-                          ];
-                        }),
+              return pw.Column(
+                children: [
+                  pw.Header(
+                    level: 0,
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          "My Queue History",
+                          style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        pw.Text(
+                          _selectedDate != null
+                              ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
+                              : "All Records",
+                        ),
                       ],
-                      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                      headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
                     ),
-                  ],
-                );
-            }
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Table.fromTextArray(
+                    context: context,
+                    data: <List<String>>[
+                      <String>[
+                        'Date',
+                        'Queue',
+                        'Token',
+                        'Department',
+                        'Purpose',
+                        'Status',
+                        'Wait Time',
+                      ],
+                      ...data.map((item) {
+                        final d = DateTime.parse(item["date"]).toLocal();
+                        return [
+                          DateFormat('yyyy-MM-dd HH:mm').format(d),
+                          item['queueName'].toString(),
+                          "A-${item['tokenNumber']}",
+                          item['department'].toString(),
+                          item['purpose'].toString(),
+                          item['status'].toString(),
+                          "${item['waitingTimeMinutes']} min",
+                        ];
+                      }),
+                    ],
+                    headerStyle: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                    headerDecoration: const pw.BoxDecoration(
+                      color: PdfColors.deepPurple,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
         return doc.save();
@@ -278,7 +327,9 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
         'Wait Time',
       ];
       for (int i = 0; i < headers.length; i++) {
-        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+        sheetObject.cell(
+            CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0),
+          )
           ..value = TextCellValue(headers[i])
           ..cellStyle = CellStyle(bold: true);
       }
@@ -332,10 +383,12 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
           '${directory.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.xlsx',
         );
         await file.writeAsBytes(fileBytes);
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Excel downloaded to Documents folder')),
+            const SnackBar(
+              content: Text('Excel downloaded to Documents folder'),
+            ),
           );
         }
 
@@ -346,7 +399,10 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error downloading Excel: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error downloading Excel: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -385,18 +441,21 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
         '${directory.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.csv',
       );
       await file.writeAsString(csv);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('CSV downloaded to Documents folder')),
         );
       }
-      
+
       await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV History');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error downloading CSV: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error downloading CSV: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -409,6 +468,7 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
+
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
@@ -431,7 +491,6 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
             color: Colors.white,
             child: Column(
               children: [
-
                 // Frequency Dropdown
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -444,15 +503,19 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                     child: DropdownButton<String>(
                       value: _timeFrame,
                       isExpanded: true,
-                      items: ["daily", "weekly", "monthly", "yearly", "all"].map((String val) {
-                        return DropdownMenuItem<String>(
-                          value: val,
-                          child: Text(
-                            val[0].toUpperCase() + val.substring(1), 
-                            style: const TextStyle(fontWeight: FontWeight.w500)
-                          ),
-                        );
-                      }).toList(),
+                      items: ["daily", "weekly", "monthly", "yearly", "all"]
+                          .map((String val) {
+                            return DropdownMenuItem<String>(
+                              value: val,
+                              child: Text(
+                                val[0].toUpperCase() + val.substring(1),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          })
+                          .toList(),
                       onChanged: (val) {
                         if (val != null) {
                           setState(() {
@@ -471,67 +534,67 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                 const SizedBox(height: 12),
 
                 if (_timeFrame == 'daily') ...[
-                 // Date Picker (Only show if Daily, or maybe always? "when we select daily then... select particular date")
-                 // "calender replace place with daily... select daily then after selecting particular date data fetch"
-                 // This implies we can hide it for others? Or just show it. 
-                 // I'll show it always but it's most relevant for Daily.
-                 Row(
-                   children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: _pickDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.white,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _selectedDate == null
-                                    ? "Select Date"
-                                    : DateFormat(
-                                        'MMM d, yyyy',
-                                      ).format(_selectedDate!),
-                                style: TextStyle(
-                                  color: _selectedDate == null
-                                      ? Colors.grey
-                                      : Colors.black,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              if (_selectedDate != null)
-                                InkWell(
-                                  onTap: () {
-                                     setState(() => _selectedDate = null);
-                                     _fetchHistory(); // Refetch if cleared
-                                  },
-                                  child: const Icon(
-                                    Icons.close,
-                                    size: 18,
-                                    color: Colors.grey,
+                  // Date Picker (Only show if Daily, or maybe always? "when we select daily then... select particular date")
+                  // "calender replace place with daily... select daily then after selecting particular date data fetch"
+                  // This implies we can hide it for others? Or just show it.
+                  // I'll show it always but it's most relevant for Daily.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: _pickDate,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _selectedDate == null
+                                      ? "Select Date"
+                                      : DateFormat(
+                                          'MMM d, yyyy',
+                                        ).format(_selectedDate!),
+                                  style: TextStyle(
+                                    color: _selectedDate == null
+                                        ? Colors.grey
+                                        : Colors.black,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                )
-                              else
-                                const Icon(
-                                  Icons.calendar_today,
-                                  size: 18,
-                                  color: Colors.deepPurple,
                                 ),
-                            ],
+                                if (_selectedDate != null)
+                                  InkWell(
+                                    onTap: () {
+                                      setState(() => _selectedDate = null);
+                                      _fetchHistory(); // Refetch if cleared
+                                    },
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 18,
+                                      color: Colors.grey,
+                                    ),
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.calendar_today,
+                                    size: 18,
+                                    color: Colors.deepPurple,
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                   ],
-                 ),
-                 const SizedBox(height: 16),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                 ],
 
                 // Export Buttons
@@ -566,7 +629,7 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                         Colors.black87,
                         "Print",
                         _printPdf,
-                      ), 
+                      ),
                     ],
                   ),
                 ),

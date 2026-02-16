@@ -319,7 +319,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     final isTablet = size.width > 600;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.deepPurple, // ✅ User requested DeepPurple
@@ -468,10 +468,10 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
   Widget _buildSummaryCard(bool isTablet) {
     return Card(
       elevation: 2,
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: Theme.of(context).dividerColor),
       ),
       child: Padding(
         padding: EdgeInsets.all(isTablet ? 32 : 24),
@@ -484,7 +484,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                 Text(
                   Translations.translate('completed_tokens', currentLanguage),
                   style: TextStyle(
-                    color: Colors.grey.shade700,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -502,7 +502,9 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.deepPurple.shade50,
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.deepPurple.withOpacity(0.2) 
+                        : Colors.deepPurple.shade50,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -515,7 +517,9 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
+                color: Theme.of(context).brightness == Brightness.dark 
+                    ? Colors.deepPurple.withOpacity(0.2) 
+                    : Colors.deepPurple.shade50,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -538,16 +542,16 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(
@@ -558,7 +562,9 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: Colors.deepPurple.shade50,
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.deepPurple.withOpacity(0.2) 
+                : Colors.deepPurple.shade50,
             borderRadius: BorderRadius.circular(12),
           ),
           alignment: Alignment.center,
@@ -581,7 +587,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
             const SizedBox(height: 4),
             Text(
               token['purpose'] ?? 'General',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
             ),
           ],
         ),

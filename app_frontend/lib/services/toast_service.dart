@@ -1,3 +1,5 @@
+// ignore_for_file: use_super_parameters, deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 class ToastService {
@@ -18,14 +20,15 @@ class ToastService {
   }
 
   static void _showToast(
-      BuildContext context, String message, Color color, IconData icon) {
+    BuildContext context,
+    String message,
+    Color color,
+    IconData icon,
+  ) {
     final overlay = Overlay.of(context);
     final overlayEntry = OverlayEntry(
-      builder: (context) => _ToastWidget(
-        message: message,
-        color: color,
-        icon: icon,
-      ),
+      builder: (context) =>
+          _ToastWidget(message: message, color: color, icon: icon),
     );
 
     overlay.insert(overlayEntry);
@@ -70,7 +73,7 @@ class _ToastWidgetState extends State<_ToastWidget>
       begin: const Offset(0.0, -1.0),
       end: const Offset(0.0, 0.0), // Slide down from top
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-    
+
     _opacityAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -127,9 +130,14 @@ class _ToastWidgetState extends State<_ToastWidget>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                     border: Border(left: BorderSide(color: widget.color, width: 6))
+                    border: Border(
+                      left: BorderSide(color: widget.color, width: 6),
+                    ),
                   ),
                   child: Row(
                     children: [

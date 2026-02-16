@@ -93,7 +93,10 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
       );
 
       if (response.statusCode == 200) {
-        ToastService.showSuccess(context, "Token approved successfully");
+        ToastService.showSuccess(
+          context,
+          Translations.translate('token_approved_success', _currentLanguage),
+        );
         _fetchPendingTokens();
       }
     } catch (e) {}
@@ -111,7 +114,10 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
       );
 
       if (response.statusCode == 200) {
-        ToastService.showError(context, "Token rejected");
+        ToastService.showError(
+          context,
+          Translations.translate('token_rejected_message', _currentLanguage),
+        );
         _fetchPendingTokens();
       }
     } catch (e) {}
@@ -138,9 +144,13 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
                     children: [
                       Icon(Icons.info_outline, size: 80, color: Colors.orange.shade300),
                       const SizedBox(height: 16),
-                      const Text(
-                        "Queue is not active or not generated.",
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      Text(
+                        Translations.translate(
+                          'queue_not_active_or_generated',
+                          _currentLanguage,
+                        ),
+                        style: const TextStyle(fontSize: 18, color: Colors.grey),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -183,7 +193,11 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              student['name'] ?? "Unknown Student",
+                              student['name'] ??
+                                  Translations.translate(
+                                    'unknown_student',
+                                    _currentLanguage,
+                                  ),
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -200,7 +214,11 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
                           ],
                         ),
                         Text(
-                          student['email'] ?? "No email",
+                          student['email'] ??
+                              Translations.translate(
+                                'no_email',
+                                _currentLanguage,
+                              ),
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 13,
@@ -292,13 +310,13 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
           const SizedBox(width: 12),
           Text(
             "$label: ",
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
             ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(color: Colors.black54)),
+            child: Text(value, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
           ),
         ],
       ),
