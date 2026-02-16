@@ -1,16 +1,13 @@
+const mongoose = require('mongoose');
 const Admin = require('../Models/adminmodel.js');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const Service = require('../Models/serviceModel.js');
 const Token = require('../Models/tokenmodel.js'); // Import Token model
-const Counter = require('../Models/counterModel.js'); // Import Counter model
-const Staff = require('../Models/staffModel.js'); // Import Staff model
 const Register = require('../Models/registermodel.js'); // Import Register model (acting as Student)
 const Queue = require('../Models/create_queue_model.js'); // Import Queue model for active queue details
 const CompletedHistoryToken = require('../Models/completedHistoryTokenModel.js');
 const PendingHistoryToken = require('../Models/pendingHistoryTokenModel.js');
-
 const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -641,15 +638,92 @@ const getDailyCrowdDetails = async (req, res) => {
 const getQueueHistory = async (req, res) => {
   try {
     const { adminId } = req.params;
-    let { startDate, endDate, serviceId, status, counterId, search } = req.query;
+    let { startDate, endDate, serviceId, status, counterId, search, filterType } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(adminId)) {
         return res.status(400).json({ success: false, message: "Invalid Admin ID" });
     }
 
+    // 🔴 AUTO-ARCHIVE EXPIRED QUEUES
+    // Before fetching history, ensure any expired queues are moved to history
+    const now = new Date();
+    const expiredQueues = await Queue.find({
+        adminId: adminId,
+        status: 'Active',
+        endTime: { $lte: now }
+    });
+
+    if (expiredQueues.length > 0) {
+        for (const queue of expiredQueues) {
+             // 1. Copy Queue to QueueHistory
+            await require('../Models/queueHistoryModel').create({
+                adminId: queue.adminId,
+                queueName: queue.queueName,
+                department: queue.department,
+                startTime: queue.startTime,
+                endTime: queue.endTime,
+                maxStudents: queue.maxStudents,
+                status: "Expired",
+                discardedAt: now
+            });
+
+            // 2. Archive Tokens
+            const allTokens = await Token.find({ queueName: queue.queueName });
+            const completedTokens = [];
+            const pendingTokens = [];
+
+            for (const token of allTokens) {
+                const tokenData = token.toObject();
+                tokenData.originalTokenId = token._id;
+                delete tokenData._id; 
+                tokenData.archivedAt = new Date();
+
+                if (['completed', 'Completed'].includes(token.status)) {
+                    completedTokens.push(tokenData);
+                } else {
+                    pendingTokens.push(tokenData);
+                }
+            }
+
+            if (completedTokens.length > 0) await CompletedHistoryToken.insertMany(completedTokens);
+            if (pendingTokens.length > 0) await PendingHistoryToken.insertMany(pendingTokens);
+
+            // 3. Delete Active Data
+            await Queue.findByIdAndDelete(queue._id);
+            await Token.deleteMany({ queueName: queue.queueName });
+        }
+    }
+
+
+
     const matchStage = {
         adminId: new mongoose.Types.ObjectId(adminId)
     };
+
+    // calculate EndDate based on filterType if provided
+    if (startDate && filterType) {
+        const start = new Date(startDate);
+        if (!isNaN(start)) {
+            if (filterType === 'weekly') {
+                const end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                endDate = end.toISOString().split('T')[0];
+            } else if (filterType === 'monthly') {
+                start.setDate(1); 
+                startDate = start.toISOString().split('T')[0];
+                const end = new Date(start);
+                end.setMonth(start.getMonth() + 1);
+                end.setDate(0); 
+                endDate = end.toISOString().split('T')[0];
+            } else if (filterType === 'yearly') {
+                start.setMonth(0, 1); // Jan 1st
+                startDate = start.toISOString().split('T')[0];
+                const end = new Date(start);
+                end.setFullYear(start.getFullYear(), 11, 31);
+                endDate = end.toISOString().split('T')[0];
+            }
+        }
+    }
 
     // Date Filter (generatedAt)
     if (startDate || endDate) {
@@ -766,6 +840,71 @@ const getQueueHistory = async (req, res) => {
 
     let history = [];
 
+    // 1. Query Active Tokens (from 'tokens' collection)
+    // We want to show live status too.
+    const activePipeline = createPipeline({ isCompleted: false }); // Reuse structure but we'll fix collectionType manually
+    // The createPipeline uses 'collectionMatch' which puts a hardcoded collectionType.
+    // We need to differentiate active tokens.
+    // Let's modify pipeline for active tokens slightly or post-process.
+    
+    // Custom pipeline builder for Active Tokens to handle dynamic status
+    const createActivePipeline = () => {
+         const pipeline = [
+            { $match: { ...matchStage } }, // Match Admin ID and Date/Service filters
+            {
+                $lookup: { from: 'registers', localField: 'studentId', foreignField: '_id', as: 'student' }
+            },
+            { $unwind: { path: '$student', preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: { from: 'counters', localField: 'counterId', foreignField: '_id', as: 'counter' }
+            },
+            { $unwind: { path: '$counter', preserveNullAndEmptyArrays: true } },
+             {
+                $lookup: { from: 'services', localField: 'serviceId', foreignField: '_id', as: 'service' }
+            },
+            { $unwind: { path: '$service', preserveNullAndEmptyArrays: true } },
+        ];
+
+        if (search) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { 'student.name': { $regex: search, $options: 'i' } },
+                        { 'tokenNumber': parseInt(search) || -1 },
+                        { 'queueName': { $regex: search, $options: 'i' } }
+                    ]
+                }
+            });
+        }
+        
+        if (status && status !== 'All') {
+             pipeline.push({ $match: { status: { $regex: status, $options: 'i' } } });
+        }
+
+        pipeline.push({
+            $project: {
+                _id: 1,
+                tokenNumber: 1,
+                queueName: 1,
+                department: 1,
+                purpose: 1,
+                status: 1,
+                generatedAt: 1,
+                completedAt: 1,
+                student: { name: "$student.name", email: "$student.email" },
+                counter: { counterName: "$counter.counterName" },
+                service: { serviceName: "$service.serviceName" },
+                collectionType: { $literal: 'active' } 
+            }
+        });
+
+        return pipeline;
+    }
+
+    // Always fetch active tokens unless status filter strictly excludes them (rare)
+    const activeTokens = await Token.aggregate(createActivePipeline());
+    history = history.concat(activeTokens);
+
     if (queryCompleted) {
         const completedPipeline = createPipeline({ isCompleted: true });
         const completedDocs = await CompletedHistoryToken.aggregate(completedPipeline);
@@ -774,6 +913,7 @@ const getQueueHistory = async (req, res) => {
 
     if (queryPending) {
         const pendingPipeline = createPipeline({ isCompleted: false });
+        // pending pipeline marks type as 'pending' but that's fine for history
         const pendingDocs = await PendingHistoryToken.aggregate(pendingPipeline);
         history = history.concat(pendingDocs);
     }

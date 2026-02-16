@@ -1,4 +1,4 @@
-// ignore_for_file: unused_field, deprecated_member_use, curly_braces_in_flow_control_structures, prefer_final_fields, use_build_context_synchronously
+// ignore_for_file: unused_field, deprecated_member_use, curly_braces_in_flow_control_structures, prefer_final_fields, use_build_context_synchronously, unused_local_variable
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -229,7 +229,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
 
   // --- EXPORT FUNCTIONS ---
 
-  Future<void> _exportToPdf() async {
+  Future<void> _downloadPdf() async {
     final pdf = pw.Document();
     final range = _calculateDateRange();
     final dateStr = "${DateFormat('yyyy-MM-dd').format(range['start']!)} to ${DateFormat('yyyy-MM-dd').format(range['end']!)}";
@@ -282,7 +282,71 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       ),
     );
 
-    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+    // Save and Share/Download
+    final output = await getApplicationDocumentsDirectory();
+    final file = File("${output.path}/admin_report_${DateTime.now().millisecondsSinceEpoch}.pdf");
+    await file.writeAsBytes(await pdf.save());
+    await Share.shareXFiles([XFile(file.path)], text: 'Admin History PDF');
+  }
+
+  Future<void> _printPdf() async {
+     final pdf = pw.Document();
+    final range = _calculateDateRange();
+    final dateStr = "${DateFormat('yyyy-MM-dd').format(range['start']!)} to ${DateFormat('yyyy-MM-dd').format(range['end']!)}";
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async {
+         final doc = pw.Document();
+         doc.addPage(
+            pw.Page(
+                pageFormat: PdfPageFormat.a4.landscape,
+                build: (pw.Context context) {
+                return pw.Column(
+                    children: [
+                    pw.Header(
+                        level: 0,
+                        child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                            pw.Text("SmartQ $_reportFrequency Report", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
+                            pw.Text(dateStr),
+                        ],
+                        ),
+                    ),
+                    pw.SizedBox(height: 20),
+                    pw.Table.fromTextArray(
+                        context: context,
+                        data: <List<String>>[
+                        <String>['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time'],
+                        ..._historyTokens.map((item) => [
+                                DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['generatedAt']).toLocal()),
+                                "A-${item['tokenNumber']}",
+                                item['student']?['name'] ?? 'Guest',
+                                "${item['department'] ?? item['service']?['serviceName'] ?? '-'} ${item['counter'] != null ? '(${item['counter']['counterName']})' : ''}",
+                                item['status'],
+                                _calculateWait(item)
+                            ]),
+                        ],
+                        headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                        headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
+                        rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
+                        cellAlignments: {
+                        0: pw.Alignment.centerLeft,
+                        1: pw.Alignment.center,
+                        2: pw.Alignment.centerLeft,
+                        3: pw.Alignment.centerLeft,
+                        4: pw.Alignment.center,
+                        5: pw.Alignment.centerRight,
+                        },
+                    ),
+                    ],
+                );
+                },
+            ),
+        );
+        return doc.save();
+      }
+    );
   }
 
   Future<void> _exportToExcel() async {
@@ -412,6 +476,20 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   // FILTERS ROW (Status & Counter)
                   Row(
                     children: [
+                       // Frequency Filter
+                      Expanded(
+                        child: _buildDropdown(
+                          value: _reportFrequency,
+                          items: _frequencyOptions,
+                          label: "Frequency",
+                          onChanged: (val) {
+                            setState(() {
+                              _reportFrequency = val!;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
 
                       // Status Filter
                       Expanded(
@@ -456,13 +534,13 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _exportBtn(Icons.picture_as_pdf, Colors.red, "Download PDF", _exportToPdf),
+                      _exportBtn(Icons.picture_as_pdf, Colors.red, "Download PDF", _downloadPdf),
                       const SizedBox(width: 10),
                       _exportBtn(Icons.table_chart, Colors.green, "Excel Export", _exportToExcel),
                       const SizedBox(width: 10),
                       _exportBtn(Icons.description, Colors.blue, "CSV Export", _exportToCsv),
                       const SizedBox(width: 10),
-                      _exportBtn(Icons.print, Colors.black87, "Print Report", _exportToPdf),
+                      _exportBtn(Icons.print, Colors.black87, "Print Report", _printPdf),
                     ],
                   ),
                 ),

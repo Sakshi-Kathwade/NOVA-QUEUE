@@ -1325,9 +1325,11 @@ exports.getPendingTokensByAdmin = async (req, res) => {
 };
 
 // ✅ GET STUDENT HISTORY (Combined from Completed & Pending History)
+// ✅ GET STUDENT HISTORY (Combined Active, Completed & Pending History with Time Filters)
 exports.getStudentHistory = async (req, res) => {
   try {
     const { studentId } = req.params;
+    const { timeFrame, date } = req.query; // daily, weekly, monthly, yearly, all
 
     if (!studentId) {
       return res.status(400).json({ success: false, message: "Student ID required" });
@@ -1335,18 +1337,51 @@ exports.getStudentHistory = async (req, res) => {
 
     const CompletedHistoryToken = require("../Models/completedHistoryTokenModel");
     const PendingHistoryToken = require("../Models/pendingHistoryTokenModel");
-    const Token = require("../Models/tokenmodel"); // Also check active tokens if desired, but user said "History". Let's stick to history first as per context.
-    // Wait, the user might want current day history too (which is in active Token table if completed).
-    // Let's check Token table for completed tokens too to be safe.
+    const Token = require("../Models/tokenmodel"); 
+
+    // 1. Calculate Date Filter
+    let dateFilter = {};
+    const now = new Date();
     
-    // 1. Fetch from Completed History
-    const completed = await CompletedHistoryToken.find({ studentId }).lean();
+    if (date) {
+        // Specific date selected (e.g. for Daily view with custom date)
+        const start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+        dateFilter = { generatedAt: { $gte: start, $lte: end } };
+    } else if (timeFrame && timeFrame !== 'all') {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0); // Start of today by default
+
+        if (timeFrame === 'daily') {
+            // Already set to start of today
+        } else if (timeFrame === 'weekly') {
+            start.setDate(now.getDate() - 7);
+        } else if (timeFrame === 'monthly') {
+            start.setMonth(now.getMonth() - 1);
+        } else if (timeFrame === 'yearly') {
+            start.setFullYear(now.getFullYear() - 1);
+        }
+        
+        dateFilter = { generatedAt: { $gte: start } };
+    }
+
+    // 2. Fetch from ALL 3 Sources with Filter
+    // careful: history models have flexible schema, Token has schema. All generally have generatedAt.
     
-    // 2. Fetch from Pending History
-    const pending = await PendingHistoryToken.find({ studentId }).lean();
+    // A. Active Tokens (Live)
+    const active = await Token.find({ studentId, ...dateFilter }).lean();
+
+    // B. Completed History
+    const completed = await CompletedHistoryToken.find({ studentId, ...dateFilter }).lean();
+    
+    // C. Pending History
+    const pending = await PendingHistoryToken.find({ studentId, ...dateFilter }).lean();
 
     // 3. Normalize and Combine
     const history = [
+        ...active.map(t => ({...t, type: 'active'})),
         ...completed.map(t => ({...t, type: 'completed'})),
         ...pending.map(t => ({...t, type: 'pending'}))
     ];
@@ -1359,6 +1394,9 @@ exports.getStudentHistory = async (req, res) => {
         let waitTime = 0;
         if (t.generatedAt && t.completedAt) {
             waitTime = Math.round((new Date(t.completedAt) - new Date(t.generatedAt)) / 60000);
+        } else if (t.generatedAt && t.status === 'waiting') {
+             // For active waiting tokens, allow storing/showing estimated if available
+             waitTime = t.estimatedWaitingTime || 0;
         }
 
         return {
