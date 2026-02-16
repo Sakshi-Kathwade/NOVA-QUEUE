@@ -1,11 +1,21 @@
-// ignore_for_file: depend_on_referenced_packages
+// ignore_for_file: depend_on_referenced_packages, use_build_context_synchronously
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../services/language_service.dart';
 import '../services/translations.dart';
+import '../services/api_config.dart'; // Ensure you have this or use direct URL
 
 class QueueHistoryScreen extends StatefulWidget {
   final String studentId;
@@ -18,9 +28,9 @@ class QueueHistoryScreen extends StatefulWidget {
 
 class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
   bool _isLoading = true;
-  List<Map<String, dynamic>> historyData = [];
+  List<Map<String, dynamic>> _historyData = [];
   String? _errorMsg;
-  DateTime? selectedDate;
+  DateTime? _selectedDate;
   String _currentLanguage = 'english';
 
   @override
@@ -46,25 +56,27 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse("http://localhost:8000/api/student/history/${widget.studentId}"),
-        headers: {"Content-Type": "application/json"},
-      );
+      // Use localhost for emulator (10.0.2.2) or correct IP if device
+      // Assuming web or windows for now based on context
+      final uri = Uri.parse("http://localhost:8000/api/student/history/${widget.studentId}");
+      
+      final response = await http.get(uri);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data["success"] == true && data["history"] != null) {
           final List<dynamic> raw = data["history"];
           setState(() {
-            historyData = raw.map<Map<String, dynamic>>((e) {
-              final d = e["date"];
+            _historyData = raw.map<Map<String, dynamic>>((e) {
               return {
-                "date": d != null ? DateTime.tryParse(d.toString()) ?? DateTime.now() : DateTime.now(),
-                "serviceTaken": e["serviceTaken"] ?? "N/A",
-                "queueName": e["queueName"] ?? "N/A",
+                "date": e["date"], // String from backend
+                "queueName": e["queueName"] ?? "-",
                 "tokenNumber": e["tokenNumber"] ?? 0,
+                "department": e["department"] ?? "-",
+                "purpose": e["purpose"] ?? "-",
                 "waitingTimeMinutes": e["waitingTimeMinutes"] ?? 0,
-                "status": e["status"] ?? "Served",
+                "status": e["status"] ?? "-",
+                "studentsAhead": e["studentsAhead"] ?? 0,
               };
             }).toList();
           });
@@ -73,37 +85,180 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
         setState(() => _errorMsg = "Failed to load history");
       }
     } catch (e) {
-      setState(() => _errorMsg = "Unable to connect");
+      setState(() => _errorMsg = "Unable to connect: $e");
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  List<Map<String, dynamic>> get filteredHistory {
-    if (selectedDate == null) return historyData;
-    return historyData.where((item) {
-      final d = item["date"] as DateTime?;
-      if (d == null) return false;
-      return d.year == selectedDate!.year &&
-          d.month == selectedDate!.month &&
-          d.day == selectedDate!.day;
+  List<Map<String, dynamic>> get _filteredHistory {
+    if (_selectedDate == null) return _historyData;
+    return _historyData.where((item) {
+      final dStr = item["date"];
+      if (dStr == null) return false;
+      try {
+        final d = DateTime.parse(dStr).toLocal();
+        return d.year == _selectedDate!.year &&
+            d.month == _selectedDate!.month &&
+            d.day == _selectedDate!.day;
+      } catch (e) {
+        return false;
+      }
     }).toList();
   }
 
   Future<void> _pickDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2023),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Colors.deepPurple,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
-    if (picked != null) setState(() => selectedDate = picked);
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  // --- EXPORT FUNCTIONS ---
+
+  Future<void> _exportToPdf() async {
+    final pdf = pw.Document();
+    final data = _filteredHistory;
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        build: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Header(
+                level: 0,
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text("My Queue History",
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
+                    pw.Text(_selectedDate != null
+                        ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
+                        : "All Records"),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+              pw.Table.fromTextArray(
+                context: context,
+                data: <List<String>>[
+                  <String>['Date', 'Queue', 'Token', 'Department', 'Purpose', 'Status', 'Wait Time'],
+                  ...data.map((item) {
+                     final d = DateTime.parse(item["date"]).toLocal();
+                     return [
+                        DateFormat('yyyy-MM-dd HH:mm').format(d),
+                        item['queueName'].toString(),
+                        "A-${item['tokenNumber']}",
+                        item['department'].toString(),
+                        item['purpose'].toString(),
+                        item['status'].toString(),
+                        "${item['waitingTimeMinutes']} min"
+                     ];
+                  }),
+                ],
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
+                cellAlignments: {
+                  0: pw.Alignment.centerLeft,
+                  1: pw.Alignment.centerLeft,
+                  2: pw.Alignment.center,
+                  3: pw.Alignment.centerLeft,
+                  4: pw.Alignment.centerLeft,
+                  5: pw.Alignment.center,
+                  6: pw.Alignment.centerRight,
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+  }
+
+  Future<void> _exportToExcel() async {
+    var excelFile = Excel.createExcel();
+    Sheet sheetObject = excelFile['QueueHistory'];
+    
+    List<String> headers = ['Date', 'Queue', 'Token', 'Department', 'Purpose', 'Status', 'Wait Time'];
+    for(int i=0; i<headers.length; i++) {
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+          ..value = TextCellValue(headers[i])
+          ..cellStyle = CellStyle(bold: true);
+    }
+
+    final data = _filteredHistory;
+    for (int i = 0; i < data.length; i++) {
+        var item = data[i];
+        final d = DateTime.parse(item["date"]).toLocal();
+        
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: i+1)).value = TextCellValue(DateFormat('yyyy-MM-dd HH:mm').format(d));
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: i+1)).value = TextCellValue(item['queueName'].toString());
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: i+1)).value = TextCellValue("A-${item['tokenNumber']}");
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: i+1)).value = TextCellValue(item['department'].toString());
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: i+1)).value = TextCellValue(item['purpose'].toString());
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: i+1)).value = TextCellValue(item['status'].toString());
+        sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: i+1)).value = IntCellValue(item['waitingTimeMinutes']);
+    }
+
+    var fileBytes = excelFile.save();
+    if(fileBytes != null) {
+       final directory = await getApplicationDocumentsDirectory();
+       final file = File('${directory.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.xlsx');
+       await file.writeAsBytes(fileBytes);
+       await Share.shareXFiles([XFile(file.path)], text: 'Exported Excel History');
+    }
+  }
+
+  Future<void> _exportToCsv() async {
+    List<List<dynamic>> rows = [];
+    rows.add(['Date', 'Queue', 'Token', 'Department', 'Purpose', 'Status', 'Wait Time']);
+    
+    final data = _filteredHistory;
+    for(var item in data) {
+      final d = DateTime.parse(item["date"]).toLocal();
+      rows.add([
+        DateFormat('yyyy-MM-dd HH:mm').format(d),
+        item['queueName'],
+        "A-${item['tokenNumber']}",
+        item['department'],
+        item['purpose'],
+        item['status'],
+        "${item['waitingTimeMinutes']} min"
+      ]);
+    }
+
+    String csv = const ListToCsvConverter().convert(rows);
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/queue_history_${DateTime.now().millisecondsSinceEpoch}.csv');
+    await file.writeAsString(csv);
+    await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV History');
   }
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 600;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
@@ -111,129 +266,210 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
         centerTitle: true,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.filter_alt), onPressed: _pickDate),
-          if (selectedDate != null)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () => setState(() => selectedDate = null),
-            ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchHistory),
+          IconButton(
+             icon: const Icon(Icons.refresh), 
+             onPressed: _fetchHistory,
+             tooltip: "Refresh",
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.deepPurple))
-          : _errorMsg != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 48, color: Colors.grey.shade600),
-                      const SizedBox(height: 16),
-                      Text(_errorMsg!, style: TextStyle(fontSize: 16, color: Colors.grey.shade700)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchHistory,
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
-                        child: const Text("Retry"),
-                      ),
-                    ],
-                  ),
-                )
-              : filteredHistory.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.history, size: 64, color: Colors.grey.shade400),
-                          const SizedBox(height: 16),
-                          Text(
-                            Translations.translate("no_queue_history_found", _currentLanguage),
-                            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+      body: Column(
+        children: [
+          // Filter & Export Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.white,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // Date Picker
+                    Expanded(
+                      child: InkWell(
+                        onTap: _pickDate,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.white,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Your past queue activities will appear here",
-                            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                          ),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _fetchHistory,
-                      color: Colors.deepPurple,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: filteredHistory.length,
-                        itemBuilder: (context, index) {
-                          final entry = filteredHistory[index];
-                          final isServed = (entry["status"] ?? "").toString().toLowerCase() == "served";
-                          final date = entry["date"] as DateTime?;
-                          final dateStr = date != null ? DateFormat('dd MMM yyyy').format(date) : "—";
-
-                          return Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: isServed ? Colors.green.shade100 : Colors.red.shade100,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      isServed ? Icons.check_circle : Icons.cancel,
-                                      color: isServed ? Colors.green : Colors.red,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          entry["serviceTaken"]?.toString() ?? "N/A",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text("Date: $dateStr", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-                                        Text(
-                                          "Token: ${entry["tokenNumber"] ?? "—"}",
-                                          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                                        ),
-                                        Text(
-                                          "Waiting: ${entry["waitingTimeMinutes"] ?? 0} min",
-                                          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Chip(
-                                    label: Text(
-                                      Translations.translate((entry["status"] ?? "").toString().toLowerCase(), _currentLanguage),
-                                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                                    ),
-                                    backgroundColor: isServed ? Colors.green : Colors.red,
-                                    padding: EdgeInsets.zero,
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                ],
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _selectedDate == null 
+                                  ? "Filter by Date" 
+                                  : DateFormat('MMM d, yyyy').format(_selectedDate!),
+                                style: TextStyle(
+                                  color: _selectedDate == null ? Colors.grey : Colors.black,
+                                  fontWeight: FontWeight.w600
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                              if (_selectedDate != null)
+                                InkWell(
+                                  onTap: () => setState(() => _selectedDate = null),
+                                  child: const Icon(Icons.close, size: 18, color: Colors.grey),
+                                )
+                              else
+                                const Icon(Icons.calendar_today, size: 18, color: Colors.deepPurple),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                // Export Buttons
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _exportBtn(Icons.picture_as_pdf, Colors.red, "PDF", _exportToPdf),
+                      const SizedBox(width: 10),
+                      _exportBtn(Icons.table_chart, Colors.green, "Excel", _exportToExcel),
+                      const SizedBox(width: 10),
+                      _exportBtn(Icons.description, Colors.blue, "CSV", _exportToCsv),
+                      const SizedBox(width: 10),
+                      _exportBtn(Icons.print, Colors.black87, "Print", _exportToPdf), // Print uses PDF preview
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: Colors.deepPurple))
+                : _filteredHistory.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.history_toggle_off, size: 64, color: Colors.grey.shade300),
+                            const SizedBox(height: 16),
+                            Text(
+                              "No history found",
+                              style: TextStyle(fontSize: 18, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        scrollDirection: Axis.vertical,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: ConstrainedBox(
+                           constraints: BoxConstraints(minWidth: width),
+                            child: Theme(
+                              data: Theme.of(context).copyWith(
+                                dividerColor: Colors.grey.shade200,
+                              ),
+                              child: DataTable(
+                                headingRowColor: MaterialStateProperty.all(Colors.deepPurple.shade50),
+                                columnSpacing: 24,
+                                horizontalMargin: 24,
+                                columns: const [
+                                  DataColumn(label: Text("Date", style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text("Queue Name", style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text("Token", style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text("Department", style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text("Purpose", style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text("Wait Time", style: TextStyle(fontWeight: FontWeight.bold))),
+                                ],
+                                rows: _filteredHistory.map((item) {
+                                  final d = DateTime.parse(item["date"]).toLocal();
+                                  final status = item["status"].toString().toLowerCase();
+                                  Color statusColor = Colors.grey;
+                                  if (status == 'completed') statusColor = Colors.green;
+                                  else if (status == 'cancelled') statusColor = Colors.red;
+                                  else if (status == 'missed') statusColor = Colors.orange;
+                                  else if (status == 'pending') statusColor = Colors.blue;
+
+                                  return DataRow(cells: [
+                                    DataCell(Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(DateFormat('MMM dd').format(d), style: const TextStyle(fontWeight: FontWeight.w600)),
+                                        Text(DateFormat('HH:mm').format(d), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                                      ],
+                                    )),
+                                    DataCell(Text(item["queueName"].toString(), style: const TextStyle(fontWeight: FontWeight.w500))),
+                                    DataCell(
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.deepPurple.shade50,
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: Colors.deepPurple.shade200)
+                                        ),
+                                        child: Text(
+                                          "A-${item["tokenNumber"]}",
+                                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple.shade700),
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(Text(item["department"].toString())),
+                                    DataCell(ConstrainedBox(constraints: const BoxConstraints(maxWidth: 150),child: Text(item["purpose"].toString(), overflow: TextOverflow.ellipsis))),
+                                    DataCell(
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: statusColor.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: statusColor.withOpacity(0.3))
+                                        ),
+                                        child: Text(
+                                          item["status"].toString().toUpperCase(),
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor),
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(Text("${item["waitingTimeMinutes"]} min")),
+                                  ]);
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _exportBtn(IconData icon, Color color, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade200,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            )
+          ]
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -25,6 +25,7 @@ class AboutUsScreen extends StatelessWidget {
           style: GoogleFonts.poppins(
             color: Colors.blueAccent,
             fontWeight: FontWeight.w600,
+            backgroundColor: Colors.blue,
           ),
         ),
         centerTitle: true,

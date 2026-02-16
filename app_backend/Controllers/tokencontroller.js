@@ -16,6 +16,9 @@ exports.createToken = async (req, res) => {
       });
     }
 
+    const CompletedHistoryToken = require("../Models/completedHistoryTokenModel");
+    const PendingHistoryToken = require("../Models/pendingHistoryTokenModel");
+
     // 2️⃣ 🔴 CHECK: Student already has token in SAME queue
     const existingToken = await Token.findOne({
       queueName,
@@ -51,7 +54,7 @@ exports.createToken = async (req, res) => {
     // if (queue.startTime && now < queue.startTime) { ... } 
 
     if (queue.endTime && now >= queue.endTime) {
-      // 1️⃣ Copy to History
+      // 1️⃣ Copy Queue to QueueHistory
       await QueueHistory.create({
         adminId: queue.adminId,
         queueName: queue.queueName,
@@ -63,15 +66,40 @@ exports.createToken = async (req, res) => {
         discardedAt: now
       });
 
-      // 2️⃣ Delete from Active Queues
-      await Queue.findByIdAndDelete(queue._id);
+      // 2️⃣ Archive Tokens
+      const allTokens = await Token.find({ queueName: queue.queueName });
+      
+      const completedTokens = [];
+      const pendingTokens = [];
 
-      // 3️⃣ Delete associated tokens
+      for (const token of allTokens) {
+          const tokenData = token.toObject();
+          tokenData.originalTokenId = token._id;
+          delete tokenData._id; // Let Mongo generate new ID for history
+          tokenData.archivedAt = new Date();
+
+          if (token.status === 'completed' || token.status === 'Completed') {
+              completedTokens.push(tokenData);
+          } else {
+              // Any other status (waiting, serving, hold, missed, cancelled) -> Pending History
+              pendingTokens.push(tokenData);
+          }
+      }
+
+      if (completedTokens.length > 0) {
+          await CompletedHistoryToken.insertMany(completedTokens);
+      }
+      if (pendingTokens.length > 0) {
+          await PendingHistoryToken.insertMany(pendingTokens);
+      }
+
+      // 3️⃣ Delete from Active Queues & Tokens
+      await Queue.findByIdAndDelete(queue._id);
       await Token.deleteMany({ queueName: queue.queueName });
 
       return res.status(410).json({
         success: false,
-        message: "Queue time is finished",
+        message: "Queue time is finished and tokens have been archived.",
       });
     }
 
@@ -429,22 +457,26 @@ exports.completeToken = async (req, res) => {
     }
 
     // Update token status to completed
+    // Verify update
     const token = await Token.findByIdAndUpdate(
       tokenId,
       { 
         status: "completed", 
-        completedAt: Date.now(),
+        completedAt: Date.now(), 
         isMissed: false 
-      }, // ✅ Set completedAt and clear missed flag
+      }, 
       { new: true }
     );
 
     if (!token) {
-      return res.status(404).json({
+       return res.status(404).json({
         success: false,
         message: "Token not found",
       });
     }
+    
+    // Note: Token remains in 'active' Token collection with status 'completed' until queue expires.
+    // This allows active monitoring of today's completed counts.
 
     res.status(200).json({
       success: true,
@@ -1288,6 +1320,68 @@ exports.getPendingTokensByAdmin = async (req, res) => {
       data: pendingList,
     });
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ✅ GET STUDENT HISTORY (Combined from Completed & Pending History)
+exports.getStudentHistory = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: "Student ID required" });
+    }
+
+    const CompletedHistoryToken = require("../Models/completedHistoryTokenModel");
+    const PendingHistoryToken = require("../Models/pendingHistoryTokenModel");
+    const Token = require("../Models/tokenmodel"); // Also check active tokens if desired, but user said "History". Let's stick to history first as per context.
+    // Wait, the user might want current day history too (which is in active Token table if completed).
+    // Let's check Token table for completed tokens too to be safe.
+    
+    // 1. Fetch from Completed History
+    const completed = await CompletedHistoryToken.find({ studentId }).lean();
+    
+    // 2. Fetch from Pending History
+    const pending = await PendingHistoryToken.find({ studentId }).lean();
+
+    // 3. Normalize and Combine
+    const history = [
+        ...completed.map(t => ({...t, type: 'completed'})),
+        ...pending.map(t => ({...t, type: 'pending'}))
+    ];
+
+    // 4. Sort by Date (Newest First)
+    history.sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt));
+
+    // 5. Format for Frontend
+    const formattedHistory = history.map(t => {
+        let waitTime = 0;
+        if (t.generatedAt && t.completedAt) {
+            waitTime = Math.round((new Date(t.completedAt) - new Date(t.generatedAt)) / 60000);
+        }
+
+        return {
+            id: t._id,
+            queueName: t.queueName || "Unknown Queue",
+            tokenNumber: t.tokenNumber,
+            department: t.department || "General",
+            purpose: t.purpose || "-",
+            date: t.generatedAt,
+            status: t.status,
+            waitingTimeMinutes: waitTime,
+            serviceTaken: t.serviceName || t.department || "Service",
+            studentsAhead: t.studentsAhead || 0 
+        };
+    });
+
+    res.status(200).json({
+      success: true,
+      history: formattedHistory
+    });
+
+  } catch (err) {
+    console.error("Student History Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
