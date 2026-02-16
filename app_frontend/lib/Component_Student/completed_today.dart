@@ -137,7 +137,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     final isMobile = screenWidth < 600;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,11 +212,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                     _buildTotalCompletedCard(isTablet),
                     const SizedBox(height: 24),
 
-                    // ✅ HOURLY PROGRESS CARD - Responsive
-                    if (hourlyData.isNotEmpty) ...[
-                      _buildHourlyProgressCard(isTablet),
-                      const SizedBox(height: 24),
-                    ],
+
 
                     // ✅ COMPLETED TOKENS LIST - Responsive
                     if (completedTokens.isNotEmpty) ...[
@@ -233,33 +229,29 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     );
   }
 
-  // ✅ Total Completed Card - Responsive
+  // ✅ Total Completed Card - Simplified
   Widget _buildTotalCompletedCard(bool isTablet) {
     return Card(
-      elevation: 6,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade600],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      elevation: 2,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
         padding: EdgeInsets.all(isTablet ? 32 : 24),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.deepPurple.shade50,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.check_circle,
                 size: isTablet ? 56 : 48,
-                color: Colors.white,
+                color: Colors.deepPurple,
               ),
             ),
             const SizedBox(width: 20),
@@ -271,7 +263,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                     Translations.translate('completed_tokens', currentLanguage),
                     style: TextStyle(
                       fontSize: isTablet ? 20 : 16,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.grey.shade700,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -281,7 +273,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                     style: TextStyle(
                       fontSize: isTablet ? 42 : 36,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.deepPurple,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -289,7 +281,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                     Translations.translate('today', currentLanguage),
                     style: TextStyle(
                       fontSize: isTablet ? 16 : 14,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.grey.shade500,
                     ),
                   ),
                 ],
@@ -301,96 +293,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     );
   }
 
-  // ✅ Hourly Progress Card - Responsive
-  Widget _buildHourlyProgressCard(bool isTablet) {
-    final maxCount = hourlyData.isNotEmpty
-        ? hourlyData
-              .map((h) => h['count'] as int)
-              .reduce((a, b) => a > b ? a : b)
-        : 1;
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: EdgeInsets.all(isTablet ? 24 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.timeline,
-                  color: Colors.deepPurple,
-                  size: isTablet ? 28 : 24,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  Translations.translate('hourly_progress', currentLanguage),
-                  style: TextStyle(
-                    fontSize: isTablet ? 22 : 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            ...hourlyData.map((hourData) {
-              final count = hourData['count'] as int;
-              final label = hourData['label'] as String;
-              final percentage = (count / maxCount).clamp(0.0, 1.0);
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: isTablet ? 100 : 80,
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: isTablet ? 16 : 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: percentage,
-                            minHeight: isTablet ? 12 : 10,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.deepPurple.shade400,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: isTablet ? 50 : 40,
-                      child: Text(
-                        "$count",
-                        style: TextStyle(
-                          fontSize: isTablet ? 16 : 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
-                        ),
-                        textAlign: TextAlign.right,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ✅ Completed Tokens List - Responsive
   Widget _buildCompletedTokensList(bool isTablet) {
@@ -431,7 +334,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: EdgeInsets.all(isTablet ? 16 : 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade200, width: 1),
                 ),

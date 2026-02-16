@@ -120,7 +120,9 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
   Future<void> fetchStudentDetails() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/student/profile/${widget.studentId}"),
+        Uri.parse(
+          "http://localhost:8000/api/student/profile/${widget.studentId}",
+        ),
         headers: {"Content-Type": "application/json"},
       );
 
@@ -287,8 +289,8 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
             Translations.translate('role', currentLanguage),
             studentRole.isNotEmpty
                 ? (studentRole.toLowerCase() == 'student'
-                    ? Translations.translate('student', currentLanguage)
-                    : studentRole)
+                      ? Translations.translate('student', currentLanguage)
+                      : studentRole)
                 : Translations.translate('student', currentLanguage),
           ),
 
@@ -298,14 +300,13 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
           _sectionTitle(Translations.translate('profile', currentLanguage)),
           _settingTile(
             icon: Icons.person,
-            title: Translations.translate('edit_profile', currentLanguage),
+            title: Translations.translate('Edit Profile', currentLanguage),
             onTap: () async {
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => EditStudentProfileScreen(
-                    studentId: widget.studentId,
-                  ),
+                  builder: (_) =>
+                      EditStudentProfileScreen(studentId: widget.studentId),
                 ),
               );
               fetchStudentDetails(); // ✅ Refresh settings (email/role/etc if needed)
@@ -335,7 +336,9 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
             builder: (context, value, _) {
               return SwitchListTile(
                 value: value,
-                title: Text(Translations.translate('dark_mode', currentLanguage)),
+                title: Text(
+                  Translations.translate('dark_mode', currentLanguage),
+                ),
                 secondary: const Icon(Icons.dark_mode),
                 onChanged: (val) {
                   isDarkMode.value = val;
@@ -347,7 +350,9 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
 
           SwitchListTile(
             value: notificationsEnabled,
-            title: Text(Translations.translate('notifications', currentLanguage)),
+            title: Text(
+              Translations.translate('notifications', currentLanguage),
+            ),
             secondary: const Icon(Icons.notifications),
             onChanged: (value) {
               setState(() => notificationsEnabled = value);
@@ -356,7 +361,9 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
               } else {
                 // In a real app we might delete token from backend or locally unsubscribe
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Notifications Disabled (Mock)")),
+                  const SnackBar(
+                    content: Text("Notifications Disabled (Mock)"),
+                  ),
                 );
               }
             },

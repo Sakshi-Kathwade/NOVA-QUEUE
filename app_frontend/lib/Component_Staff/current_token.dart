@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
+import '../services/toast_service.dart';
 
 class CurrentTokenScreen extends StatefulWidget {
   final String queueName;
@@ -344,22 +345,12 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Token completed successfully"),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastService.showSuccess(context, "Token Completed Successfully! 🎉");
 
         // Refresh token data
         await fetchCurrentToken();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? "Failed to complete token"),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastService.showError(context, data['message'] ?? "Failed to complete token");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -389,22 +380,12 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Token put on hold. You can unhold it later."),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        ToastService.showWarning(context, "Token on Hold ⏸️\nYou can unhold it from 'Held Tokens'");
 
         // Refresh token data (will show next token)
         await fetchCurrentToken();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? "Failed to hold token"),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastService.showError(context, data['message'] ?? "Failed to hold token");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -438,22 +419,12 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Next token loaded"),
-            backgroundColor: Colors.blue,
-          ),
-        );
+        ToastService.showInfo(context, "Next Token Loaded 🚀");
 
         // Refresh token data
         await fetchCurrentToken();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? "No more tokens in queue"),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        ToastService.showInfo(context, data['message'] ?? "No more tokens in queue");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -480,12 +451,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
         final heldTokens = data['heldTokens'] as List;
 
         if (heldTokens.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("No tokens on hold"),
-              backgroundColor: Colors.blue,
-            ),
-          );
+          ToastService.showInfo(context, "No tokens on hold");
           return;
         }
 
@@ -542,12 +508,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Error loading held tokens"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ToastService.showError(context, "Error loading held tokens");
     }
   }
 
@@ -570,24 +531,12 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Token unheld successfully and returned to waiting queue",
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastService.showSuccess(context, "Token Unheld! Returned to Waiting Queue. ✅");
 
         // Refresh token data
         await fetchCurrentToken();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? "Failed to unhold token"),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastService.showError(context, data['message'] ?? "Failed to unhold token");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

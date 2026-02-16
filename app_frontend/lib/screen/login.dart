@@ -180,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Icon(Icons.queue, size: 72, color: Colors.deepPurple),
               const SizedBox(height: 12),
               const Text(
-                "QueueNova",
+                "NovaQueue",
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 32),

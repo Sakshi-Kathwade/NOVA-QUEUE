@@ -43,10 +43,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   String nowServingToken = "--";
   int waitingCount = 0;
   String currentLanguage = 'english';
-  
+
   int activePendingCount = 0; // ✅ New state for Pending Today
   int activeCompletedCount = 0; // ✅ New state for Completed Today
-  
+
   Timer? _pollTimer;
 
   @override
@@ -57,7 +57,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     fetchQueueStatus();
     fetchStudentDetails();
     _startPolling();
-    NotificationService.initNotifications(widget.studentId); // ✅ Initialize Notifications
+    NotificationService.initNotifications(
+      widget.studentId,
+    ); // ✅ Initialize Notifications
   }
 
   @override
@@ -164,20 +166,20 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
         if (mounted) {
-           setState(() {
-              // Update Now Serving
-              if (data["success"] == true && data["data"] != null) {
-                nowServingToken = "A-${data["data"]["tokenNumber"]}";
-              } else {
-                nowServingToken = "--";
-              }
-              
-              // ✅ Update Pending & Completed Counts
-              activePendingCount = data["pendingCount"] ?? 0;
-              activeCompletedCount = data["completedCount"] ?? 0;
-           });
+          setState(() {
+            // Update Now Serving
+            if (data["success"] == true && data["data"] != null) {
+              nowServingToken = "A-${data["data"]["tokenNumber"]}";
+            } else {
+              nowServingToken = "--";
+            }
+
+            // ✅ Update Pending & Completed Counts
+            activePendingCount = data["pendingCount"] ?? 0;
+            activeCompletedCount = data["completedCount"] ?? 0;
+          });
         }
       }
     } catch (e) {
@@ -241,7 +243,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
-        title: const Text("QueueNova – Student"),
+        title: const Text("NovaQueue – Student"),
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
@@ -305,7 +307,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    Translations.translate('view_profile', currentLanguage),
+                    Translations.translate('Student', currentLanguage),
                   ),
                 ),
               ),
@@ -314,7 +316,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 child: ListTile(
                   leading: Icon(Icons.edit, color: Colors.deepPurple),
                   title: Text(
-                    Translations.translate('edit_profile', currentLanguage),
+                    Translations.translate('Edit Profile', currentLanguage),
                   ),
                 ),
               ),
@@ -542,32 +544,23 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  studentRole.isNotEmpty
-                      ? (studentRole.toLowerCase() == 'student'
-                            ? Translations.translate('student', currentLanguage)
-                            : studentRole)
-                      : Translations.translate('student', currentLanguage),
+                  studentName.isNotEmpty ? studentName : "—",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  studentName.isNotEmpty ? studentName : "—",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                const SizedBox(height: 2),
                 Text(
                   studentEmail.isNotEmpty
                       ? studentEmail
                       : "email@university.com",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),

@@ -26,6 +26,7 @@ import '../screen/home.dart';
 import '../services/language_service.dart';
 import '../services/translations.dart';
 import '../screen/about_us.dart';
+import '../services/toast_service.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String? adminEmail; // ✅ Store admin email
@@ -140,21 +141,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
           // Check if queue is expired
           bool isExpired = false;
           if (queueData != null && queueData["endTime"] != null) {
-             final end = DateTime.parse(queueData["endTime"]).toLocal();
-             if (DateTime.now().isAfter(end)) {
-               isExpired = true;
-             }
+            final end = DateTime.parse(queueData["endTime"]).toLocal();
+            if (DateTime.now().isAfter(end)) {
+              isExpired = true;
+            }
           }
 
           if (isExpired) {
-             setState(() {
+            setState(() {
               queueName = null;
               queueId = null;
               queueStatus = "N/A";
               liveQueueData = [];
               maxStudents = null;
-             });
-             return;
+            });
+            return;
           }
 
           // ✅ Only update if queue name changed (to avoid unnecessary rebuilds)
@@ -168,11 +169,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               queueStatus = queueData != null && queueData["status"] != null
                   ? queueData["status"] as String
                   : "N/A";
-              
+
               // ✅ Fetch max students
               if (queueData != null && queueData["maxStudents"] != null) {
-                 maxStudents = queueData["maxStudents"] is int 
-                    ? queueData["maxStudents"] 
+                maxStudents = queueData["maxStudents"] is int
+                    ? queueData["maxStudents"]
                     : int.tryParse(queueData["maxStudents"].toString());
               }
 
@@ -257,13 +258,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> fetchDashboardData() async {
     // ✅ If no active queue, reset data
     if (queueName == null || queueName!.isEmpty) {
-        setState(() {
-          waitingCount = 0;
-          currentToken = "N/A";
-          completedToday = 0;
-          pendingCount = 0; // Reset pending as well if queue is finished
-          averageWaitingTime = 0;
-        });
+      setState(() {
+        waitingCount = 0;
+        currentToken = "N/A";
+        completedToday = 0;
+        pendingCount = 0; // Reset pending as well if queue is finished
+        averageWaitingTime = 0;
+      });
       return;
     }
 
@@ -406,11 +407,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
         if (response.statusCode == 200 && data['success'] == true) {
           // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Admin account deleted successfully. Logged out."),
-              backgroundColor: Colors.green,
-            ),
+          ToastService.showSuccess(
+            context,
+            "Admin account deleted successfully. Logged out.",
           );
 
           // Navigate to home screen (which has login button)
@@ -423,22 +422,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
             (route) => false,
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['message'] ?? "Failed to delete admin account",
-              ),
-              backgroundColor: Colors.red,
-            ),
+          ToastService.showError(
+            context,
+            data['message'] ?? "Failed to delete admin account",
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Server error. Please try again."),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastService.showError(context, "Server error. Please try again.");
       }
     }
   }
@@ -463,7 +453,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "QueueNova",
+              "NovaQueue",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -474,10 +464,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             Text(
               queueName != null
                   ? queueName!
-                  : Translations.translate(
-                      'no_active_queue',
-                      currentLanguage,
-                    ),
+                  : Translations.translate('no_active_queue', currentLanguage),
               style: const TextStyle(color: Colors.white70, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -549,7 +536,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    Translations.translate('staff_member', currentLanguage),
+                    Translations.translate('Admin Member', currentLanguage),
                   ),
                 ),
               ),
@@ -558,7 +545,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: ListTile(
                   leading: const Icon(Icons.edit, color: Colors.deepPurple),
                   title: Text(
-                    Translations.translate('edit_profile', currentLanguage),
+                    Translations.translate('Edit Profile', currentLanguage),
                   ),
                 ),
               ),
@@ -686,7 +673,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               context,
               Icons.history,
               Translations.translate('history', currentLanguage),
-              screen: AdminHistoryScreen(queueName: queueName, adminId: adminId),
+              screen: AdminHistoryScreen(
+                queueName: queueName,
+                adminId: adminId,
+              ),
             ),
             _drawerItem(
               context,

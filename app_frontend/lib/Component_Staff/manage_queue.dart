@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
+import '../services/toast_service.dart';
 
 class ManageQueueScreen extends StatefulWidget {
   final String? adminId;
@@ -176,15 +177,15 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         if (mounted) {
           setState(() => queueStatus = newStatus);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Queue is now $newStatus"),
-              backgroundColor: newStatus == "Active" ? Colors.green : Colors.orange,
-            ),
-          );
+          setState(() => queueStatus = newStatus);
+          if (newStatus == "Active") {
+            ToastService.showSuccess(context, "Queue is now Active ✅");
+          } else {
+            ToastService.showWarning(context, "Queue is now Paused ⏸️");
+          }
         }
       } else {
-         _showError(data['message'] ?? "Failed to update queue status");
+        _showError(data['message'] ?? "Failed to update queue status");
       }
     } catch (e) {
       _showError("Server error. Please try again.");
@@ -197,9 +198,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
   Future<void> _completeToken() async {
     if (currentTokenId == null || queueName == null) {
-       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No active token to complete")),
-      );
+      ToastService.showInfo(context, "No active token to complete");
       return;
     }
 
@@ -215,13 +214,8 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Token completed successfully"),
-              backgroundColor: Colors.green,
-            ),
-          );
+        if (mounted) {
+          ToastService.showSuccess(context, "Token Completed Successfully! 🎉");
           // Manually increment completed count for immediate feedback, poll will fix consistency
           setState(() {
             completedCount++;
@@ -229,9 +223,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
         }
         // Fetch next token immediately
         await _fetchCurrentToken();
-        // Also try to load next token automatically if desired? 
-        // For now, user has to click 'Next' to Serve the next one, 
-        // unless we want 'Complete' to also auto-next. 
+        // Also try to load next token automatically if desired?
+        // For now, user has to click 'Next' to Serve the next one,
+        // unless we want 'Complete' to also auto-next.
         // Based on typical flows, 'Complete' finishes one. 'Next' serves next.
       } else {
         _showError(data['message'] ?? "Failed to complete token");
@@ -256,7 +250,8 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           "queueName": queueName,
-          "currentTokenId": currentTokenId, // Pass current to auto-complete it if needed
+          "currentTokenId":
+              currentTokenId, // Pass current to auto-complete it if needed
           "adminId": widget.adminId,
         }),
       );
@@ -264,12 +259,10 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Now serving: ${data['data']['studentName'] ?? 'Student'}"),
-              backgroundColor: Colors.blue,
-            ),
+        if (mounted) {
+          ToastService.showInfo(
+            context,
+            "Now serving: ${data['data']['studentName'] ?? 'Student'}",
           );
         }
         await _fetchCurrentToken();
@@ -287,9 +280,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
   Future<void> _holdToken() async {
     if (currentTokenId == null || queueName == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No active token to hold")),
-      );
+      ToastService.showInfo(context, "No active token to hold");
       return;
     }
 
@@ -305,18 +296,13 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Token put on hold"),
-              backgroundColor: Colors.orange,
-            ),
-          );
+        if (mounted) {
+          ToastService.showWarning(context, "Token put on Hold ⏸️");
         }
         // After hold, we usually want to move to next, or just refresh to show "Empty/Waiting"
         await _fetchCurrentToken();
       } else {
-         _showError(data['message'] ?? "Failed to hold token");
+        _showError(data['message'] ?? "Failed to hold token");
       }
     } catch (e) {
       _showError("Server error. Please try again.");
@@ -329,9 +315,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
+    if (mounted) {
+      ToastService.showError(context, message);
+    }
     }
   }
 
@@ -339,10 +325,12 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
+      // Very light purple/blue background for a more professional look
       appBar: AppBar(
         backgroundColor: const Color(0xff5E35B1),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
+
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
@@ -350,9 +338,15 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
           children: [
             const Text(
               "Manage Queue",
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
-            Text(queueName ?? "No Queue", style: const TextStyle(fontSize: 12, color: Colors.white70)),
+            Text(
+              queueName ?? "No Queue",
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
           ],
         ),
         actions: [
@@ -534,11 +528,7 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
                                   "Complete",
                                   _completeToken,
                                 ),
-                                _actionBtn(
-                                  Icons.pause,
-                                  "Hold",
-                                  _holdToken,
-                                ),
+                                _actionBtn(Icons.pause, "Hold", _holdToken),
                               ],
                             ),
                     ],

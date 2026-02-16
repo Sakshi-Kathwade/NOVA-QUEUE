@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
+import '../services/toast_service.dart';
 
 class CreateQueueScreen extends StatefulWidget {
   final String? adminId;
@@ -34,15 +35,11 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
   // 🔹 CREATE QUEUE API
   Future<void> createQueueApi() async {
     if (startTime == null || endTime == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Select start & end time")));
+      ToastService.showWarning(context, "Select start & end time");
       return;
     }
     if (widget.adminId == null || widget.adminId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Admin not found. Please login again.")),
-      );
+      ToastService.showError(context, "Admin not found. Please login again.");
       return;
     }
 
@@ -68,7 +65,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
           : null;
 
       if (response.statusCode == 201) {
-        _showSuccessDialog(message ?? "Queue Created Successfully");
+        ToastService.showSuccess(context, message ?? "Queue Created Successfully! 🎉");
 
         _formKey.currentState!.reset();
         queueName.clear();
@@ -77,10 +74,10 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
         endTime = null;
         setState(() {});
       } else {
-        _showErrorDialog(message ?? "Failed to create queue");
+        ToastService.showError(context, message ?? "Failed to create queue");
       }
     } catch (e) {
-      _showErrorDialog("Server Error");
+      ToastService.showError(context, "Server Error");
     }
 
     setState(() => isLoading = false);

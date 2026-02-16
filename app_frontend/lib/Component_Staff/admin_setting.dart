@@ -11,6 +11,7 @@ import 'dart:convert';
 import '../services/language_service.dart';
 import '../services/translations.dart';
 import 'edit_admin_profile_screen.dart';
+import '../services/toast_service.dart';
 
 class AdminSettingScreen extends StatefulWidget {
   final String? adminEmail;
@@ -150,13 +151,9 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
           }
           // ✅ Show success message
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '${Translations.translate('language', currentLanguage)} ${Translations.translate('save', currentLanguage)}',
-                ),
-                backgroundColor: Colors.green,
-              ),
+            ToastService.showSuccess(
+              context,
+              '${Translations.translate('language', currentLanguage)} ${Translations.translate('save', currentLanguage)}',
             );
           }
         }
@@ -189,23 +186,17 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     if (currentPassword.isEmpty ||
         newPassword.isEmpty ||
         confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            Translations.translate('all_fields_required', currentLanguage),
-          ),
-        ),
+      ToastService.showWarning(
+        context,
+        Translations.translate('all_fields_required', currentLanguage),
       );
       return;
     }
 
     if (newPassword != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            Translations.translate('passwords_do_not_match', currentLanguage),
-          ),
-        ),
+      ToastService.showError(
+        context,
+        Translations.translate('passwords_do_not_match', currentLanguage),
       );
       return;
     }
@@ -227,14 +218,11 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
 
       if (response.statusCode == 200 && data['success'] == true) {
         Navigator.pop(context); // Close dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              Translations.translate(
-                'password_changed_successfully',
-                currentLanguage,
-              ),
-            ),
+        ToastService.showSuccess(
+          context,
+          Translations.translate(
+            'password_changed_successfully',
+            currentLanguage,
           ),
         );
         // Clear controllers
@@ -242,16 +230,13 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
         newPasswordController.clear();
         confirmPasswordController.clear();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? "Failed to change password"),
-          ),
+        ToastService.showError(
+          context,
+          data['message'] ?? "Failed to change password",
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Server error. Please try again.")),
-      );
+      ToastService.showError(context, "Server error. Please try again.");
     }
   }
 
@@ -274,45 +259,28 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                Translations.translate(
-                  'queue_settings_updated_successfully',
-                  currentLanguage,
-                ),
-              ),
-              backgroundColor: Colors.green,
+          ToastService.showSuccess(
+            context,
+            Translations.translate(
+              'queue_settings_updated_successfully',
+              currentLanguage,
             ),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['message'] ?? "Failed to update queue settings",
-              ),
-              backgroundColor: Colors.red,
-            ),
+          ToastService.showError(
+            context,
+            data['message'] ?? "Failed to update queue settings",
           );
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Failed to update queue settings: ${response.statusCode}",
-            ),
-            backgroundColor: Colors.red,
-          ),
+        ToastService.showError(
+          context,
+          "Failed to update queue settings: ${response.statusCode}",
         );
       }
     } catch (e) {
       debugPrint("Error updating queue settings: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Server error. Please try again."),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ToastService.showError(context, "Server error. Please try again.");
     }
   }
 
@@ -418,13 +386,11 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
 
         if (response.statusCode == 200 && data['success'] == true) {
           // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Admin account deleted successfully. Logged out."),
-              backgroundColor: Colors.green,
-            ),
+          ToastService.showSuccess(
+            context,
+            "Admin account deleted successfully. Logged out.",
           );
-
+          
           // Navigate to home screen (which has login button)
           Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
 
@@ -435,22 +401,13 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             (route) => false,
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['message'] ?? "Failed to delete admin account",
-              ),
-              backgroundColor: Colors.red,
-            ),
+          ToastService.showError(
+            context,
+            data['message'] ?? "Failed to delete admin account",
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Server error. Please try again."),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastService.showError(context, "Server error. Please try again.");
       }
     }
   }
@@ -460,12 +417,9 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
   }
 
   void clearCache() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          Translations.translate('cache_cleared_successfully', currentLanguage),
-        ),
-      ),
+    ToastService.showSuccess(
+      context,
+      Translations.translate('cache_cleared_successfully', currentLanguage),
     );
   }
 
@@ -653,7 +607,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
           _sectionTitle(Translations.translate('profile', currentLanguage)),
           _settingTile(
             icon: Icons.person,
-            title: Translations.translate('edit_profile', currentLanguage),
+            title: Translations.translate('Edit Profile', currentLanguage),
             onTap: () {
               Navigator.push(
                 context,

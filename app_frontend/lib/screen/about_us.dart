@@ -14,18 +14,17 @@ class AboutUsScreen extends StatelessWidget {
         0xFFF3F4F6,
       ), // Very light grey/blue professional background
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.deepPurple,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.blueAccent),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           "About Us",
           style: GoogleFonts.poppins(
-            color: Colors.blueAccent,
+            color: Colors.white,
             fontWeight: FontWeight.w600,
-            backgroundColor: Colors.blue,
           ),
         ),
         centerTitle: true,
@@ -80,7 +79,7 @@ class AboutUsScreen extends StatelessWidget {
                     _buildTeamMemberCard(
                       context,
                       name: "Sakshi Kathawde",
-                      role: "Full Stack Developer",
+                      role: "Backend Developer",
                       roleColor: Colors.blue,
                       description:
                           "Responsible for backend architecture, API integration, and ensuring system security and performance.",
@@ -263,7 +262,7 @@ class AboutUsScreen extends StatelessWidget {
               backgroundColor: Colors.blue.shade50,
               child: ClipOval(
                 child: Image.asset(
-                  "assets/sakshi.jpeg", // Mentor Image
+                  "assets/swami-sir.jpeg", // ✅ Changed to Asset Path
                   width: 70,
                   height: 70,
                   fit: BoxFit.cover,

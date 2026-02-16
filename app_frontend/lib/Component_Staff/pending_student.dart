@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../services/api_config.dart'; // ✅ Import ApiConfig
 import '../services/language_service.dart';
 import '../services/translations.dart';
+import '../services/toast_service.dart';
 
 class PendingStudentsScreen extends StatefulWidget {
   final String queueName;
@@ -92,12 +93,7 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Token approved successfully"),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastService.showSuccess(context, "Token approved successfully");
         _fetchPendingTokens();
       }
     } catch (e) {}
@@ -115,12 +111,7 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Token rejected"),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastService.showError(context, "Token rejected");
         _fetchPendingTokens();
       }
     } catch (e) {}

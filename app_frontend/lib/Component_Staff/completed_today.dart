@@ -319,7 +319,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
     final isTablet = size.width > 600;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100, // ✅ User requested Grey.shade100
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.deepPurple, // ✅ User requested DeepPurple
@@ -338,8 +338,13 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: Translations.translate('refresh', currentLanguage),
+            onPressed: fetchCompletedToday,
+          ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.download_rounded, color: Colors.deepPurple),
+            icon: const Icon(Icons.download_rounded, color: Colors.white),
             tooltip: Translations.translate('export', currentLanguage),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -461,73 +466,66 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
   }
 
   Widget _buildSummaryCard(bool isTablet) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+    return Card(
+      elevation: 2,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF8E24AA).withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        side: BorderSide(color: Colors.grey.shade200),
       ),
-      padding: EdgeInsets.all(isTablet ? 32 : 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                Translations.translate('completed_tokens', currentLanguage),
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: EdgeInsets.all(isTablet ? 32 : 24),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  Translations.translate('completed_tokens', currentLanguage),
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "$totalCompleted",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isTablet ? 48 : 40,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 4),
+                Text(
+                  "$totalCompleted",
+                  style: TextStyle(
+                    color: Colors.deepPurple,
+                    fontSize: isTablet ? 48 : 40,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "Today",
+                    style: TextStyle(color: Colors.deepPurple, fontSize: 12),
+                  ),
                 ),
-                child: const Text(
-                  "Today",
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              shape: BoxShape.circle,
+              ],
             ),
-            child: Icon(
-              Icons.check_rounded,
-              size: isTablet ? 48 : 40,
-              color: Colors.white,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle_outline,
+                size: isTablet ? 48 : 40,
+                color: Colors.deepPurple,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

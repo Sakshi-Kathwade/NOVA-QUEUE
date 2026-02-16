@@ -22,7 +22,7 @@ class HomeScreen extends StatelessWidget {
 
               // 🔷 App Name
               const Text(
-                "QueueNova",
+                "NovaQueue",
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -89,7 +89,7 @@ class HomeScreen extends StatelessWidget {
 
               // 🔷 Footer
               const Text(
-                "© 2025 QueueNova",
+                "© 2025 NovaQueue",
                 style: TextStyle(color: Colors.white60),
               ),
             ],
