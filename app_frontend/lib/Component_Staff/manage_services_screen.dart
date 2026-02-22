@@ -52,7 +52,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/admin/settings/services/${widget.adminId}",
+          "http://10.155.83.53:8000/api/admin/settings/services/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
       );
@@ -105,7 +105,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     try {
       final response = await http.post(
         Uri.parse(
-          "http://localhost:8000/api/admin/settings/services/${widget.adminId}",
+          "http://10.155.83.53:8000/api/admin/settings/services/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
@@ -160,7 +160,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     try {
       final response = await http.put(
         Uri.parse(
-          "http://localhost:8000/api/admin/settings/services/$serviceId/${widget.adminId}",
+          "http://10.155.83.53:8000/api/admin/settings/services/$serviceId/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
@@ -236,7 +236,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
       try {
         final response = await http.delete(
           Uri.parse(
-            "http://localhost:8000/api/admin/settings/services/$serviceId/${widget.adminId}",
+            "http://10.155.83.53:8000/api/admin/settings/services/$serviceId/${widget.adminId}",
           ),
           headers: {"Content-Type": "application/json"},
         );
@@ -354,29 +354,41 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isSuccess ? Icons.check_circle : Icons.error, 
-                color: isSuccess ? Colors.green : Colors.red, 
-                size: 60
+                isSuccess ? Icons.check_circle : Icons.error,
+                color: isSuccess ? Colors.green : Colors.red,
+                size: 60,
               ),
               const SizedBox(height: 16),
               Text(
-                isSuccess ? "Success" : "Error", 
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)
+                isSuccess ? "Success" : "Error",
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
-              Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isSuccess ? Colors.deepPurple : Colors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    "OK",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
-              )
+              ),
             ],
           ),
         ),

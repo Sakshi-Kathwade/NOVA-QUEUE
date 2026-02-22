@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, unnecessary_brace_in_string_interps, prefer_interpolation_to_compose_strings, duplicate_import
+// ignore_for_file: use_build_context_synchronously, unnecessary_brace_in_string_interps, prefer_interpolation_to_compose_strings, duplicate_import, deprecated_member_use
 
 import 'dart:convert';
 import 'dart:async';
@@ -138,24 +138,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
           final newQueueName = jsonData["queueName"] as String;
           final queueData = jsonData["data"];
 
-          // Check if queue is expired
-          bool isExpired = false;
-          if (queueData != null && queueData["endTime"] != null) {
-            final end = DateTime.parse(queueData["endTime"]).toLocal();
-            if (DateTime.now().isAfter(end)) {
-              isExpired = true;
+          // Determine status - prioritizing backend status or computed expiration
+          String finalStatus = "N/A";
+          if (queueData != null) {
+            finalStatus = queueData["status"] ?? "N/A";
+            if (queueData["endTime"] != null) {
+              final end = DateTime.parse(queueData["endTime"]).toLocal();
+              if (DateTime.now().isAfter(end)) {
+                // If time is up, force status to Closed for UI even if backend says Active
+                // (Though backend should have updated it)
+                finalStatus = "Closed";
+              }
             }
-          }
-
-          if (isExpired) {
-            setState(() {
-              queueName = null;
-              queueId = null;
-              queueStatus = "N/A";
-              liveQueueData = [];
-              maxStudents = null;
-            });
-            return;
           }
 
           // ✅ Only update if queue name changed (to avoid unnecessary rebuilds)
@@ -166,9 +160,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ? queueData["_id"] as String
                   : null;
               // ✅ Fetch queue status dynamically
-              queueStatus = queueData != null && queueData["status"] != null
-                  ? queueData["status"] as String
-                  : "N/A";
+              queueStatus = finalStatus;
 
               // ✅ Fetch max students
               if (queueData != null && queueData["maxStudents"] != null) {
@@ -211,13 +203,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             fetchLiveQueueData(); // ✅ Fetch live queue data
           } else {
             // ✅ Update status even if queue name hasn't changed
-            if (queueData != null && queueData["status"] != null) {
-              final newStatus = queueData["status"] as String;
-              if (queueStatus != newStatus) {
-                setState(() {
-                  queueStatus = newStatus;
-                });
-              }
+            if (queueStatus != finalStatus) {
+              setState(() {
+                queueStatus = finalStatus;
+              });
             }
           }
         }
@@ -292,22 +281,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       if (tokenResponse.statusCode == 200) {
         final tokenData = json.decode(tokenResponse.body);
+        
+        int tokenNum = 0;
         if (tokenData["data"] != null) {
-          final tokenNumber = tokenData["data"]["tokenNumber"] ?? 0;
-          final completedCount = tokenData["data"]["completedCount"] ?? 0;
-          final pCount = tokenData["data"]["pendingCount"] ?? 0;
-          setState(() {
-            currentToken = tokenNumber > 0 ? "A-$tokenNumber" : "N/A";
-            completedToday = completedCount;
-            pendingCount = pCount;
-          });
-        } else {
-          setState(() {
-            currentToken = "N/A";
-            completedToday = 0;
-            pendingCount = 0;
-          });
+          tokenNum = tokenData["data"]["tokenNumber"] ?? 0;
         }
+
+        int compCount = 0;
+        int pendCount = 0;
+
+        if (tokenData["data"] != null) {
+          compCount = tokenData["data"]["completedCount"] ?? 0;
+          pendCount = tokenData["data"]["pendingCount"] ?? 0;
+        } else {
+          compCount = tokenData["completedCount"] ?? 0;
+          pendCount = tokenData["pendingCount"] ?? 0;
+        }
+
+        setState(() {
+          currentToken = tokenNum > 0 ? "A-$tokenNum" : "N/A";
+          completedToday = compCount;
+          pendingCount = pendCount;
+        });
       }
     } catch (e) {
       // Silent fail - data will refresh on next poll
@@ -518,7 +513,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _adminProfilePictureUrl != null &&
                             _adminProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "http://localhost:8000" +
+                                "http://10.155.83.53:8000" +
                                     _adminProfilePictureUrl!,
                               )
                               as ImageProvider
@@ -584,7 +579,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _adminProfilePictureUrl != null &&
                             _adminProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "http://localhost:8000" +
+                                "http://10.155.83.53:8000" +
                                     _adminProfilePictureUrl!,
                               )
                               as ImageProvider
@@ -721,7 +716,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ? QueueStatus(adminId: adminId, studentId: "studentID")
                   : null,
             ),
-
             _dashboardCard(
               context: context,
               title: Translations.translate(
@@ -733,7 +727,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
               color: Colors.orange,
               navigateTo: WaitingCardScreen(queueName: queueName ?? ""),
             ),
-
             _dashboardCard(
               context: context,
               title: Translations.translate('current_token', currentLanguage),
@@ -746,7 +739,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 maxStudents: maxStudents, // ✅ Pass maxStudents
               ),
             ),
-
             _dashboardCard(
               context: context,
               title: Translations.translate('completed_today', currentLanguage),
@@ -758,30 +750,86 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 adminId: adminId,
               ),
             ),
-
             _dashboardCard(
               context: context,
               title: Translations.translate('live_queue', currentLanguage),
-              value: liveQueueData.isNotEmpty ? "${liveQueueData.length}" : "0",
+              value: queueName != null
+                  ? (currentToken == "N/A" || currentToken == "--" ? (maxStudents != null ? maxStudents.toString() : "--") : currentToken)
+                  : "--",
               icon: Icons.people_alt,
               color: Colors.deepPurple,
-              navigateTo: AdminLiveQueueScreen(
-                adminId: adminId!,
-                queueName: queueName ?? "",
-                maxStudents: maxStudents, // ✅ Pass maxStudents
-              ),
+              navigateTo: adminId != null
+                  ? AdminLiveQueueScreen(
+                      adminId: adminId!,
+                      queueName: queueName ?? "",
+                      maxStudents: maxStudents, // ✅ Pass maxStudents
+                    )
+                  : null,
             ),
-
             _dashboardCard(
               context: context,
               title: Translations.translate('pending_student', currentLanguage),
               value: pendingCount.toString(),
               icon: Icons.hourglass_empty,
               color: Colors.teal,
-              navigateTo: PendingStudentsScreen(
-                queueName: queueName ?? "",
-                adminId: adminId!,
+              navigateTo: adminId != null
+                  ? PendingStudentsScreen(
+                      queueName: queueName ?? "",
+                      adminId: adminId!,
+                    )
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================= DASHBOARD CARD HELPER =================
+  Widget _dashboardCard({
+    required BuildContext context,
+    required String title,
+    required String value,
+    required Widget? navigateTo, // Changed to Widget? to handle null navigation
+    required IconData icon,
+    required Color color,
+  }) {
+    return InkWell(
+      onTap: navigateTo != null
+          ? () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => navigateTo),
+            )
+          : null,
+      child: Card(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[850]
+            : Colors.white,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 40, color: color),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[400]
+                    : Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -809,58 +857,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _fetchAdminProfilePicture(); // ✅ Refresh dashboard
         }
       },
-    );
-  }
-
-  // ================= DASHBOARD CARD =================
-  Widget _dashboardCard({
-    required BuildContext context,
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-    Widget? navigateTo,
-  }) {
-    return InkWell(
-      onTap: navigateTo == null
-          ? null
-          : () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => navigateTo),
-              );
-            },
-      borderRadius: BorderRadius.circular(16),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 36, color: color),
-              const SizedBox(height: 12),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

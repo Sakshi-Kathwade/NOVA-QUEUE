@@ -121,7 +121,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/student/profile/${widget.studentId}",
+          "http://10.155.83.53:8000/api/student/profile/${widget.studentId}",
         ),
         headers: {"Content-Type": "application/json"},
       );
@@ -150,7 +150,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
 
     try {
       final uri = Uri.parse(
-        "http://localhost:8000/api/changepassword/${widget.studentId}",
+        "http://10.155.83.53:8000/api/changepassword/${widget.studentId}",
       );
 
       final response = await http.put(
@@ -227,7 +227,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
   Future<void> logoutStudent() async {
     try {
       final response = await http.delete(
-        Uri.parse("http://localhost:8000/api/logout/${widget.studentId}"),
+        Uri.parse("http://10.155.83.53:8000/api/logout/${widget.studentId}"),
       );
 
       if (response.statusCode == 200) {

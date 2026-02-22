@@ -51,7 +51,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     if (widget.adminId == null) return;
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/admin/profile/${widget.adminId}"),
+        Uri.parse("http://10.155.83.53:8000/api/admin/profile/${widget.adminId}"),
         headers: {"Content-Type": "application/json"},
       );
       if (response.statusCode == 200) {
@@ -73,7 +73,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/admin/settings/queue/${widget.adminId}",
+          "http://10.155.83.53:8000/api/admin/settings/queue/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
       );
@@ -204,7 +204,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     try {
       final response = await http.put(
         Uri.parse(
-          "http://localhost:8000/api/adminchangepassword/${widget.adminId ?? ''}",
+          "http://10.155.83.53:8000/api/adminchangepassword/${widget.adminId ?? ''}",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
@@ -246,7 +246,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     try {
       final response = await http.put(
         Uri.parse(
-          "http://localhost:8000/api/admin/settings/queue/${widget.adminId}",
+          "http://10.155.83.53:8000/api/admin/settings/queue/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
@@ -378,7 +378,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
       try {
         // ✅ Delete admin account from database
         final response = await http.delete(
-          Uri.parse("http://localhost:8000/api/deleteadmin/${widget.adminId}"),
+          Uri.parse("http://10.155.83.53:8000/api/deleteadmin/${widget.adminId}"),
           headers: {"Content-Type": "application/json"},
         );
 
@@ -390,7 +390,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             context,
             "Admin account deleted successfully. Logged out.",
           );
-          
+
           // Navigate to home screen (which has login button)
           Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
 

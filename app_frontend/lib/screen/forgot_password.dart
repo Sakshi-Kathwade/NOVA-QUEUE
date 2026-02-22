@@ -82,7 +82,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),
-          "newPassword": password
+          "newPassword": password,
         }),
       );
 
@@ -101,7 +101,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
   }
 
   void _showSuccessDialog() {
@@ -126,7 +128,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               Navigator.pop(ctx); // Close dialog
               Navigator.pop(context); // Go back to login
             },
-            child: const Text("Go to Login", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Go to Login",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -147,10 +152,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           children: [
             const Icon(Icons.lock_reset, size: 80, color: Colors.deepPurple),
             const SizedBox(height: 20),
-            
+
             // EMAIL VERIFICATION STEP
             if (!_isEmailVerified) ...[
-               const Text(
+              const Text(
                 "Enter your registered email to find your account.",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey),
@@ -162,7 +167,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 decoration: InputDecoration(
                   labelText: "Email Address",
                   prefixIcon: const Icon(Icons.email),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -172,16 +179,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _verifyEmail,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple, 
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                    backgroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
-                    : const Text("Verify Email", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Verify Email",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
                 ),
               ),
             ]
-            
             // RESET PASSWORD STEP
             else ...[
               Container(
@@ -190,44 +201,70 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 decoration: BoxDecoration(
                   color: Colors.deepPurple.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.deepPurple.shade200)
+                  border: Border.all(color: Colors.deepPurple.shade200),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Account Found:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                    const Text(
+                      "Account Found:",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         const Icon(Icons.person, size: 20, color: Colors.grey),
                         const SizedBox(width: 8),
-                        Expanded(child: Text("Student ID: $_studentId", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                        Expanded(
+                          child: Text(
+                            "Student ID: $_studentId",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     if (_studentName != null) ...[
                       const SizedBox(height: 4),
-                       Row(
+                      Row(
                         children: [
                           const Icon(Icons.badge, size: 20, color: Colors.grey),
                           const SizedBox(width: 8),
-                          Expanded(child: Text("Name: $_studentName", style: const TextStyle(fontWeight: FontWeight.w500))),
+                          Expanded(
+                            child: Text(
+                              "Name: $_studentName",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    ]
+                    ],
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-              const Text("Create a New Password", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Create a New Password",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
-              
+
               TextField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: "New Password",
                   prefixIcon: const Icon(Icons.lock),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -237,7 +274,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 decoration: InputDecoration(
                   labelText: "Confirm Password",
                   prefixIcon: const Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -247,12 +286,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _resetPassword,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple, 
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                    backgroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
-                    : const Text("Update Password", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Update Password",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
                 ),
               ),
             ],

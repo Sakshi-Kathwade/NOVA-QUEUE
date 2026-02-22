@@ -183,7 +183,9 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.grey[900]
+          : const Color(0xFFF4F6FA),
       appBar: AppBar(
         title: const Text(
           "Create Queue",
@@ -207,12 +209,14 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Queue Details",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.deepPurple[300]
+                          : Colors.deepPurple,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -270,6 +274,20 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                             startTime = await showTimePicker(
                               context: context,
                               initialTime: TimeOfDay.now(),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    timePickerTheme: TimePickerThemeData(
+                                      backgroundColor:
+                                          Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.grey[850]
+                                          : Colors.white,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
                             );
                             setState(() {});
                           },
@@ -284,6 +302,20 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                             endTime = await showTimePicker(
                               context: context,
                               initialTime: TimeOfDay.now(),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    timePickerTheme: TimePickerThemeData(
+                                      backgroundColor:
+                                          Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.grey[850]
+                                          : Colors.white,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
                             );
                             setState(() {});
                           },
@@ -352,8 +384,12 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
   }) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey.shade100,
-        foregroundColor: Colors.black,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800]
+            : Colors.grey.shade100,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black,
         elevation: 0,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(

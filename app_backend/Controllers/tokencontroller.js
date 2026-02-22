@@ -402,7 +402,18 @@ exports.getCurrentToken = async (req, res) => {
       // generatedAt: { $gte: startOfDay }, // Optional: Ensure it belongs to today's session if queue names are reused
     });
 
-    const pendingCount = await Token.countDocuments({
+    const queueDoc = await Queue.findOne({ queueName });
+    const now = new Date();
+    let isExpired = false;
+    if (!queueDoc) {
+        isExpired = true;
+    } else if (queueDoc.endTime) {
+        if (now > queueDoc.endTime) {
+            isExpired = true;
+        }
+    }
+
+    const pendingCount = isExpired ? 0 : await Token.countDocuments({
       queueName,
       status: { $in: ["waiting", "serving", "hold", "missed", "pending"] }, // ✅ Count all active tokens
     });
@@ -885,12 +896,30 @@ exports.getStudentHistory = async (req, res) => {
       });
     }
 
-    const tokens = await Token.find({
+    const CompletedHistoryToken = require('../Models/completedHistoryTokenModel');
+    const PendingHistoryToken = require('../Models/pendingHistoryTokenModel');
+
+    const activeTokens = await Token.find({
       studentId,
       status: { $in: ['completed', 'cancelled', 'Completed', 'Cancelled', 'pending', 'hold'] },
-    })
-      .sort({ updatedAt: -1 })
-      .limit(100);
+    }).lean();
+
+    const completedTokens = await CompletedHistoryToken.find({
+      studentId
+    }).lean();
+
+    const pendingTokens = await PendingHistoryToken.find({
+      studentId
+    }).lean();
+
+    let allTokens = [...activeTokens, ...completedTokens, ...pendingTokens];
+    allTokens.sort((a, b) => {
+        const dateA = new Date(a.completedAt || a.cancelledAt || a.updatedAt || a.generatedAt || 0);
+        const dateB = new Date(b.completedAt || b.cancelledAt || b.updatedAt || b.generatedAt || 0);
+        return dateB - dateA;
+    });
+
+    const tokens = allTokens.slice(0, 100);
 
     const history = tokens.map((t) => ({
       id: t._id,
@@ -937,9 +966,20 @@ exports.getPendingTokens = async (req, res) => {
       });
     }
 
-    const pendingTokens = await Token.find({
+    const queueDoc = await Queue.findOne({ queueName });
+    const now = new Date();
+    let isExpired = false;
+    if (!queueDoc) {
+        isExpired = true;
+    } else if (queueDoc.endTime) {
+        if (now > queueDoc.endTime) {
+            isExpired = true;
+        }
+    }
+
+    const pendingTokens = isExpired ? [] : await Token.find({
       queueName,
-      status: "pending", // ✅ Fetch only pending tokens
+      status: { $in: ["waiting", "serving", "hold", "missed", "pending"] }, // ✅ Fetch all active remaining tokens
     }).sort({ tokenNumber: 1 });
 
     const Student = require("../Models/registermodel");
@@ -1083,10 +1123,26 @@ exports.getPendingTokens = async (req, res) => {
 exports.getPendingTokensForStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
-    const pendingTokens = await Token.find({
+    const pendingTokensRaw = await Token.find({
       studentId,
-      status: "pending"
+      status: { $in: ["waiting", "serving", "hold", "missed", "pending"] }
     }).sort({ generatedAt: -1 });
+
+    const now = new Date();
+    const pendingTokens = [];
+    for (const t of pendingTokensRaw) {
+        const Queue = require("../Models/create_queue_model");
+        const q = await Queue.findOne({ queueName: t.queueName });
+        if (!q) {
+            continue; // Queue removed/expired
+        }
+        if (q && q.endTime) {
+            if (now > q.endTime) {
+                continue; // Queue time finished
+            }
+        }
+        pendingTokens.push(t);
+    }
 
     res.status(200).json({
       success: true,

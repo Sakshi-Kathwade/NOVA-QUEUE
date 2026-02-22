@@ -315,16 +315,18 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
 
   void _showError(String message) {
     if (mounted) {
-    if (mounted) {
-      ToastService.showError(context, message);
-    }
+      if (mounted) {
+        ToastService.showError(context, message);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.grey[900]
+          : Colors.grey.shade100,
       // Very light purple/blue background for a more professional look
       appBar: AppBar(
         backgroundColor: const Color(0xff5E35B1),
@@ -483,7 +485,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[850]
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Column(
@@ -582,7 +586,9 @@ class _ManageQueueScreenState extends State<ManageQueueScreen> {
         width: 90,
         height: 60,
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[800]
+              : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(15),
         ),
         child: Column(

@@ -20,10 +20,8 @@ class NotificationService {
 
   // Initialize
   static Future<void> initNotifications(String userId) async {
-
     // 1. Request Permissions
-    NotificationSettings settings =
-        await _firebaseMessaging.requestPermission(
+    NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,
       announcement: false,
       badge: true,
@@ -33,8 +31,7 @@ class NotificationService {
       sound: true,
     );
 
-    if (settings.authorizationStatus ==
-        AuthorizationStatus.authorized) {
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       print('User granted permission');
     } else {
       print('User declined or has not accepted permission');
@@ -46,15 +43,12 @@ class NotificationService {
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
+        InitializationSettings(android: initializationSettingsAndroid);
 
     // ✅ FIXED initialize() — named parameters only
     await _localNotifications.initialize(
       settings: initializationSettings,
-      onDidReceiveNotificationResponse:
-          (NotificationResponse details) {
+      onDidReceiveNotificationResponse: (NotificationResponse details) {
         print("Notification clicked: ${details.payload}");
       },
     );
@@ -87,13 +81,11 @@ class NotificationService {
     });
 
     // 6. Background Handler
-    FirebaseMessaging.onBackgroundMessage(
-        _firebaseMessagingBackgroundHandler);
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   }
 
   // Send Token to Backend
-  static Future<void> _sendTokenToBackend(
-      String userId, String token) async {
+  static Future<void> _sendTokenToBackend(String userId, String token) async {
     try {
       final response = await http.put(
         Uri.parse("${ApiConfig.baseUrl}/fcm-token/$userId"),
@@ -112,23 +104,19 @@ class NotificationService {
   }
 
   // Show Local Notification
-  static Future<void> _showLocalNotification(
-      RemoteMessage message) async {
-
-    const AndroidNotificationDetails
-        androidPlatformChannelSpecifics =
+  static Future<void> _showLocalNotification(RemoteMessage message) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription:
-          'This channel is used for important notifications.',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: false,
-    );
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription:
+              'This channel is used for important notifications.',
+          importance: Importance.max,
+          priority: Priority.high,
+          showWhen: false,
+        );
 
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
     );
 

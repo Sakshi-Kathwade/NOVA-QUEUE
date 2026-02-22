@@ -18,7 +18,7 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
   Timer? _pollTimer; // ✅ Timer for real-time updates
 
   // ✅ ANDROID EMULATOR SAFE URL
-  final String baseUrl = "http://localhost:8000";
+  final String baseUrl = "http://10.155.83.53:8000";
 
   @override
   void initState() {
@@ -26,13 +26,13 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
     fetchStudents();
     startPolling(); // ✅ Start real-time polling
   }
-  
+
   @override
   void dispose() {
     _pollTimer?.cancel(); // ✅ Clean up timer
     super.dispose();
   }
-  
+
   // ✅ REAL-TIME: Start polling for updates every 3 seconds
   void startPolling() {
     _pollTimer = Timer.periodic(Duration(seconds: 3), (timer) {
@@ -154,54 +154,58 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : widget.queueName.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.info_outline, size: 48, color: Colors.orange),
-                            const SizedBox(height: 16),
-                            const Text(
-                              "Queue is not active or not generated.",
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 48,
+                          color: Colors.orange,
                         ),
-                      )
-                    : students.isEmpty
-                        ? const Center(child: Text("No students waiting"))
-                        : ListView.builder(
-                            itemCount: students.length,
-                            itemBuilder: (context, index) {
-                              final student = students[index];
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Queue is not active or not generated.",
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                : students.isEmpty
+                ? const Center(child: Text("No students waiting"))
+                : ListView.builder(
+                    itemCount: students.length,
+                    itemBuilder: (context, index) {
+                      final student = students[index];
 
-                              return Card(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: Colors.deepPurple.shade100,
-                                    child: Text(
-                                      "A-${student["tokenNumber"]}",
-                                      style: const TextStyle(
-                                        color: Colors.deepPurple,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  title: const Text("Waiting"),
-                                  subtitle: Text(
-                                    student["purpose"] ?? "Purpose not available",
-                                  ),
-                                  trailing: const Icon(
-                                    Icons.hourglass_bottom,
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                              );
-                            },
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.deepPurple.shade100,
+                            child: Text(
+                              "A-${student["tokenNumber"]}",
+                              style: const TextStyle(
+                                color: Colors.deepPurple,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
+                          title: const Text("Waiting"),
+                          subtitle: Text(
+                            student["purpose"] ?? "Purpose not available",
+                          ),
+                          trailing: const Icon(
+                            Icons.hourglass_bottom,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

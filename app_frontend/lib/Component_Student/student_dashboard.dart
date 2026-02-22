@@ -10,7 +10,7 @@ import 'join_queue.dart';
 import 'my_current_queue.dart';
 import 'queue_history.dart';
 import 'student_setting.dart';
-import 'student_waiting.dart';
+import 'live_queue_student.dart';
 import '../services/notification_service.dart';
 import '../services/language_service.dart';
 import '../services/translations.dart';
@@ -46,6 +46,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
 
   int activePendingCount = 0; // ✅ New state for Pending Today
   int activeCompletedCount = 0; // ✅ New state for Completed Today
+  int estimatedTime = 0; // ✅ New state for Estimated Time
+  int studentsAhead = 0; 
+  int estimationConfigTime = 5;
+  int maxStudents = 0;
 
   Timer? _pollTimer;
 
@@ -54,8 +58,8 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     super.initState();
     _loadLanguage();
     fetchQueueStatus();
-    fetchQueueStatus();
     fetchStudentDetails();
+    fetchMyPendingCount();
     _startPolling();
     NotificationService.initNotifications(
       widget.studentId,
@@ -75,6 +79,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         fetchNowServingToken(queueData!["queueName"]);
         fetchWaitingCount(queueData!["queueName"]);
       }
+      fetchMyPendingCount();
     });
   }
 
@@ -176,9 +181,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               nowServingToken = "--";
             }
 
-            // ✅ Update Pending & Completed Counts
-            activePendingCount = data["pendingCount"] ?? 0;
-            activeCompletedCount = data["completedCount"] ?? 0;
+            // ✅ Update Completed Counts
+            if (data["data"] != null && data["data"]["completedCount"] != null) {
+              activeCompletedCount = data["data"]["completedCount"];
+            } else {
+              activeCompletedCount = data["completedCount"] ?? data["completedToday"] ?? 0;
+            }
           });
         }
       }
@@ -187,17 +195,92 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     }
   }
 
-  Future<void> fetchWaitingCount(String queueName) async {
+  Future<void> fetchMyPendingCount() async {
     try {
       final response = await http.get(
-        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$queueName"),
+        Uri.parse("${ApiConfig.baseUrl}/student/pending/${widget.studentId}"),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            activePendingCount = (data["data"] as List?)?.length ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching student pending count: $e");
+    }
+  }
+
+  Future<void> fetchWaitingCount(String queueName) async {
+    try {
+      final encodedQueue = Uri.encodeComponent(queueName);
+      // Fetch queue details for maxStudents
+      int fetchedMax = maxStudents;
+      int estConfig = estimationConfigTime;
+      try {
+        final qRes = await http.get(Uri.parse("${ApiConfig.baseUrl}/queue"));
+        if (qRes.statusCode == 200) {
+          final qd = jsonDecode(qRes.body);
+          if (qd['success'] == true && qd['data'] != null) {
+            List<dynamic> queues = qd['data'];
+            for (var q in queues) {
+              if (q['queueName'] == queueName) {
+                fetchedMax = q['maxStudents'] ?? 0;
+                String adminId = q['adminId'] ?? "";
+                if (adminId.isNotEmpty) {
+                   final stRes = await http.get(Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/$adminId"));
+                   if (stRes.statusCode == 200) {
+                      final stData = jsonDecode(stRes.body);
+                      if (stData["success"] == true && stData["settings"] != null) {
+                         estConfig = stData["settings"]["estimatedServiceTimePerStudent"] ?? 5;
+                      }
+                   }
+                }
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$encodedQueue"),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data["success"] == true) {
-          setState(() {
-            waitingCount = data["waitingCount"] ?? 0;
-          });
+          int count = data["waitingCount"] ?? 0;
+          int myTokenNum = int.tryParse(currentToken.replaceAll("A-", "")) ?? 0;
+          int ahead = 0;
+          
+          if (data["waiting"] != null) {
+            final waitingList = data["waiting"] as List;
+            for (var w in waitingList) {
+              int tNum = w["tokenNumber"] ?? 0;
+              if (myTokenNum > 0 && tNum > 0 && tNum < myTokenNum) {
+                ahead++;
+              }
+            }
+          }
+          if (myTokenNum == 0) ahead = count;
+          
+          int calcEst = ahead * estConfig;
+
+          if (mounted) {
+            setState(() {
+              waitingCount = count;
+              maxStudents = fetchedMax;
+              estimationConfigTime = estConfig;
+              studentsAhead = ahead;
+              if (calcEst > 0) {
+                 estimatedTime = calcEst;
+              }
+            });
+          }
         }
       }
     } catch (e) {
@@ -219,12 +302,14 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         if (data["success"] == true) {
           setState(() {
             currentToken = data["tokenNumber"].toString();
+            estimatedTime = data["estimatedWaitingTime"] ?? 0;
           });
           return true; // Token found
         }
       } else {
         setState(() {
           currentToken = "--";
+          estimatedTime = 0;
         });
       }
     } catch (e) {
@@ -237,6 +322,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       // 🔹 APP BAR
       appBar: AppBar(
@@ -323,7 +409,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               PopupMenuItem(
                 value: 'edit_profile',
                 child: ListTile(
-                  leading: Icon(Icons.edit, color: Colors.deepPurple),
+                  leading: Icon(
+                    Icons.edit,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.deepPurpleAccent
+                        : Colors.deepPurple,
+                  ),
                   title: Text(
                     Translations.translate('Edit Profile', currentLanguage),
                   ),
@@ -347,6 +438,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
 
       // 🔹 DRAWER
       drawer: Drawer(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -413,7 +505,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => StudentWaiting(
+                        builder: (context) => LiveQueueStudent(
                           queueName: queueData?["queueName"] ?? "",
                           studentId: widget.studentId,
                         ),
@@ -422,10 +514,10 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                   },
                   child: _InfoCard(
                     title: Translations.translate(
-                      'students_waiting',
+                      'live_queue',
                       currentLanguage,
                     ),
-                    value: waitingCount > 0 ? waitingCount.toString() : "--",
+                    value: nowServingToken != "--" ? nowServingToken : (maxStudents > 0 ? maxStudents.toString() : "--"),
                     icon: Icons.people,
                     color: Colors.orange,
                   ),
@@ -499,12 +591,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                   },
                   child: _InfoCard(
                     title: Translations.translate(
-                      'Pending Today',
+                      'pending_today',
                       currentLanguage,
                     ),
                     value: activePendingCount.toString(),
-                    icon: Icons.pending_actions,
-                    color: Colors.red,
+                    icon: Icons.hourglass_empty,
+                    color: Colors.teal,
                   ),
                 ),
                 GestureDetector(
@@ -536,7 +628,11 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
 
   Widget _drawerHeader() {
     return DrawerHeader(
-      decoration: const BoxDecoration(color: Colors.deepPurple),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
+        ),
+      ),
       child: Row(
         children: [
           CircleAvatar(
@@ -598,7 +694,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
     VoidCallback? onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.deepPurple),
+      leading: Icon(
+        icon,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.deepPurpleAccent
+            : Colors.deepPurple,
+      ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       onTap:
           onTap ??

@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import '../services/language_service.dart';
 import '../services/translations.dart';
+import '../services/api_config.dart';
 
 class MyPendingToday extends StatefulWidget {
   final String queueName;
@@ -47,7 +48,7 @@ class _MyPendingTodayState extends State<MyPendingToday> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/student/pending/${widget.studentId}",
+          "${ApiConfig.baseUrl}/student/pending/${widget.studentId}",
         ),
       );
 
@@ -153,16 +154,19 @@ class _MyPendingTodayState extends State<MyPendingToday> {
                         ),
                         const Divider(height: 24),
                         _buildInfoRow(
+                          context,
                           Icons.queue,
                           Translations.translate('queue', _currentLanguage),
                           token['queueName'] ?? "N/A",
                         ),
                         _buildInfoRow(
+                          context,
                           Icons.description,
                           Translations.translate('purpose', _currentLanguage),
                           token['purpose'] ?? "N/A",
                         ),
                         _buildInfoRow(
+                          context,
                           Icons.access_time,
                           Translations.translate(
                             'generated_at',
@@ -192,7 +196,12 @@ class _MyPendingTodayState extends State<MyPendingToday> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -201,13 +210,22 @@ class _MyPendingTodayState extends State<MyPendingToday> {
           const SizedBox(width: 12),
           Text(
             "$label: ",
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
             ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(color: Colors.black54)),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[300]
+                    : Colors.black54,
+              ),
+            ),
           ),
         ],
       ),

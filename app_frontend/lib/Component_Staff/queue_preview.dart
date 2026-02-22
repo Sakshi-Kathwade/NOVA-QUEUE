@@ -77,7 +77,7 @@ class _LiveQueuePreviewScreenState extends State<LiveQueuePreviewScreen> {
     if (confirmedQueueName == null) {
       try {
         final queueResponse = await http.get(
-          Uri.parse("http://localhost:8000/api/activequeue/${widget.adminId}"),
+          Uri.parse("http://10.155.83.53:8000/api/activequeue/${widget.adminId}"),
         );
         if (queueResponse.statusCode == 200) {
           final jsonData = json.decode(queueResponse.body);
@@ -106,10 +106,10 @@ class _LiveQueuePreviewScreenState extends State<LiveQueuePreviewScreen> {
 
     try {
       final currentTokenRes = await http.get(
-        Uri.parse("http://localhost:8000/api/currenttoken/$encodedQueue"),
+        Uri.parse("http://10.155.83.53:8000/api/currenttoken/$encodedQueue"),
       );
       final remainingTokensRes = await http.get(
-        Uri.parse("http://localhost:8000/api/remainingtoken/$encodedQueue"),
+        Uri.parse("http://10.155.83.53:8000/api/remainingtoken/$encodedQueue"),
       );
 
       if (!mounted) return;

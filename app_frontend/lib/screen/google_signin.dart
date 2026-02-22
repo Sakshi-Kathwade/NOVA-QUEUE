@@ -4,9 +4,7 @@ import 'package:flutter/foundation.dart'; // for kIsWeb
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
   Future<User?> signInWithGoogle() async {
     try {
@@ -15,7 +13,8 @@ class AuthService {
       // 🔹 For Web, pass clientId
       if (kIsWeb) {
         googleUser = await GoogleSignIn(
-          clientId: "924772821592-agif6fk5vbs4qrsuvjkmlk23rbn5fa5h.apps.googleusercontent.com",
+          clientId:
+              "924772821592-agif6fk5vbs4qrsuvjkmlk23rbn5fa5h.apps.googleusercontent.com",
         ).signIn();
       } else {
         // Sign out any existing Google account first to ensure fresh sign-in
@@ -39,8 +38,9 @@ class AuthService {
       );
 
       // Sign in to Firebase with the Google credential
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
 
       return userCredential.user;
     } on FirebaseAuthException catch (e) {

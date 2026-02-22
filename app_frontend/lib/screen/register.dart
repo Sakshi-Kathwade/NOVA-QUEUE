@@ -169,7 +169,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         setState(() => isGoogleLoading = false);
         showPopup(
           title: "Sign-Up Error",
-          message: "Unable to get email from Google account.\nPlease ensure your Google account has an email address.",
+          message:
+              "Unable to get email from Google account.\nPlease ensure your Google account has an email address.",
           icon: Icons.error_outline,
           color: Colors.red,
         );
@@ -177,20 +178,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
 
       // 2️⃣ Register user with backend
-      final response = await http.post(
-        Uri.parse("${ApiConfig.baseUrl}/register/google"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "name": user.displayName ?? "User",
-          "email": user.email!,
-          "role": selectedRole.toLowerCase(),
-        }),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw Exception("Request timeout. Please check your internet connection.");
-        },
-      );
+      final response = await http
+          .post(
+            Uri.parse("${ApiConfig.baseUrl}/register/google"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "name": user.displayName ?? "User",
+              "email": user.email!,
+              "role": selectedRole.toLowerCase(),
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception(
+                "Request timeout. Please check your internet connection.",
+              );
+            },
+          );
 
       setState(() => isGoogleLoading = false);
 
@@ -228,19 +233,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on FirebaseAuthException catch (e) {
       setState(() => isGoogleLoading = false);
       String errorMessage = "Google sign-in authentication failed.";
-      
+
       switch (e.code) {
         case 'network-request-failed':
-          errorMessage = "Network error. Please check your internet connection.";
+          errorMessage =
+              "Network error. Please check your internet connection.";
           break;
         case 'sign_in_canceled':
           errorMessage = "Sign-in was canceled.";
           break;
         case 'account-exists-with-different-credential':
-          errorMessage = "An account already exists with a different sign-in method.";
+          errorMessage =
+              "An account already exists with a different sign-in method.";
           break;
         default:
-          errorMessage = "Authentication error: ${e.message ?? 'Unknown error'}";
+          errorMessage =
+              "Authentication error: ${e.message ?? 'Unknown error'}";
       }
 
       showPopup(
@@ -252,18 +260,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       setState(() => isGoogleLoading = false);
       String errorMessage = "Unable to complete Google sign-up.";
-      
+
       final errorString = e.toString().toLowerCase();
-      if (errorString.contains("network") || 
+      if (errorString.contains("network") ||
           errorString.contains("socket") ||
           errorString.contains("timeout") ||
           errorString.contains("connection")) {
-        errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (errorString.contains("sign_in_failed") || 
-                 errorString.contains("sign_in_canceled")) {
+        errorMessage =
+            "Network error. Please check your internet connection and try again.";
+      } else if (errorString.contains("sign_in_failed") ||
+          errorString.contains("sign_in_canceled")) {
         errorMessage = "Google sign-in failed. Please try again.";
       } else if (errorString.contains("firebase")) {
-        errorMessage = "Firebase error. Please ensure Firebase is properly configured.";
+        errorMessage =
+            "Firebase error. Please ensure Firebase is properly configured.";
       } else {
         errorMessage = "An error occurred: ${e.toString()}";
       }
@@ -435,7 +445,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
 
                     OutlinedButton.icon(
-                      onPressed: (isLoading || isGoogleLoading) ? null : registerWithGoogle,
+                      onPressed: (isLoading || isGoogleLoading)
+                          ? null
+                          : registerWithGoogle,
                       icon: isGoogleLoading
                           ? const SizedBox(
                               width: 24,
@@ -450,7 +462,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               height: 24,
                             ),
                       label: Text(
-                        isGoogleLoading ? "Signing up..." : "Sign up with Google",
+                        isGoogleLoading
+                            ? "Signing up..."
+                            : "Sign up with Google",
                       ),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 48),

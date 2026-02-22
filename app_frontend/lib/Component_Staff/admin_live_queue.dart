@@ -27,12 +27,13 @@ class AdminLiveQueueScreen extends StatefulWidget {
 class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
   int totalStudentsWaiting = 0;
   int completedToday = 0;
-  int? currentlyServingToken;
+  String? currentlyServingToken;
   List<Map<String, String>> liveQueueList = [];
   Timer? _pollTimer;
   bool isLoading = true;
   String _currentLanguage = 'english';
   bool isQueueOpen = true;
+  int estimationTime = 5; // default estimation time
 
   @override
   void initState() {
@@ -88,9 +89,14 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
         Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$encodedQueue"),
       );
 
+      // Fetch admin settings for estimated wait time
+      final settingsRes = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/${widget.adminId}"),
+      );
+
       if (!mounted) return;
 
-      bool open = true;
+      bool open = false;
       if (queueRes.statusCode == 200) {
         final qData = jsonDecode(queueRes.body);
         if (qData["success"] == true && qData["data"] != null) {
@@ -101,6 +107,14 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
       int serving = 0;
       int completed = 0;
       List<Map<String, String>> queueList = [];
+      int fetchedEstimationTime = estimationTime;
+
+      if (settingsRes.statusCode == 200) {
+        final stData = jsonDecode(settingsRes.body);
+        if (stData["success"] == true && stData["settings"] != null) {
+          fetchedEstimationTime = stData["settings"]["estimatedServiceTimePerStudent"] ?? 5;
+        }
+      }
 
       if (currentRes.statusCode == 200) {
         final cur = jsonDecode(currentRes.body);
@@ -108,7 +122,12 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
           if (cur["data"] != null) {
             serving = cur["data"]["tokenNumber"] ?? 0;
           }
-          completed = cur["completedToday"] ?? cur["completedCount"] ?? 0;
+          
+          if (cur["data"] != null && cur["data"]["completedCount"] != null) {
+            completed = cur["data"]["completedCount"];
+          } else {
+            completed = cur["completedCount"] ?? cur["completedToday"] ?? 0;
+          }
         }
       }
 
@@ -128,13 +147,14 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
       }
 
       setState(() {
-        currentlyServingToken = serving > 0 ? serving : null;
+        currentlyServingToken = serving > 0 ? "A-$serving" : null;
         completedToday = completed;
         totalStudentsWaiting = queueList
             .where((e) => e["status"] == "waiting")
             .length;
         liveQueueList = queueList;
         isQueueOpen = open;
+        estimationTime = fetchedEstimationTime;
         isLoading = false;
       });
     } catch (e) {
@@ -154,8 +174,8 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
     // For Admin progress
     // Use maxStudents if available, otherwise totalToday
     int totalToday = completedToday + liveQueueList.length;
-    int denominator = (widget.maxStudents != null && widget.maxStudents! > 0) 
-        ? widget.maxStudents! 
+    int denominator = (widget.maxStudents != null && widget.maxStudents! > 0)
+        ? widget.maxStudents!
         : totalToday;
 
     double progress = denominator > 0
@@ -284,7 +304,7 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                             'currently_serving',
                             _currentLanguage,
                           ),
-                          value: currentlyServingToken?.toString() ?? "—",
+                          value: currentlyServingToken ?? "—",
                           color: Colors.green,
                           icon: Icons.play_circle_filled,
                         ),
@@ -322,13 +342,10 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _infoCard(
-                          icon: Icons.timer,
-                          title: Translations.translate(
-                            'waiting_time',
-                            _currentLanguage,
-                          ),
-                          value: "${totalStudentsWaiting * 5} min",
-                          color: Colors.blue,
+                          icon: Icons.group,
+                          title: "Max Students",
+                          value: widget.maxStudents?.toString() ?? "N/A",
+                          color: Colors.purple,
                         ),
                       ),
                     ],
@@ -342,7 +359,7 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey.shade800,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -361,7 +378,7 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                             children: [
                               Text(
                                 "Served Students",
-                                style: TextStyle(color: Colors.grey.shade700),
+                                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                               ),
                               Text(
                                 "${(progress * 100).toStringAsFixed(0)}%",
@@ -375,7 +392,7 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                           LinearProgressIndicator(
                             value: progress,
                             minHeight: 12,
-                            backgroundColor: Colors.grey.shade300,
+                            backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700] : Colors.grey.shade300,
                             valueColor: const AlwaysStoppedAnimation(
                               Colors.deepPurple,
                             ),
@@ -385,7 +402,7 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                             "$completedToday out of ${widget.maxStudents ?? totalToday} students served today",
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.grey.shade600,
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey.shade600,
                             ),
                           ),
                         ],
@@ -400,15 +417,14 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade800,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey.shade800,
                       ),
                     ),
                     const SizedBox(height: 10),
                     ...liveQueueList.map((e) {
                       final isServing = e["status"] == "serving";
-                      Color bg = isServing
-                          ? Colors.green.shade50
-                          : Colors.grey.shade100;
+                      Color bg = Theme.of(context).brightness == Brightness.dark ? Colors.grey[850]! : Colors.grey.shade100;
+                      if (isServing) bg = Colors.green.withOpacity(0.2);
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(
@@ -445,8 +461,8 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                       color: isServing
-                                          ? Colors.green.shade900
-                                          : Colors.black87,
+                                          ? Colors.green
+                                          : Theme.of(context).textTheme.bodyLarge?.color,
                                     ),
                                   ),
                                   Text(

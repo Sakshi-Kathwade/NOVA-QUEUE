@@ -22,7 +22,7 @@ class _QueueStatusState extends State<QueueStatus> {
   bool isActive = false;
   Timer? _dateTimer; // ✅ Timer for real-time date update
   Timer? _dataTimer; // ✅ Timer for real-time data updates
-  
+
   // ✅ Real-time data
   int waitingCount = 0;
   String currentToken = "--";
@@ -61,7 +61,9 @@ class _QueueStatusState extends State<QueueStatus> {
       );
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && data["success"] == true && data["data"] != null) {
+      if (response.statusCode == 200 &&
+          data["success"] == true &&
+          data["data"] != null) {
         setState(() {
           queueData = data["data"];
           isActive = queueData!["status"] == "Active";
@@ -138,7 +140,9 @@ class _QueueStatusState extends State<QueueStatus> {
   String _formatTime(String? isoTime) {
     if (isoTime == null || isoTime.isEmpty) return "--";
     try {
-      final dateTime = DateTime.parse(isoTime).toLocal(); // ✅ Convert to local time
+      final dateTime = DateTime.parse(
+        isoTime,
+      ).toLocal(); // ✅ Convert to local time
       return DateFormat('hh:mm a').format(dateTime); // Format: 09:30 AM
     } catch (e) {
       return isoTime; // Return as is if parsing fails
@@ -180,7 +184,10 @@ class _QueueStatusState extends State<QueueStatus> {
             ),
             Text(
               _getTodayDate(), // ✅ Real-time date display
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+              ),
             ),
           ],
         ),

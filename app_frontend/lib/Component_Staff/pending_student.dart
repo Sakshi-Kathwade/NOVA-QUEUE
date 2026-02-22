@@ -48,20 +48,20 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
     // ✅ If queueName is empty, fetch pending by Admin ID (fallback mode)
     String url;
     if (widget.queueName.isEmpty) {
-        if (widget.adminId.isNotEmpty) {
-             url = "${ApiConfig.baseUrl}/pendingtokens/admin/${widget.adminId}";
-        } else {
-             // No context to fetch
-             if (mounted) {
-                setState(() {
-                  _pendingTokens = [];
-                  _isLoading = false;
-                });
-             }
-             return;
+      if (widget.adminId.isNotEmpty) {
+        url = "${ApiConfig.baseUrl}/pendingtokens/admin/${widget.adminId}";
+      } else {
+        // No context to fetch
+        if (mounted) {
+          setState(() {
+            _pendingTokens = [];
+            _isLoading = false;
+          });
         }
+        return;
+      }
     } else {
-        url = "${ApiConfig.baseUrl}/pendingtokens/${widget.queueName}";
+      url = "${ApiConfig.baseUrl}/pendingtokens/${widget.queueName}";
     }
 
     setState(() => _isLoading = true);
@@ -87,7 +87,7 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
   Future<void> _approveToken(String tokenId) async {
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/approvetoken"),
+        Uri.parse("${ApiConfig.baseUrl}/approvetoken"),
         headers: {"Content-Type": "application/json"},
         body: json.encode({"tokenId": tokenId}),
       );
@@ -105,7 +105,7 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
   Future<void> _rejectToken(String tokenId) async {
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/rejecttoken"),
+        Uri.parse("${ApiConfig.baseUrl}/rejecttoken"),
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           "tokenId": tokenId,
@@ -138,40 +138,44 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : widget.queueName.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.info_outline, size: 80, color: Colors.orange.shade300),
-                      const SizedBox(height: 16),
-                      Text(
-                        Translations.translate(
-                          'queue_not_active_or_generated',
-                          _currentLanguage,
-                        ),
-                        style: const TextStyle(fontSize: 18, color: Colors.grey),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 80,
+                    color: Colors.orange.shade300,
                   ),
-                )
-              : _pendingTokens.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            Translations.translate(
-                              'no_pending_tokens',
-                              _currentLanguage,
-                            ),
-                            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                    )
+                  const SizedBox(height: 16),
+                  Text(
+                    Translations.translate(
+                      'queue_not_active_or_generated',
+                      _currentLanguage,
+                    ),
+                    style: const TextStyle(fontSize: 18, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          : _pendingTokens.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    Translations.translate(
+                      'no_pending_tokens',
+                      _currentLanguage,
+                    ),
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _pendingTokens.length,
@@ -316,7 +320,12 @@ class _PendingStudentsScreenState extends State<PendingStudentsScreen> {
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+            ),
           ),
         ],
       ),

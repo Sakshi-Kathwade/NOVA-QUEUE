@@ -467,7 +467,9 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
     final isMobile = width < 600;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.grey[900]
+          : Colors.grey.shade50,
 
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
@@ -488,7 +490,9 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
           // Filter & Export Header
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[850]
+                : Colors.white,
             child: Column(
               children: [
                 // Frequency Dropdown
@@ -497,7 +501,9 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(8),
-                    color: Colors.white,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[800]
+                        : Colors.white,
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -551,7 +557,11 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.grey.shade300),
                               borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[800]
+                                  : Colors.white,
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -565,7 +575,9 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                                   style: TextStyle(
                                     color: _selectedDate == null
                                         ? Colors.grey
-                                        : Colors.black,
+                                        : Theme.of(
+                                            context,
+                                          ).textTheme.bodyLarge?.color,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -675,7 +687,9 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                           ).copyWith(dividerColor: Colors.grey.shade200),
                           child: DataTable(
                             headingRowColor: WidgetStateProperty.all(
-                              Colors.deepPurple.shade50,
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[800]
+                                  : Colors.deepPurple.shade50,
                             ),
                             columnSpacing: 24,
                             horizontalMargin: 24,

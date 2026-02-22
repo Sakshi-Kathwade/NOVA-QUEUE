@@ -10,9 +10,11 @@ class AboutUsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(
-        0xFFF3F4F6,
-      ), // Very light grey/blue professional background
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.grey[900]
+          : const Color(
+              0xFFF3F4F6,
+            ), // Very light grey/blue professional background
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
         elevation: 0,
@@ -60,7 +62,7 @@ class AboutUsScreen extends StatelessWidget {
             // Mentor Section (Redesigned with Light Background)
             _sectionTitle("Our Mentor"),
             const SizedBox(height: 16),
-            _buildLightMentorCard(),
+            _buildLightMentorCard(context),
 
             const SizedBox(height: 30),
 
@@ -142,7 +144,9 @@ class AboutUsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[850]
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -231,12 +235,14 @@ class AboutUsScreen extends StatelessWidget {
   }
 
   // ✅ Updated Mentor Card with Light Theme
-  Widget _buildLightMentorCard() {
+  Widget _buildLightMentorCard(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white, // Light background
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[850]
+            : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: Colors.blue.withOpacity(0.15),

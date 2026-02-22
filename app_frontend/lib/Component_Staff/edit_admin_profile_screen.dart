@@ -48,7 +48,7 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/admin/profile/${widget.adminId}"),
+        Uri.parse("http://10.155.83.53:8000/api/admin/profile/${widget.adminId}"),
         headers: {"Content-Type": "application/json"},
       );
 
@@ -94,7 +94,7 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
     try {
       var request = http.MultipartRequest(
         'PUT',
-        Uri.parse("http://localhost:8000/api/admin/profile/${widget.adminId}"),
+        Uri.parse("http://10.155.83.53:8000/api/admin/profile/${widget.adminId}"),
       );
 
       request.headers["Content-Type"] = "application/json";
@@ -104,7 +104,8 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
       if (_newProfileImage != null) {
         final bytes = await _newProfileImage!.readAsBytes();
         request.files.add(
-           http.MultipartFile.fromBytes( // Removed await as fromBytes is synchronous? No, actually fromBytes is sync, readAsBytes is async.
+          http.MultipartFile.fromBytes(
+            // Removed await as fromBytes is synchronous? No, actually fromBytes is sync, readAsBytes is async.
             'profilePicture',
             bytes,
             filename: _newProfileImage!.name,
@@ -175,15 +176,14 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
   Widget build(BuildContext context) {
     ImageProvider? backgroundImage;
     if (_newProfileImage != null) {
-       if (kIsWeb) {
-         backgroundImage = NetworkImage(_newProfileImage!.path);
+      if (kIsWeb) {
+        backgroundImage = NetworkImage(_newProfileImage!.path);
       } else {
-         backgroundImage = FileImage(File(_newProfileImage!.path));
+        backgroundImage = FileImage(File(_newProfileImage!.path));
       }
-    } else if (_profilePictureUrl != null &&
-        _profilePictureUrl!.isNotEmpty) {
+    } else if (_profilePictureUrl != null && _profilePictureUrl!.isNotEmpty) {
       backgroundImage = NetworkImage(
-        "http://localhost:8000" + _profilePictureUrl!,
+        "http://10.155.83.53:8000" + _profilePictureUrl!,
       );
     }
 

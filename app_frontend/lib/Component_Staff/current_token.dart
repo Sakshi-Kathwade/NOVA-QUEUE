@@ -82,7 +82,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       // ApiConfig was NOT imported. I should import it or use localhost for now to match previous state,
       // BUT user wants correctness. I should probably add the import too?
       // For now I'll use the localhost URL as it was, to minimize risk, or try to use the generic URL.
-      // The original code had: "http://localhost:8000/api/currenttoken/${widget.queueName}"
+      // The original code had: "http://10.155.83.53:8000/api/currenttoken/${widget.queueName}"
 
       final url = Uri.parse(
         "${ApiConfig.baseUrl}/currenttoken/${widget.queueName}",
@@ -350,7 +350,10 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
         // Refresh token data
         await fetchCurrentToken();
       } else {
-        ToastService.showError(context, data['message'] ?? "Failed to complete token");
+        ToastService.showError(
+          context,
+          data['message'] ?? "Failed to complete token",
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -380,12 +383,18 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        ToastService.showWarning(context, "Token on Hold ⏸️\nYou can unhold it from 'Held Tokens'");
+        ToastService.showWarning(
+          context,
+          "Token on Hold ⏸️\nYou can unhold it from 'Held Tokens'",
+        );
 
         // Refresh token data (will show next token)
         await fetchCurrentToken();
       } else {
-        ToastService.showError(context, data['message'] ?? "Failed to hold token");
+        ToastService.showError(
+          context,
+          data['message'] ?? "Failed to hold token",
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -424,7 +433,10 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
         // Refresh token data
         await fetchCurrentToken();
       } else {
-        ToastService.showInfo(context, data['message'] ?? "No more tokens in queue");
+        ToastService.showInfo(
+          context,
+          data['message'] ?? "No more tokens in queue",
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -531,12 +543,18 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        ToastService.showSuccess(context, "Token Unheld! Returned to Waiting Queue. ✅");
+        ToastService.showSuccess(
+          context,
+          "Token Unheld! Returned to Waiting Queue. ✅",
+        );
 
         // Refresh token data
         await fetchCurrentToken();
       } else {
-        ToastService.showError(context, data['message'] ?? "Failed to unhold token");
+        ToastService.showError(
+          context,
+          data['message'] ?? "Failed to unhold token",
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

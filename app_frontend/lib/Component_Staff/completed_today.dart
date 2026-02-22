@@ -500,10 +500,13 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.deepPurple.withOpacity(0.2) 
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.deepPurple.withOpacity(0.2)
                         : Colors.deepPurple.shade50,
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -517,8 +520,8 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark 
-                    ? Colors.deepPurple.withOpacity(0.2) 
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.deepPurple.withOpacity(0.2)
                     : Colors.deepPurple.shade50,
                 shape: BoxShape.circle,
               ),
@@ -562,8 +565,8 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark 
-                ? Colors.deepPurple.withOpacity(0.2) 
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.deepPurple.withOpacity(0.2)
                 : Colors.deepPurple.shade50,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -587,7 +590,10 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
             const SizedBox(height: 4),
             Text(
               token['purpose'] ?? 'General',
-              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+                fontSize: 13,
+              ),
             ),
           ],
         ),

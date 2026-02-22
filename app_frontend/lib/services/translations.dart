@@ -80,8 +80,10 @@ class Translations {
       'server_error': 'Server error',
       'counter_performance': 'Counter Performance',
       'busy_hours': 'Busy Hours',
-      'counter_performance_placeholder': 'Detailed counter-wise performance metrics will be displayed here.',
-      'busy_hours_placeholder': 'Peak hours and busy time analysis will be shown here.',
+      'counter_performance_placeholder':
+          'Detailed counter-wise performance metrics will be displayed here.',
+      'busy_hours_placeholder':
+          'Peak hours and busy time analysis will be shown here.',
       'queue_statistics': 'Queue Statistics',
       'live_queue_preview': 'Live Queue Preview',
       'currently_serving': 'Currently Serving',
@@ -100,7 +102,8 @@ class Translations {
       'retries': 'retries',
       'total_students_visited': 'Total Students Visited',
       'waiting_students': 'Waiting Students',
-      'queue_settings_updated_successfully': 'Queue settings updated successfully',
+      'queue_settings_updated_successfully':
+          'Queue settings updated successfully',
       'purpose': 'Purpose',
       'generated_at': 'Generated At',
       'queue_not_active_or_generated': 'Queue is not active or not generated',
@@ -208,8 +211,10 @@ class Translations {
       'server_error': 'सर्वर त्रुटि',
       'counter_performance': 'काउंटर प्रदर्शन',
       'busy_hours': 'व्यस्त घंटे',
-      'counter_performance_placeholder': 'विस्तृत काउंटर प्रदर्शन मीट्रिक यहां प्रदर्शित होंगे।',
-      'busy_hours_placeholder': 'पीक घंटे और व्यस्त समय विश्लेषण यहां दिखाया जाएगा।',
+      'counter_performance_placeholder':
+          'विस्तृत काउंटर प्रदर्शन मीट्रिक यहां प्रदर्शित होंगे।',
+      'busy_hours_placeholder':
+          'पीक घंटे और व्यस्त समय विश्लेषण यहां दिखाया जाएगा।',
       'queue_statistics': 'कतार आंकड़े',
       'live_queue_preview': 'लाइव कतार पूर्वावलोकन',
       'currently_serving': 'वर्तमान में सेवा कर रहा है',
@@ -226,7 +231,8 @@ class Translations {
       'missed_token_retries': 'मिस्ड टोकन रिट्राई',
       'recall_wait_time': 'रिकॉल प्रतीक्षा समय',
       'retries': 'पुनः प्रयास',
-      'queue_settings_updated_successfully': 'कतार सेटिंग्स सफलतापूर्वक अपडेट की गईं',
+      'queue_settings_updated_successfully':
+          'कतार सेटिंग्स सफलतापूर्वक अपडेट की गईं',
       'purpose': 'उद्देश्य',
       'generated_at': 'उत्पन्न समय',
       'queue_not_active_or_generated': 'कतार सक्रिय नहीं है या उत्पन्न नहीं है',
@@ -336,8 +342,10 @@ class Translations {
       'server_error': 'सर्व्हर त्रुटी',
       'counter_performance': 'काउंटर कामगिरी',
       'busy_hours': 'व्यस्त तास',
-      'counter_performance_placeholder': 'तपशीलवार काउंटर कामगिरी मेट्रिक येथे दाखवले जातील.',
-      'busy_hours_placeholder': 'पीक तास आणि व्यस्त वेळ विश्लेषण येथे दाखवले जाईल.',
+      'counter_performance_placeholder':
+          'तपशीलवार काउंटर कामगिरी मेट्रिक येथे दाखवले जातील.',
+      'busy_hours_placeholder':
+          'पीक तास आणि व्यस्त वेळ विश्लेषण येथे दाखवले जाईल.',
       'queue_statistics': 'कतार आकडेवारी',
       'live_queue_preview': 'थेट रांग पूर्वावलोकन',
       'currently_serving': 'सध्या सेवा देत आहे',
@@ -354,10 +362,12 @@ class Translations {
       'missed_token_retries': 'चुकलेले टोकन पुन्हा प्रयत्न',
       'recall_wait_time': 'पुन्हा कॉल प्रतीक्षा वेळ',
       'retries': 'पुन्हा प्रयत्न',
-      'queue_settings_updated_successfully': 'रांग सेटिंग्ज यशस्वीरित्या अद्यतनित केल्या',
+      'queue_settings_updated_successfully':
+          'रांग सेटिंग्ज यशस्वीरित्या अद्यतनित केल्या',
       'purpose': 'उद्देश',
       'generated_at': 'तयार झालेली वेळ',
-      'queue_not_active_or_generated': 'रांग सक्रिय नाही किंवा तयार केलेली नाही',
+      'queue_not_active_or_generated':
+          'रांग सक्रिय नाही किंवा तयार केलेली नाही',
       'no_email': 'ईमेल नाही',
       'token_approved_success': 'टोकन यशस्वीरित्या मंजूर झाले',
       'token_rejected_message': 'टोकन नाकारले',

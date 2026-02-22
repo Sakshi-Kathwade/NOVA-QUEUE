@@ -50,7 +50,9 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:8000/api/admin/settings/counters/${widget.adminId}"),
+        Uri.parse(
+          "http://10.155.83.53:8000/api/admin/settings/counters/${widget.adminId}",
+        ),
         headers: {"Content-Type": "application/json"},
       );
 
@@ -63,14 +65,23 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
             _counters = data['counters'];
           });
         } else {
-          _showSnackBar('${Translations.translate('failed_to_load_counters', _currentLanguage)}: ${data['message']}', Colors.red);
+          _showSnackBar(
+            '${Translations.translate('failed_to_load_counters', _currentLanguage)}: ${data['message']}',
+            Colors.red,
+          );
         }
       } else {
-        _showSnackBar('${Translations.translate('failed_to_load_counters', _currentLanguage)}: ${json.decode(response.body)['message']}', Colors.red);
+        _showSnackBar(
+          '${Translations.translate('failed_to_load_counters', _currentLanguage)}: ${json.decode(response.body)['message']}',
+          Colors.red,
+        );
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('${Translations.translate('server_error', _currentLanguage)}: $e', Colors.red);
+        _showSnackBar(
+          '${Translations.translate('server_error', _currentLanguage)}: $e',
+          Colors.red,
+        );
       }
     } finally {
       if (mounted) {
@@ -85,13 +96,18 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
     final counterName = _counterNameController.text.trim();
 
     if (counterName.isEmpty) {
-      _showSnackBar(Translations.translate('counter_name_required', _currentLanguage), Colors.red);
+      _showSnackBar(
+        Translations.translate('counter_name_required', _currentLanguage),
+        Colors.red,
+      );
       return;
     }
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:8000/api/admin/settings/counters/${widget.adminId}"),
+        Uri.parse(
+          "http://10.155.83.53:8000/api/admin/settings/counters/${widget.adminId}",
+        ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"counterName": counterName}),
       );
@@ -100,16 +116,29 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
 
       final data = json.decode(response.body);
       if (response.statusCode == 201 && data['success'] == true) {
-        _showSnackBar(Translations.translate('counter_added_successfully', _currentLanguage), Colors.green);
+        _showSnackBar(
+          Translations.translate(
+            'counter_added_successfully',
+            _currentLanguage,
+          ),
+          Colors.green,
+        );
         _counterNameController.clear();
         Navigator.pop(context); // Close dialog
         _fetchCounters(); // Refresh the list
       } else {
-        _showSnackBar(data['message'] ?? Translations.translate('failed_to_add_counter', _currentLanguage), Colors.red);
+        _showSnackBar(
+          data['message'] ??
+              Translations.translate('failed_to_add_counter', _currentLanguage),
+          Colors.red,
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar('${Translations.translate('server_error', _currentLanguage)}: $e', Colors.red);
+      _showSnackBar(
+        '${Translations.translate('server_error', _currentLanguage)}: $e',
+        Colors.red,
+      );
     }
   }
 
@@ -117,13 +146,18 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
     final counterName = _counterNameController.text.trim();
 
     if (counterName.isEmpty) {
-      _showSnackBar(Translations.translate('counter_name_required', _currentLanguage), Colors.red);
+      _showSnackBar(
+        Translations.translate('counter_name_required', _currentLanguage),
+        Colors.red,
+      );
       return;
     }
 
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:8000/api/admin/settings/counters/$counterId/${widget.adminId}"),
+        Uri.parse(
+          "http://10.155.83.53:8000/api/admin/settings/counters/$counterId/${widget.adminId}",
+        ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"counterName": counterName}),
       );
@@ -132,16 +166,32 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
 
       final data = json.decode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
-        _showSnackBar(Translations.translate('counter_updated_successfully', _currentLanguage), Colors.green);
+        _showSnackBar(
+          Translations.translate(
+            'counter_updated_successfully',
+            _currentLanguage,
+          ),
+          Colors.green,
+        );
         _counterNameController.clear();
         Navigator.pop(context); // Close dialog
         _fetchCounters(); // Refresh the list
       } else {
-        _showSnackBar(data['message'] ?? Translations.translate('failed_to_update_counter', _currentLanguage), Colors.red);
+        _showSnackBar(
+          data['message'] ??
+              Translations.translate(
+                'failed_to_update_counter',
+                _currentLanguage,
+              ),
+          Colors.red,
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar('${Translations.translate('server_error', _currentLanguage)}: $e', Colors.red);
+      _showSnackBar(
+        '${Translations.translate('server_error', _currentLanguage)}: $e',
+        Colors.red,
+      );
     }
   }
 
@@ -150,7 +200,12 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(Translations.translate('confirm_delete', _currentLanguage)),
-        content: Text(Translations.translate('delete_counter_confirmation', _currentLanguage)),
+        content: Text(
+          Translations.translate(
+            'delete_counter_confirmation',
+            _currentLanguage,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -159,7 +214,10 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: Text(Translations.translate('delete', _currentLanguage), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              Translations.translate('delete', _currentLanguage),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -169,7 +227,9 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
     if (confirm == true) {
       try {
         final response = await http.delete(
-          Uri.parse("http://localhost:8000/api/admin/settings/counters/$counterId/${widget.adminId}"),
+          Uri.parse(
+            "http://10.155.83.53:8000/api/admin/settings/counters/$counterId/${widget.adminId}",
+          ),
           headers: {"Content-Type": "application/json"},
         );
 
@@ -177,14 +237,30 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
 
         final data = json.decode(response.body);
         if (response.statusCode == 200 && data['success'] == true) {
-          _showSnackBar(Translations.translate('counter_deleted_successfully', _currentLanguage), Colors.green);
+          _showSnackBar(
+            Translations.translate(
+              'counter_deleted_successfully',
+              _currentLanguage,
+            ),
+            Colors.green,
+          );
           _fetchCounters(); // Refresh the list
         } else {
-          _showSnackBar(data['message'] ?? Translations.translate('failed_to_delete_counter', _currentLanguage), Colors.red);
+          _showSnackBar(
+            data['message'] ??
+                Translations.translate(
+                  'failed_to_delete_counter',
+                  _currentLanguage,
+                ),
+            Colors.red,
+          );
         }
       } catch (e) {
         if (!mounted) return;
-        _showSnackBar('${Translations.translate('server_error', _currentLanguage)}: $e', Colors.red);
+        _showSnackBar(
+          '${Translations.translate('server_error', _currentLanguage)}: $e',
+          Colors.red,
+        );
       }
     }
   }
@@ -200,16 +276,21 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isEditing
-            ? Translations.translate('edit_counter', _currentLanguage)
-            : Translations.translate('add_counter', _currentLanguage)),
+        title: Text(
+          isEditing
+              ? Translations.translate('edit_counter', _currentLanguage)
+              : Translations.translate('add_counter', _currentLanguage),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _counterNameController,
               decoration: InputDecoration(
-                labelText: Translations.translate('counter_name', _currentLanguage),
+                labelText: Translations.translate(
+                  'counter_name',
+                  _currentLanguage,
+                ),
               ),
             ),
           ],
@@ -230,9 +311,11 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
                 _addCounter();
               }
             },
-            child: Text(isEditing
-                ? Translations.translate('update', _currentLanguage)
-                : Translations.translate('add', _currentLanguage)),
+            child: Text(
+              isEditing
+                  ? Translations.translate('update', _currentLanguage)
+                  : Translations.translate('add', _currentLanguage),
+            ),
           ),
         ],
       ),
@@ -240,19 +323,18 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
   }
 
   void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(Translations.translate('manage_counters', _currentLanguage)),
+        title: Text(
+          Translations.translate('manage_counters', _currentLanguage),
+        ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -260,44 +342,53 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _counters.isEmpty
-              ? Center(
-                  child: Text(
-                    Translations.translate('no_counters_yet', _currentLanguage),
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ? Center(
+              child: Text(
+                Translations.translate('no_counters_yet', _currentLanguage),
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _counters.length,
+              itemBuilder: (context, index) {
+                final counter = _counters[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _counters.length,
-                  itemBuilder: (context, index) {
-                    final counter = _counters[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        title: Text(
-                          counter['counterName'],
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: ListTile(
+                    title: Text(
+                      counter['counterName'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      counter['status'] ??
+                          Translations.translate(
+                            'status_unavailable',
+                            _currentLanguage,
+                          ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () =>
+                              _showAddEditCounterDialog(counter: counter),
                         ),
-                        subtitle: Text(counter['status'] ?? Translations.translate('status_unavailable', _currentLanguage)),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _showAddEditCounterDialog(counter: counter),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteCounter(counter['_id']),
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteCounter(counter['_id']),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditCounterDialog(),
         backgroundColor: Colors.deepPurple,

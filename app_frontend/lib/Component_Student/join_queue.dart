@@ -28,10 +28,12 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
   List<String> queues = [];
 
   final List<String> departments = [
-    "Computer Science",
+    "Computer Technology",
     "Mechanical",
     "Civil",
     "Electronics",
+    "Electrical",
+    "Artificial Intelligence",
   ];
 
   late TextEditingController studentIdController;

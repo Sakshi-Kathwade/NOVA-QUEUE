@@ -767,9 +767,9 @@ const getQueueHistory = async (req, res) => {
     }
 
     // Common Pipeline Stages
-    const createPipeline = (collectionMatch) => {
+    const createPipeline = (collectionTypeStr) => {
         const pipeline = [
-            { $match: { ...matchStage, ...collectionMatch } },
+            { $match: { ...matchStage } },
             {
                 $lookup: {
                     from: 'registers',
@@ -831,7 +831,7 @@ const getQueueHistory = async (req, res) => {
                 student: { name: "$student.name", email: "$student.email" },
                 counter: { counterName: "$counter.counterName" },
                 service: { serviceName: "$service.serviceName" },
-                collectionType: { $literal: collectionMatch.isCompleted ? 'completed' : 'pending' } // Helper tag
+                collectionType: { $literal: collectionTypeStr } // Helper tag
             }
         });
 
@@ -842,10 +842,6 @@ const getQueueHistory = async (req, res) => {
 
     // 1. Query Active Tokens (from 'tokens' collection)
     // We want to show live status too.
-    const activePipeline = createPipeline({ isCompleted: false }); // Reuse structure but we'll fix collectionType manually
-    // The createPipeline uses 'collectionMatch' which puts a hardcoded collectionType.
-    // We need to differentiate active tokens.
-    // Let's modify pipeline for active tokens slightly or post-process.
     
     // Custom pipeline builder for Active Tokens to handle dynamic status
     const createActivePipeline = () => {
@@ -901,18 +897,19 @@ const getQueueHistory = async (req, res) => {
         return pipeline;
     }
 
+    const activePipeline = createActivePipeline(); // Custom active token pipeline
     // Always fetch active tokens unless status filter strictly excludes them (rare)
-    const activeTokens = await Token.aggregate(createActivePipeline());
+    const activeTokens = await Token.aggregate(activePipeline);
     history = history.concat(activeTokens);
 
     if (queryCompleted) {
-        const completedPipeline = createPipeline({ isCompleted: true });
+        const completedPipeline = createPipeline('completed');
         const completedDocs = await CompletedHistoryToken.aggregate(completedPipeline);
         history = history.concat(completedDocs);
     }
 
     if (queryPending) {
-        const pendingPipeline = createPipeline({ isCompleted: false });
+        const pendingPipeline = createPipeline('pending');
         // pending pipeline marks type as 'pending' but that's fine for history
         const pendingDocs = await PendingHistoryToken.aggregate(pendingPipeline);
         history = history.concat(pendingDocs);

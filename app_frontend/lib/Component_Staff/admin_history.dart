@@ -28,18 +28,26 @@ class AdminHistoryScreen extends StatefulWidget {
 class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   // Data
   List<dynamic> _historyTokens = [];
-  
+
   // Filters
   DateTime _selectedDate = DateTime.now();
   String _reportFrequency = "Daily"; // Daily, Weekly, Monthly, Yearly
-  final List<String> _frequencyOptions = ["Daily", "Weekly", "Monthly", "Yearly"];
-  
-  final TextEditingController _searchController = TextEditingController();
-  
+  final List<String> _frequencyOptions = [
+    "Daily",
+    "Weekly",
+    "Monthly",
+    "Yearly",
+  ];
 
+  final TextEditingController _searchController = TextEditingController();
 
   String _selectedStatus = "All";
-  final List<String> _statusOptions = ["All", "Completed", "Pending", "Cancelled"];
+  final List<String> _statusOptions = [
+    "All",
+    "Completed",
+    "Pending",
+    "Cancelled",
+  ];
 
   // UI State
   bool _isLoading = false;
@@ -70,9 +78,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
               onSurface: Colors.black,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.deepPurple,
-              ),
+              style: TextButton.styleFrom(foregroundColor: Colors.deepPurple),
             ),
           ),
           child: child!,
@@ -93,8 +99,22 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
 
     switch (_reportFrequency) {
       case "Daily":
-        start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 0, 0, 0);
-        end = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59, 59);
+        start = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          0,
+          0,
+          0,
+        );
+        end = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          23,
+          59,
+          59,
+        );
         break;
       case "Weekly":
         // Find Monday of the current week
@@ -102,14 +122,23 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
         start = _selectedDate.subtract(Duration(days: daysToSubtract));
         // Reset time
         start = DateTime(start.year, start.month, start.day, 0, 0, 0);
-        
+
         // End is Sunday
-        end = start.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+        end = start.add(
+          const Duration(days: 6, hours: 23, minutes: 59, seconds: 59),
+        );
         break;
       case "Monthly":
         start = DateTime(_selectedDate.year, _selectedDate.month, 1, 0, 0, 0);
         // Last day of month
-        end = DateTime(_selectedDate.year, _selectedDate.month + 1, 0, 23, 59, 59);
+        end = DateTime(
+          _selectedDate.year,
+          _selectedDate.month + 1,
+          0,
+          23,
+          59,
+          59,
+        );
         break;
       case "Yearly":
         start = DateTime(_selectedDate.year, 1, 1, 0, 0, 0);
@@ -136,14 +165,12 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       queryParams['startDate'] = range['start']!.toIso8601String();
       queryParams['endDate'] = range['end']!.toIso8601String();
 
-
-
       if (_selectedStatus != "All") {
         queryParams['status'] = _selectedStatus.toLowerCase();
       }
 
       if (_searchController.text.isNotEmpty) {
-         queryParams['search'] = _searchController.text;
+        queryParams['search'] = _searchController.text;
       }
 
       final uri = Uri.parse(
@@ -193,13 +220,13 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
         _fetchHistory();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text("Failed to delete record")),
+          const SnackBar(content: Text("Failed to delete record")),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -233,7 +260,8 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
     try {
       final pdf = pw.Document();
       final range = _calculateDateRange();
-      final dateStr = "${DateFormat('yyyy-MM-dd').format(range['start']!)} to ${DateFormat('yyyy-MM-dd').format(range['end']!)}";
+      final dateStr =
+          "${DateFormat('yyyy-MM-dd').format(range['start']!)} to ${DateFormat('yyyy-MM-dd').format(range['end']!)}";
 
       pdf.addPage(
         pw.Page(
@@ -246,7 +274,13 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   child: pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text("SmartQ $_reportFrequency Report", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
+                      pw.Text(
+                        "SmartQ $_reportFrequency Report",
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
                       pw.Text(dateStr),
                     ],
                   ),
@@ -255,19 +289,39 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                 pw.Table.fromTextArray(
                   context: context,
                   data: <List<String>>[
-                    <String>['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time'],
-                    ..._historyTokens.map((item) => [
-                          DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['generatedAt']).toLocal()),
-                          "A-${item['tokenNumber']}",
-                          item['student']?['name'] ?? 'Guest',
-                          "${item['department'] ?? item['service']?['serviceName'] ?? '-'} ${item['counter'] != null ? '(${item['counter']['counterName']})' : ''}",
-                          item['status'],
-                          _calculateWait(item)
-                        ]),
+                    <String>[
+                      'Date',
+                      'Token',
+                      'Name',
+                      'Service',
+                      'Status',
+                      'Wait Time',
+                    ],
+                    ..._historyTokens.map(
+                      (item) => [
+                        DateFormat(
+                          'yyyy-MM-dd HH:mm',
+                        ).format(DateTime.parse(item['generatedAt']).toLocal()),
+                        "A-${item['tokenNumber']}",
+                        item['student']?['name'] ?? 'Guest',
+                        "${item['department'] ?? item['service']?['serviceName'] ?? '-'} ${item['counter'] != null ? '(${item['counter']['counterName']})' : ''}",
+                        item['status'],
+                        _calculateWait(item),
+                      ],
+                    ),
                   ],
-                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                  headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
-                  rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
+                  headerStyle: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.white,
+                  ),
+                  headerDecoration: const pw.BoxDecoration(
+                    color: PdfColors.deepPurple,
+                  ),
+                  rowDecoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      bottom: pw.BorderSide(color: PdfColors.grey300),
+                    ),
+                  ),
                   cellAlignments: {
                     0: pw.Alignment.centerLeft,
                     1: pw.Alignment.center,
@@ -285,13 +339,15 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
 
       // Use Printing package to share/save the PDF directly.
       // This is more robust than manual path handling on some platforms and avoids MissingPluginException for path_provider if Printing is working.
-      await Printing.sharePdf(bytes: await pdf.save(), filename: 'admin_report_${DateTime.now().millisecondsSinceEpoch}.pdf');
-
+      await Printing.sharePdf(
+        bytes: await pdf.save(),
+        filename: 'admin_report_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
     } catch (e) {
       if (mounted) {
         String errorMsg = 'Error downloading PDF: $e';
         if (e.toString().contains('MissingPluginException')) {
-           errorMsg = 'Please restart the app completely to enable downloads.';
+          errorMsg = 'Please restart the app completely to enable downloads.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
@@ -301,62 +357,89 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   }
 
   Future<void> _printPdf() async {
-     final pdf = pw.Document();
+    final pdf = pw.Document();
     final range = _calculateDateRange();
-    final dateStr = "${DateFormat('yyyy-MM-dd').format(range['start']!)} to ${DateFormat('yyyy-MM-dd').format(range['end']!)}";
+    final dateStr =
+        "${DateFormat('yyyy-MM-dd').format(range['start']!)} to ${DateFormat('yyyy-MM-dd').format(range['end']!)}";
 
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async {
-         final doc = pw.Document();
-         doc.addPage(
-            pw.Page(
-                pageFormat: PdfPageFormat.a4.landscape,
-                build: (pw.Context context) {
-                return pw.Column(
-                    children: [
-                    pw.Header(
-                        level: 0,
-                        child: pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                            pw.Text("SmartQ $_reportFrequency Report", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
-                            pw.Text(dateStr),
-                        ],
+        final doc = pw.Document();
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4.landscape,
+            build: (pw.Context context) {
+              return pw.Column(
+                children: [
+                  pw.Header(
+                    level: 0,
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          "SmartQ $_reportFrequency Report",
+                          style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 18,
+                          ),
                         ),
+                        pw.Text(dateStr),
+                      ],
                     ),
-                    pw.SizedBox(height: 20),
-                    pw.Table.fromTextArray(
-                        context: context,
-                        data: <List<String>>[
-                        <String>['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time'],
-                        ..._historyTokens.map((item) => [
-                                DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['generatedAt']).toLocal()),
-                                "A-${item['tokenNumber']}",
-                                item['student']?['name'] ?? 'Guest',
-                                "${item['department'] ?? item['service']?['serviceName'] ?? '-'} ${item['counter'] != null ? '(${item['counter']['counterName']})' : ''}",
-                                item['status'],
-                                _calculateWait(item)
-                            ]),
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Table.fromTextArray(
+                    context: context,
+                    data: <List<String>>[
+                      <String>[
+                        'Date',
+                        'Token',
+                        'Name',
+                        'Service',
+                        'Status',
+                        'Wait Time',
+                      ],
+                      ..._historyTokens.map(
+                        (item) => [
+                          DateFormat('yyyy-MM-dd HH:mm').format(
+                            DateTime.parse(item['generatedAt']).toLocal(),
+                          ),
+                          "A-${item['tokenNumber']}",
+                          item['student']?['name'] ?? 'Guest',
+                          "${item['department'] ?? item['service']?['serviceName'] ?? '-'} ${item['counter'] != null ? '(${item['counter']['counterName']})' : ''}",
+                          item['status'],
+                          _calculateWait(item),
                         ],
-                        headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                        headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple),
-                        rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
-                        cellAlignments: {
-                        0: pw.Alignment.centerLeft,
-                        1: pw.Alignment.center,
-                        2: pw.Alignment.centerLeft,
-                        3: pw.Alignment.centerLeft,
-                        4: pw.Alignment.center,
-                        5: pw.Alignment.centerRight,
-                        },
-                    ),
+                      ),
                     ],
-                );
-                },
-            ),
+                    headerStyle: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                    headerDecoration: const pw.BoxDecoration(
+                      color: PdfColors.deepPurple,
+                    ),
+                    rowDecoration: const pw.BoxDecoration(
+                      border: pw.Border(
+                        bottom: pw.BorderSide(color: PdfColors.grey300),
+                      ),
+                    ),
+                    cellAlignments: {
+                      0: pw.Alignment.centerLeft,
+                      1: pw.Alignment.center,
+                      2: pw.Alignment.centerLeft,
+                      3: pw.Alignment.centerLeft,
+                      4: pw.Alignment.center,
+                      5: pw.Alignment.centerRight,
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
         );
         return doc.save();
-      }
+      },
     );
   }
 
@@ -364,69 +447,150 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
     try {
       var excel = excel_pkg.Excel.createExcel();
       excel_pkg.Sheet sheetObject = excel['Report'];
-      
-      List<String> headers = ['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time'];
-      for(int i=0; i<headers.length; i++) {
-          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = excel_pkg.TextCellValue(headers[i]);
 
+      List<String> headers = [
+        'Date',
+        'Token',
+        'Name',
+        'Service',
+        'Status',
+        'Wait Time',
+      ];
+      for (int i = 0; i < headers.length; i++) {
+        sheetObject
+            .cell(
+              excel_pkg.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0),
+            )
+            .value = excel_pkg.TextCellValue(
+          headers[i],
+        );
       }
 
       for (int i = 0; i < _historyTokens.length; i++) {
-          var token = _historyTokens[i];
-          
-          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: i+1)).value = excel_pkg.TextCellValue(DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(token['generatedAt']).toLocal()));
+        var token = _historyTokens[i];
 
-          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: i+1)).value = excel_pkg.TextCellValue("A-${token['tokenNumber']}");
+        sheetObject
+            .cell(
+              excel_pkg.CellIndex.indexByColumnRow(
+                columnIndex: 0,
+                rowIndex: i + 1,
+              ),
+            )
+            .value = excel_pkg.TextCellValue(
+          DateFormat(
+            'yyyy-MM-dd HH:mm',
+          ).format(DateTime.parse(token['generatedAt']).toLocal()),
+        );
 
-          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['student']?['name'] ?? 'Guest');
+        sheetObject
+            .cell(
+              excel_pkg.CellIndex.indexByColumnRow(
+                columnIndex: 1,
+                rowIndex: i + 1,
+              ),
+            )
+            .value = excel_pkg.TextCellValue(
+          "A-${token['tokenNumber']}",
+        );
 
-          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: i+1)).value = excel_pkg.TextCellValue("${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}");
+        sheetObject
+            .cell(
+              excel_pkg.CellIndex.indexByColumnRow(
+                columnIndex: 2,
+                rowIndex: i + 1,
+              ),
+            )
+            .value = excel_pkg.TextCellValue(
+          token['student']?['name'] ?? 'Guest',
+        );
 
-          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: i+1)).value = excel_pkg.TextCellValue(token['status']);
-          
-          sheetObject.cell(excel_pkg.CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: i+1)).value = excel_pkg.TextCellValue(_calculateWait(token));
+        sheetObject
+            .cell(
+              excel_pkg.CellIndex.indexByColumnRow(
+                columnIndex: 3,
+                rowIndex: i + 1,
+              ),
+            )
+            .value = excel_pkg.TextCellValue(
+          "${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}",
+        );
+
+        sheetObject
+            .cell(
+              excel_pkg.CellIndex.indexByColumnRow(
+                columnIndex: 4,
+                rowIndex: i + 1,
+              ),
+            )
+            .value = excel_pkg.TextCellValue(
+          token['status'],
+        );
+
+        sheetObject
+            .cell(
+              excel_pkg.CellIndex.indexByColumnRow(
+                columnIndex: 5,
+                rowIndex: i + 1,
+              ),
+            )
+            .value = excel_pkg.TextCellValue(
+          _calculateWait(token),
+        );
       }
 
       var fileBytes = excel.save();
-      if(fileBytes != null) {
-         final directory = await getApplicationDocumentsDirectory();
-         final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.xlsx');
-         await file.writeAsBytes(fileBytes);
-         
-         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Excel downloaded to Documents folder')),
-           );
-         }
+      if (fileBytes != null) {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File(
+          '${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        );
+        await file.writeAsBytes(fileBytes);
 
-         await Share.shareXFiles([XFile(file.path)], text: 'Exported Excel Report');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Excel downloaded to Documents folder'),
+            ),
+          );
+        }
+
+        await Share.shareXFiles([
+          XFile(file.path),
+        ], text: 'Exported Excel Report');
       }
     } catch (e) {
-       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Error downloading Excel: $e'), backgroundColor: Colors.red),
-         );
-       }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error downloading Excel: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _exportToCsv() async {
     List<List<dynamic>> rows = [];
     rows.add(['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time']);
-    for(var token in _historyTokens) {
+    for (var token in _historyTokens) {
       rows.add([
-        DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(token['generatedAt']).toLocal()),
+        DateFormat(
+          'yyyy-MM-dd HH:mm',
+        ).format(DateTime.parse(token['generatedAt']).toLocal()),
         "A-${token['tokenNumber']}",
         token['student']?['name'] ?? 'Guest',
         "${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}",
         token['status'],
-        _calculateWait(token)
+        _calculateWait(token),
       ]);
     }
 
     String csv = const ListToCsvConverter().convert(rows);
     final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.csv');
+    final file = File(
+      '${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.csv',
+    );
     await file.writeAsString(csv);
     await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV Report');
   }
@@ -441,14 +605,15 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
     return "-";
   }
 
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.grey[900]
+          : Colors.grey.shade50,
       appBar: AppBar(
         title: const Text("History & Reports"),
         backgroundColor: Colors.deepPurple,
@@ -466,24 +631,41 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Report Settings", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple.shade700)),
+                  Text(
+                    "Report Settings",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple.shade700,
+                    ),
+                  ),
                   const SizedBox(height: 10),
-                  
+
                   // DATE PICKER
                   InkWell(
                     onTap: _pickDate,
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(8),
-                        color: Colors.white,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[800]
+                            : Colors.white,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -492,17 +674,21 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                             DateFormat('MMM d, yyyy').format(_selectedDate),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          const Icon(Icons.calendar_month, color: Colors.deepPurple, size: 20),
+                          const Icon(
+                            Icons.calendar_month,
+                            color: Colors.deepPurple,
+                            size: 20,
+                          ),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 10),
-                  
+
                   // FILTERS ROW (Status & Counter)
                   Row(
                     children: [
-                       // Frequency Filter
+                      // Frequency Filter
                       Expanded(
                         child: _buildDropdown(
                           value: _reportFrequency,
@@ -520,16 +706,17 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                       // Status Filter
                       Expanded(
                         child: _buildDropdown(
-                          value: _selectedStatus, 
-                          items: _statusOptions, 
+                          value: _selectedStatus,
+                          items: _statusOptions,
                           label: "Status",
-                          onChanged: (val) => setState(() => _selectedStatus = val!),
+                          onChanged: (val) =>
+                              setState(() => _selectedStatus = val!),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // SEARCH BUTTON
                   SizedBox(
                     width: double.infinity,
@@ -537,20 +724,28 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _fetchHistory,
                       icon: const Icon(Icons.search, color: Colors.white),
-                      label: const Text("SEARCH", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+                      label: const Text(
+                        "SEARCH",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-  
+
             const SizedBox(height: 16),
-  
+
             // EXPORT ACTIONS (Visible if searched)
             if (_hasSearched && !_isLoading && _historyTokens.isNotEmpty)
               Container(
@@ -560,118 +755,271 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _exportBtn(Icons.picture_as_pdf, Colors.red, "Download PDF", _downloadPdf),
+                      _exportBtn(
+                        Icons.picture_as_pdf,
+                        Colors.red,
+                        "Download PDF",
+                        _downloadPdf,
+                      ),
                       const SizedBox(width: 10),
-                      _exportBtn(Icons.table_chart, Colors.green, "Excel Export", _exportToExcel),
+                      _exportBtn(
+                        Icons.table_chart,
+                        Colors.green,
+                        "Excel Export",
+                        _exportToExcel,
+                      ),
                       const SizedBox(width: 10),
-                      _exportBtn(Icons.description, Colors.blue, "CSV Export", _exportToCsv),
+                      _exportBtn(
+                        Icons.description,
+                        Colors.blue,
+                        "CSV Export",
+                        _exportToCsv,
+                      ),
                       const SizedBox(width: 10),
-                      _exportBtn(Icons.print, Colors.black87, "Print Report", _printPdf),
+                      _exportBtn(
+                        Icons.print,
+                        Colors.black87,
+                        "Print Report",
+                        _printPdf,
+                      ),
                     ],
                   ),
                 ),
               ),
-  
+
             // DATA TABLE
             Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : _historyTokens.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _hasSearched ? Icons.search_off : Icons.filter_alt_outlined,
-                              size: 60,
-                              color: Colors.grey.shade300,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              _hasSearched ? "No matching records found." : "Select filters and click Search to view history.",
-                              style: TextStyle(color: Colors.grey.shade500),
-                            ),
-                          ],
-                        ),
-                      )
-                    : Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _historyTokens.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _hasSearched
+                                ? Icons.search_off
+                                : Icons.filter_alt_outlined,
+                            size: 60,
+                            color: Colors.grey.shade300,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            _hasSearched
+                                ? "No matching records found."
+                                : "Select filters and click Search to view history.",
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
                           child: SingleChildScrollView(
-                            scrollDirection: Axis.vertical,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(minWidth: screenWidth - 32),
-                                child: DataTable(
-                                  headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
-                                  columnSpacing: isSmallScreen ? 20 : 50,
-                                  dataRowHeight: 60,
-                                  columns: const [
-                                    DataColumn(label: Text('Date & Time', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Token', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Student', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Service / Counter', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Wait', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
-                                  ],
-                                  rows: _historyTokens.map((token) {
-                                    return DataRow(
-                                      cells: [
-                                        DataCell(
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Text(DateFormat('MMM d, yyyy').format(DateTime.parse(token['generatedAt']).toLocal()), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                              Text(DateFormat('hh:mm a').format(DateTime.parse(token['generatedAt']).toLocal()), style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
-                                            ],
-                                          )
-                                        ),
-                                        DataCell(
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: Colors.deepPurple.shade50,
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: Colors.deepPurple.shade200)
-                                            ),
-                                            child: Text("A-${token['tokenNumber']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
-                                          ),
-                                        ),
-                                        DataCell(Text(token['student']?['name'] ?? 'Guest', style: const TextStyle(fontWeight: FontWeight.w500))),
-                                        DataCell(
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Text(token['department'] ?? token['service']?['serviceName'] ?? token['purpose'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                              if (token['counter'] != null)
-                                                Text("Counter: ${token['counter']['counterName']}", style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
-                                            ],
-                                          )
-                                        ),
-                                        DataCell(_statusBadge(token['status'])),
-                                        DataCell(Text(_calculateWait(token), style: TextStyle(color: Colors.grey.shade800))),
-                                        DataCell(
-                                          IconButton(
-                                            icon: const Icon(Icons.delete_outline, size: 22, color: Colors.redAccent),
-                                            onPressed: () => _confirmDelete(token['_id']),
-                                            tooltip: "Delete Record",
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }).toList(),
+                            scrollDirection: Axis.horizontal,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minWidth: screenWidth - 32,
+                              ),
+                              child: DataTable(
+                                headingRowColor: MaterialStateProperty.all(
+                                  Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.grey[850]
+                                      : Colors.grey.shade100,
                                 ),
+                                columnSpacing: isSmallScreen ? 20 : 50,
+                                dataRowHeight: 60,
+                                columns: const [
+                                  DataColumn(
+                                    label: Text(
+                                      'Date & Time',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Token',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Student',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Service / Counter',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Status',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Wait',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Action',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                rows: _historyTokens.map((token) {
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              DateFormat('MMM d, yyyy').format(
+                                                DateTime.parse(
+                                                  token['generatedAt'],
+                                                ).toLocal(),
+                                              ),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            Text(
+                                              DateFormat('hh:mm a').format(
+                                                DateTime.parse(
+                                                  token['generatedAt'],
+                                                ).toLocal(),
+                                              ),
+                                              style: TextStyle(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.deepPurple.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.deepPurple.shade200,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            "A-${token['tokenNumber']}",
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.deepPurple,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          token['student']?['name'] ?? 'Guest',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              token['department'] ??
+                                                  token['service']?['serviceName'] ??
+                                                  token['purpose'] ??
+                                                  '-',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            if (token['counter'] != null)
+                                              Text(
+                                                "Counter: ${token['counter']['counterName']}",
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      DataCell(_statusBadge(token['status'])),
+                                      DataCell(
+                                        Text(
+                                          _calculateWait(token),
+                                          style: TextStyle(
+                                            color: Colors.grey.shade800,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            size: 22,
+                                            color: Colors.redAccent,
+                                          ),
+                                          onPressed: () =>
+                                              _confirmDelete(token['_id']),
+                                          tooltip: "Delete Record",
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
                               ),
                             ),
                           ),
                         ),
                       ),
+                    ),
             ),
           ],
         ),
@@ -679,17 +1027,31 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
     );
   }
 
-  Widget _buildDropdown({required String value, required List<String> items, required String label, required Function(String?) onChanged}) {
+  Widget _buildDropdown({
+    required String value,
+    required List<String> items,
+    required String label,
+    required Function(String?) onChanged,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade600,
+          ),
+        ),
         const SizedBox(height: 4),
         Container(
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.grey.shade50,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[800]
+                : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
           ),
@@ -698,7 +1060,14 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
               value: value,
               isExpanded: true,
               hint: Text(label),
-              items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
+              items: items
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(e, style: const TextStyle(fontSize: 14)),
+                    ),
+                  )
+                  .toList(),
               onChanged: onChanged,
             ),
           ),
@@ -707,13 +1076,20 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
     );
   }
 
-  Widget _exportBtn(IconData icon, Color color, String label, VoidCallback onTap) {
+  Widget _exportBtn(
+    IconData icon,
+    Color color,
+    String label,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[850]
+              : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade300),
         ),
@@ -721,7 +1097,14 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(color: Colors.grey.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey.shade800,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -732,7 +1115,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
     Color bg = Colors.grey.shade100;
     Color text = Colors.grey.shade700;
     String s = status.toLowerCase();
-    
+
     if (s == 'completed') {
       bg = Colors.green.shade50;
       text = Colors.green.shade700;
@@ -749,11 +1132,15 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: text.withOpacity(0.3))
+        border: Border.all(color: text.withOpacity(0.3)),
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(color: text, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: text,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

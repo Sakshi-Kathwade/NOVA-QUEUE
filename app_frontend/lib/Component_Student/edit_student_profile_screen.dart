@@ -45,7 +45,7 @@ class _EditStudentProfileScreenState extends State<EditStudentProfileScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://localhost:8000/api/student/profile/${widget.studentId}",
+          "http://10.155.83.53:8000/api/student/profile/${widget.studentId}",
         ),
         headers: {"Content-Type": "application/json"},
       );
@@ -91,7 +91,7 @@ class _EditStudentProfileScreenState extends State<EditStudentProfileScreen> {
       var request = http.MultipartRequest(
         'PUT',
         Uri.parse(
-          "http://localhost:8000/api/student/profile/${widget.studentId}",
+          "http://10.155.83.53:8000/api/student/profile/${widget.studentId}",
         ),
       );
 
@@ -172,15 +172,17 @@ class _EditStudentProfileScreenState extends State<EditStudentProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-     ImageProvider? backgroundImage;
+    ImageProvider? backgroundImage;
     if (_newProfileImage != null) {
       if (kIsWeb) {
-         backgroundImage = NetworkImage(_newProfileImage!.path);
+        backgroundImage = NetworkImage(_newProfileImage!.path);
       } else {
-         backgroundImage = FileImage(File(_newProfileImage!.path));
+        backgroundImage = FileImage(File(_newProfileImage!.path));
       }
     } else if (_profilePictureUrl != null && _profilePictureUrl!.isNotEmpty) {
-      backgroundImage = NetworkImage("http://localhost:8000" + _profilePictureUrl!);
+      backgroundImage = NetworkImage(
+        "http://10.155.83.53:8000" + _profilePictureUrl!,
+      );
     }
 
     return Scaffold(

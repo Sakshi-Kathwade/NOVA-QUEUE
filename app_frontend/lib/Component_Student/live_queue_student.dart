@@ -1,31 +1,35 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, unused_local_variable
 
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
 
-class StudentWaiting extends StatefulWidget {
+class LiveQueueStudent extends StatefulWidget {
   final String studentId;
   final String queueName;
 
-  const StudentWaiting({
+  const LiveQueueStudent({
     super.key,
     required this.studentId,
     required this.queueName,
   });
 
   @override
-  State<StudentWaiting> createState() => _StudentWaitingState();
+  State<LiveQueueStudent> createState() => _LiveQueueStudentState();
 }
 
-class _StudentWaitingState extends State<StudentWaiting> {
+class _LiveQueueStudentState extends State<LiveQueueStudent> {
   String queueName = "";
   int totalStudentsWaiting = 0;
   int myTokenNumber = 0;
   int averageWaitingTime = 0;
+  int completedToday = 0;
+  int studentsAhead = 0;
   bool isQueueOpen = true;
-  int? currentlyServingToken;
+  String? currentlyServingToken;
+  int? maxStudents; // ✅ Capture max students for progress bar
   List<Map<String, String>> liveQueueList = [];
   Timer? _pollTimer;
 
@@ -61,61 +65,123 @@ class _StudentWaitingState extends State<StudentWaiting> {
 
     try {
       final tokenRes = await http.get(
-        Uri.parse(
-          "http://localhost:8000/api/tokenget/$encodedQueue/${widget.studentId}",
-        ),
+        Uri.parse("${ApiConfig.baseUrl}/tokenget/$encodedQueue/${widget.studentId}"),
       );
       final currentRes = await http.get(
-        Uri.parse("http://localhost:8000/api/currenttoken/$encodedQueue"),
+        Uri.parse("${ApiConfig.baseUrl}/currenttoken/$encodedQueue"),
       );
       final remainingRes = await http.get(
-        Uri.parse("http://localhost:8000/api/remainingtoken/$encodedQueue"),
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$encodedQueue"),
       );
 
+      int fetchedMax = maxStudents ?? 0;
+      int estimationConfigTime = 5;
+      bool qOpen = isQueueOpen;
+
+      try {
+        final qRes = await http.get(
+          Uri.parse("${ApiConfig.baseUrl}/queue"),
+        );
+        if (qRes.statusCode == 200) {
+          final qd = jsonDecode(qRes.body);
+          if (qd['success'] == true && qd['data'] != null) {
+            List<dynamic> queues = qd['data'];
+            for (var q in queues) {
+              if (q['queueName'] == widget.queueName) {
+                fetchedMax = q['maxStudents'] ?? 0;
+                qOpen = q['status'] == "Active";
+                String adminId = q['adminId'] ?? "";
+                if (adminId.isNotEmpty) {
+                   final stRes = await http.get(Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/$adminId"));
+                   if (stRes.statusCode == 200) {
+                      final stData = jsonDecode(stRes.body);
+                      if (stData["success"] == true && stData["settings"] != null) {
+                         estimationConfigTime = stData["settings"]["estimatedServiceTimePerStudent"] ?? 5;
+                      }
+                   }
+                }
+                break;
+              }
+            }
+          } else {
+             qOpen = false;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      int? servingToken;
+      int completed = 0;
+      if (currentRes.statusCode == 200) {
+        final cur = jsonDecode(currentRes.body);
+        if (cur["success"] == true) {
+          if (cur["data"] != null) {
+            servingToken = cur["data"]["tokenNumber"];
+          }
+          if (cur["data"] != null && cur["data"]["completedCount"] != null) {
+            completed = cur["data"]["completedCount"];
+          } else {
+            completed = cur["completedCount"] ?? cur["completedToday"] ?? 0;
+          }
+        }
+      }
+
+      int totalWaiting = 0;
+      List<Map<String, String>> queueList = [];
+      
+      int myToken = myTokenNumber;
+      int fetchedStudentsAhead = 0;
+      int fetchedEstTime = 0;
+      bool hasToken = false;
       if (tokenRes.statusCode == 200) {
         final data = jsonDecode(tokenRes.body);
         if (data["success"] == true) {
-          int? servingToken;
-          if (currentRes.statusCode == 200) {
-            final cur = jsonDecode(currentRes.body);
-            if (cur["success"] == true && cur["data"] != null) {
-              servingToken = cur["data"]["tokenNumber"];
-            }
-          }
-
-          List<Map<String, String>> queueList = [];
-          if (remainingRes.statusCode == 200) {
-            final rem = jsonDecode(remainingRes.body);
-            final waiting = (rem["waiting"] as List?) ?? [];
-            for (var w in waiting) {
-              queueList.add({
-                "token": "A-${w["tokenNumber"] ?? w["token"] ?? "?"}",
-                "name":
-                    w["studentName"]?.toString() ??
-                    w["name"]?.toString() ??
-                    "—",
-              });
-            }
-          }
-
-          if (mounted) {
-            setState(() {
-              queueName = data["queueName"] ?? widget.queueName;
-              totalStudentsWaiting = data["studentsAhead"] ?? 0;
-              myTokenNumber = data["tokenNumber"] ?? 0;
-              averageWaitingTime = data["estimatedWaitingTime"] ?? 5;
-              isQueueOpen = (data["status"] ?? "waiting") == "waiting";
-              currentlyServingToken = servingToken;
-              liveQueueList = queueList;
-              isLoading = false;
-            });
-          }
-        } else {
-           if (mounted) setState(() => isLoading = false);
+           hasToken = true;
+           myToken = data["tokenNumber"] ?? myToken;
+           fetchedStudentsAhead = data["studentsAhead"] ?? 0;
+           fetchedEstTime = data["estimatedWaitingTime"] ?? 0;
         }
-      } else {
-         if (mounted) setState(() => isLoading = false);
       }
+
+      int studentsAheadNum = 0;
+      if (remainingRes.statusCode == 200) {
+        final rem = jsonDecode(remainingRes.body);
+        final waiting = (rem["waiting"] as List?) ?? [];
+        totalWaiting = waiting.length;
+        for (var w in waiting) {
+          queueList.add({
+            "token": "A-${w["tokenNumber"] ?? w["token"] ?? "?"}",
+            "name": w["studentName"]?.toString() ?? w["name"]?.toString() ?? "—",
+          });
+        }
+      }
+
+      int estTime = 0;
+      if (hasToken) {
+         studentsAheadNum = fetchedStudentsAhead;
+         estTime = fetchedEstTime;
+      } else {
+         studentsAheadNum = totalWaiting;
+         estTime = studentsAheadNum * estimationConfigTime;
+      }
+
+      if (mounted) {
+        setState(() {
+          queueName = widget.queueName;
+          totalStudentsWaiting = totalWaiting;
+          completedToday = completed;
+          myTokenNumber = myToken;
+          averageWaitingTime = estTime;
+          studentsAhead = studentsAheadNum;
+          isQueueOpen = qOpen;
+          currentlyServingToken = servingToken != null ? "A-$servingToken" : null;
+          liveQueueList = queueList;
+          if (fetchedMax > 0) maxStudents = fetchedMax;
+          isLoading = false;
+        });
+      }
+
     } catch (e) {
       if (mounted) setState(() => isLoading = false);
     }
@@ -137,10 +203,39 @@ class _StudentWaitingState extends State<StudentWaiting> {
     }
 
     int estimatedTotalWait = totalStudentsWaiting * averageWaitingTime;
-    int serving = currentlyServingToken ?? 0;
-    double progress = (myTokenNumber > 0 && serving > 0)
-        ? (serving >= myTokenNumber ? 1.0 : serving / myTokenNumber)
-        : 0.0;
+    int serving = currentlyServingToken != null ? int.tryParse(currentlyServingToken!.replaceAll("A-", "")) ?? 0 : 0;
+
+    // ✅ Progress bar based on (Completed / MaxStudents) or fallback to current/myToken logic
+    // Using max students gives a better "overall progress" view.
+    // If user wants "progress to my turn", it would be different.
+    // "according to max student like my token 5 and max studnet is the 20 and the according to that the progrssbar increase"
+    // Interpretation: User wants progress of queue processing relative to TOTAL capacity.
+
+    double progress = 0.0;
+
+    if (maxStudents != null && maxStudents! > 0) {
+      // Progress = Completed tokens / Max Capacity
+      progress = (completedToday / maxStudents!).clamp(0.0, 1.0);
+    } else if (myTokenNumber > 0 && serving > 0) {
+      // Fallback: serving relative to my token
+      progress = (serving >= myTokenNumber ? 1.0 : serving / myTokenNumber);
+    } else if (myTokenNumber > 0) {
+      // Fallback if just started
+      progress = 0.0;
+    }
+
+    // Reset everything if queue closed/finished
+    if (!isQueueOpen &&
+        liveQueueList.isEmpty &&
+        currentlyServingToken == null) {
+      estimatedTotalWait = 0;
+      progress = 0.0;
+      serving = 0;
+      myTokenNumber = 0;
+      completedToday = 0;
+      totalStudentsWaiting = 0;
+      studentsAhead = 0;
+    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -267,7 +362,7 @@ class _StudentWaitingState extends State<StudentWaiting> {
                 Expanded(
                   child: _highlightCard(
                     title: "Currently Serving",
-                    value: currentlyServingToken?.toString() ?? "—",
+                    value: currentlyServingToken ?? "—",
                     color: Colors.green,
                     icon: Icons.play_circle_filled,
                   ),
@@ -276,7 +371,7 @@ class _StudentWaitingState extends State<StudentWaiting> {
                 Expanded(
                   child: _highlightCard(
                     title: "Your Token",
-                    value: myTokenNumber.toString(),
+                    value: myTokenNumber > 0 ? "A-$myTokenNumber" : "—",
                     color: Colors.deepPurple,
                     icon: Icons.confirmation_number,
                     isMine: true,
@@ -293,17 +388,41 @@ class _StudentWaitingState extends State<StudentWaiting> {
                   child: _infoCard(
                     icon: Icons.people,
                     title: "Position Ahead",
-                    value: totalStudentsWaiting.toString(),
+                    value: studentsAhead.toString(),
                     color: Colors.orange,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _infoCard(
-                    icon: Icons.timer,
-                    title: "Est. Wait",
-                    value: "$estimatedTotalWait min",
-                    color: Colors.blue,
+                    icon: Icons.check_circle,
+                    title: "Completed Today",
+                    value: completedToday.toString(),
+                    color: Colors.teal,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _infoCard(
+                    icon: Icons.group,
+                    title: "Max Students",
+                    value: maxStudents?.toString() ?? "N/A",
+                    color: Colors.purple,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _infoCard(
+                    icon: Icons.watch_later_outlined,
+                    title: "Estimated Time",
+                    value: "$averageWaitingTime Min",
+                    color: Colors.blueAccent,
                   ),
                 ),
               ],
@@ -316,7 +435,7 @@ class _StudentWaitingState extends State<StudentWaiting> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey.shade800,
               ),
             ),
             const SizedBox(height: 10),
@@ -335,7 +454,7 @@ class _StudentWaitingState extends State<StudentWaiting> {
                       children: [
                         Text(
                           "Progress",
-                          style: TextStyle(color: Colors.grey.shade700),
+                          style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                         ),
                         Text(
                           "${(progress * 100).toStringAsFixed(0)}%",
@@ -345,19 +464,18 @@ class _StudentWaitingState extends State<StudentWaiting> {
                     ),
                     const SizedBox(height: 10),
                     LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
+                      value: progress,
                       minHeight: 12,
-                      backgroundColor: Colors.grey.shade300,
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700] : Colors.grey.shade300,
                       valueColor: const AlwaysStoppedAnimation(
                         Colors.deepPurple,
                       ),
                     ),
-                    const SizedBox(height: 12),
                     Text(
-                      "Estimated waiting time: $estimatedTotalWait minutes",
+                      "$completedToday out of ${maxStudents != null && maxStudents! > 0 ? maxStudents : (completedToday + liveQueueList.length)} students served today",
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey.shade600,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey.shade600,
                       ),
                     ),
                   ],
@@ -372,7 +490,7 @@ class _StudentWaitingState extends State<StudentWaiting> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey.shade800,
                 ),
               ),
               const SizedBox(height: 10),
@@ -381,10 +499,10 @@ class _StudentWaitingState extends State<StudentWaiting> {
                 final isMine = tokenStr == "A-$myTokenNumber";
                 final isServing =
                     currentlyServingToken != null &&
-                    tokenStr == "A-$currentlyServingToken";
-                Color bg = Colors.grey.shade100;
-                if (isServing) bg = Colors.green.shade100;
-                if (isMine) bg = Colors.deepPurple.shade50;
+                    tokenStr == currentlyServingToken;
+                Color bg = Theme.of(context).brightness == Brightness.dark ? Colors.grey[850]! : Colors.grey.shade100;
+                if (isServing) bg = Colors.green.withOpacity(0.2);
+                if (isMine) bg = Colors.deepPurple.withOpacity(0.2);
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(
@@ -396,20 +514,31 @@ class _StudentWaitingState extends State<StudentWaiting> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isMine
-                          ? Colors.deepPurple
+                          ? Colors.red
                           : (isServing ? Colors.green : Colors.grey.shade300),
                       width: isMine || isServing ? 2 : 1,
                     ),
                   ),
                   child: Row(
                     children: [
+                      // Highlight marker for "My Token"
+                      if (isMine)
+                        Container(
+                          width: 4,
+                          height: 30,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
                       Icon(
                         isServing
                             ? Icons.play_circle_filled
                             : (isMine ? Icons.person : Icons.schedule),
                         color: isServing
                             ? Colors.green
-                            : (isMine ? Colors.deepPurple : Colors.grey),
+                            : (isMine ? Colors.red : Colors.grey),
                         size: 24,
                       ),
                       const SizedBox(width: 12),
@@ -420,6 +549,7 @@ class _StudentWaitingState extends State<StudentWaiting> {
                               ? FontWeight.bold
                               : FontWeight.w500,
                           fontSize: 16,
+                          color: isMine ? Colors.red.shade900 : Colors.black87,
                         ),
                       ),
                       if (isMine) ...[
@@ -430,7 +560,7 @@ class _StudentWaitingState extends State<StudentWaiting> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.deepPurple,
+                            color: Colors.red,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(

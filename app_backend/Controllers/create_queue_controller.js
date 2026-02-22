@@ -1,18 +1,19 @@
 const Queue = require("../Models/create_queue_model.js");
 const Token = require("../Models/tokenmodel"); 
 const QueueHistory = require("../Models/queueHistoryModel");
+const CompletedHistoryToken = require("../Models/completedHistoryTokenModel");
+const PendingHistoryToken = require("../Models/pendingHistoryTokenModel");
 
-// ✅ Expire Queue Logic
+    // ✅ Expire Queue Logic
 async function expireQueueIfNeeded(queueDoc) {
   try {
       if (!queueDoc) return null;
       const now = new Date();
       
-      // Check if actually expired OR already marked expired but lingering
       const isTimeUp = queueDoc.endTime && queueDoc.endTime <= now;
       const isStatusExpired = queueDoc.status === "Expired";
 
-      if (queueDoc.status === "Active" && isTimeUp) {
+      if (isTimeUp || isStatusExpired) {
         console.log(`Expiring queue: ${queueDoc.queueName} (End: ${queueDoc.endTime}, Now: ${now})`);
         
         // 1️⃣ Copy to Queue History
@@ -30,34 +31,39 @@ async function expireQueueIfNeeded(queueDoc) {
             });
         }
 
-        // 2️⃣ Update waiting tokens to pending
-        await Token.updateMany(
-          { queueName: queueDoc.queueName, status: { $in: ["waiting", "hold"] } },
-          { $set: { status: "pending", pendingAt: now } }
-        );
+        // 2️⃣ Archive Tokens
+        const allTokens = await Token.find({ queueName: queueDoc.queueName });
+        const completedTokens = [];
+        const pendingTokens = [];
 
-        // 3️⃣ DELETE Queue from active database
+        for (const token of allTokens) {
+          const tokenData = token.toObject();
+          tokenData.originalTokenId = token._id;
+          delete tokenData._id; // Let Mongo generate new ID for history
+          tokenData.archivedAt = now;
+
+          if (token.status === 'completed' || token.status === 'Completed') {
+            completedTokens.push(tokenData);
+          } else {
+            // Any other status -> Pending History
+            tokenData.status = 'pending';
+            tokenData.pendingAt = now;
+            pendingTokens.push(tokenData);
+          }
+        }
+
+        if (completedTokens.length > 0) {
+          await CompletedHistoryToken.insertMany(completedTokens);
+        }
+        if (pendingTokens.length > 0) {
+          await PendingHistoryToken.insertMany(pendingTokens);
+        }
+
+        // 3️⃣ DELETE Queue from active database AND Delete Tokens
         await Queue.findByIdAndDelete(queueDoc._id);
+        await Token.deleteMany({ queueName: queueDoc.queueName });
 
         return { expired: true, queueName: queueDoc.queueName };
-
-      } else if (isStatusExpired || isTimeUp) {
-          // Cleanup lingering expired queues
-           const historyExists = await QueueHistory.findOne({ queueName: queueDoc.queueName, adminId: queueDoc.adminId });
-           if (!historyExists) {
-                await QueueHistory.create({
-                  adminId: queueDoc.adminId,
-                  queueName: queueDoc.queueName,
-                  department: queueDoc.department,
-                  startTime: queueDoc.startTime,
-                  endTime: queueDoc.endTime,
-                  maxStudents: queueDoc.maxStudents,
-                  status: "Expired",
-                  discardedAt: now
-                });
-           }
-           await Queue.findByIdAndDelete(queueDoc._id);
-           return { expired: true, queueName: queueDoc.queueName };
       }
 
       return { expired: false };
@@ -149,6 +155,10 @@ const createQueue = async (req, res) => {
       });
     }
 
+    // ✅ FORCE CLEANUP: Ensure NO leftover ghost tokens for this admin or queueName exists 
+    // This absolutely guarantees that the newly created queue will start at token #1
+    await Token.deleteMany({ queueName });
+
     // 🔹 Create Queue
     const newQueue = await Queue.create({
       adminId,
@@ -185,28 +195,63 @@ const getActiveQueue = async (req, res) => {
     const mongoose = require("mongoose");
     let oid;
     try {
-        oid = new mongoose.Types.ObjectId(adminId);
+        if (mongoose.Types.ObjectId.isValid(adminId)) {
+             oid = new mongoose.Types.ObjectId(adminId);
+        } else {
+             oid = adminId;
+        }
     } catch(e) {
         oid = adminId;
     }
 
     // 1️⃣ Try to find ACTIVE queue
     let activeQueue = await Queue.findOne({ 
-        adminId: oid, 
-        status: "Active" 
+        adminId: oid
     }).sort({ createdAt: -1 });
 
-    // Fallback: Check expired but not yet processed (if applicable)
-     if (activeQueue) {
+    if (activeQueue) {
         // Check expiry
-        const expiry = await expireQueueIfNeeded(activeQueue);
-        if (expiry && expiry.expired) {
-            // ✅ If expired, return NULL (No Active Queue), do NOT return history
-             return res.status(200).json({
-                success: false,
-                message: "Queue expired",
-                data: null
-             });
+        const now = new Date();
+        const endTime = activeQueue.endTime ? new Date(activeQueue.endTime) : null;
+        
+        // Expiry logic
+        const isTimeUp = endTime && endTime <= now;
+        const isStatusExpired = activeQueue.status === "Expired";
+
+        if (isTimeUp || isStatusExpired) {
+            // Check if within 30 hours of expiry
+            // If we don't have endTime (e.g. status forced expired), use updatedAt or createdAt?
+            // Fallback to createdAt if endTime missing
+            const referenceTime = endTime || activeQueue.updatedAt || activeQueue.createdAt;
+            const hoursSinceExpiry = (now - referenceTime) / (1000 * 60 * 60);
+
+            if (hoursSinceExpiry > 30) {
+                 // > 30 hours: Force Expire and Return NULL
+                 await expireQueueIfNeeded(activeQueue);
+                 return res.status(200).json({
+                    success: false,
+                    message: "Queue expired and archived",
+                    data: null
+                 });
+            } else {
+                 // < 30 hours: Return queue but mark as 'Closed' for UI if previously Active
+                 // Do NOT expire fully yet (keep in DB for viewing)
+                 // But wait, if we don't expire it, tokens remain in 'Token' collection.
+                 // This is GOOD for "Pending Box" visibility.
+                 
+                 // However, we should probably update status to 'Inactive' or 'Closed' if not already
+                 if (activeQueue.status === 'Active') {
+                      activeQueue.status = 'Closed';
+                      await activeQueue.save(); 
+                 }
+                 
+                 return res.status(200).json({
+                    success: true,
+                    message: "Queue finished (view only)",
+                    queueName: activeQueue.queueName,
+                    data: activeQueue,
+                });
+            }
         } else {
             // Active and valid
             return res.status(200).json({
@@ -218,7 +263,12 @@ const getActiveQueue = async (req, res) => {
         }
     }
 
-    // 2️⃣ If NO active queue, return null (Dashboard should show "No Active Queue")
+    // 2️⃣ If NO active queue, look in HISTORY?
+    // The request said: "after finishing queue... for 30 hours... then pending empty".
+    // This implies we look at the one we just finished.
+    // If we already archived it, we can't show "pending" easily (unless we query PendingHistoryToken).
+    // Better to KEEP it in Queue collection for 30h.
+
     return res.status(200).json({
         success: false,
         message: "No queue found",
