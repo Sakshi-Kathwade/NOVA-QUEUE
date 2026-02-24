@@ -89,6 +89,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       setState(() {
         _selectedDate = picked;
       });
+      _fetchHistory();
     }
   }
 
@@ -162,8 +163,8 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       final queryParams = <String, String>{};
 
       final range = _calculateDateRange();
-      queryParams['startDate'] = range['start']!.toIso8601String();
-      queryParams['endDate'] = range['end']!.toIso8601String();
+      queryParams['startDate'] = range['start']!.toUtc().toIso8601String();
+      queryParams['endDate'] = range['end']!.toUtc().toIso8601String();
 
       if (_selectedStatus != "All") {
         queryParams['status'] = _selectedStatus.toLowerCase();
@@ -698,6 +699,7 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                             setState(() {
                               _reportFrequency = val!;
                             });
+                            _fetchHistory();
                           },
                         ),
                       ),
@@ -709,8 +711,10 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
                           value: _selectedStatus,
                           items: _statusOptions,
                           label: "Status",
-                          onChanged: (val) =>
-                              setState(() => _selectedStatus = val!),
+                          onChanged: (val) {
+                            setState(() => _selectedStatus = val!);
+                            _fetchHistory();
+                          },
                         ),
                       ),
                     ],

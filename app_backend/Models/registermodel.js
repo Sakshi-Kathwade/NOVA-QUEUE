@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
     profilePicture: { type: String, default: null }, // Added profilePicture field
     fcmToken: { type: String, default: null }, // ✅ Store FCM Device Token
     isGoogleAuth: { type: Boolean, default: false }, // Track Google OAuth users
+    notificationEnabled: { type: Boolean, default: true }, // Add notification toggle
 })
 
 // Export the model

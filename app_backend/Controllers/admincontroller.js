@@ -293,7 +293,7 @@ const getAdminQueueSettings = async (req, res) => {
     }
 
     const admin = await Admin.findById(adminId).select(
-      "estimatedServiceTimePerStudent missedTokenRecalls missedTokenRetries missedTokenRecallWaitTimeMinutes"
+      "estimatedServiceTimePerStudent missedTokenRecalls missedTokenRetries missedTokenRecallWaitTimeMinutes notificationThreshold"
     );
 
     if (!admin) {
@@ -310,6 +310,7 @@ const getAdminQueueSettings = async (req, res) => {
         missedTokenRecalls: admin.missedTokenRecalls,
         missedTokenRetries: admin.missedTokenRetries,
         missedTokenRecallWaitTimeMinutes: admin.missedTokenRecallWaitTimeMinutes,
+        notificationThreshold: admin.notificationThreshold,
       },
     });
   } catch (error) {
@@ -324,7 +325,7 @@ const getAdminQueueSettings = async (req, res) => {
 const updateAdminQueueSettings = async (req, res) => {
   try {
     const { adminId } = req.params;
-    const { estimatedServiceTimePerStudent, missedTokenRecalls, missedTokenRetries, missedTokenRecallWaitTimeMinutes } = req.body;
+    const { estimatedServiceTimePerStudent, missedTokenRecalls, missedTokenRetries, missedTokenRecallWaitTimeMinutes, notificationThreshold } = req.body;
 
     if (!adminId) {
       return res.status(400).json({
@@ -353,6 +354,9 @@ const updateAdminQueueSettings = async (req, res) => {
     if (missedTokenRecallWaitTimeMinutes !== undefined) {
       admin.missedTokenRecallWaitTimeMinutes = missedTokenRecallWaitTimeMinutes;
     }
+    if (notificationThreshold !== undefined) {
+      admin.notificationThreshold = notificationThreshold;
+    }
 
     await admin.save();
 
@@ -364,6 +368,7 @@ const updateAdminQueueSettings = async (req, res) => {
         missedTokenRecalls: admin.missedTokenRecalls,
         missedTokenRetries: admin.missedTokenRetries,
         missedTokenRecallWaitTimeMinutes: admin.missedTokenRecallWaitTimeMinutes,
+        notificationThreshold: admin.notificationThreshold,
       },
     });
   } catch (error) {
@@ -734,10 +739,8 @@ const getQueueHistory = async (req, res) => {
         }
         if (endDate) {
             const end = new Date(endDate);
-            const e = new Date(endDate);
-            if (!isNaN(e)) {
-                 e.setHours(23, 59, 59, 999);
-                 dateFilter.$lte = e;
+            if (!isNaN(end)) {
+                 dateFilter.$lte = end;
             }
         }
         if (Object.keys(dateFilter).length > 0) {

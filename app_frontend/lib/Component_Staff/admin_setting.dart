@@ -37,6 +37,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
   int _missedTokenRecalls = 2;
   int _missedTokenRetries = 3;
   int _missedTokenRecallWaitTimeMinutes = 10;
+  int _notificationThreshold = 2;
 
   @override
   void initState() {
@@ -87,6 +88,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             _missedTokenRetries = data['settings']['missedTokenRetries'] ?? 3;
             _missedTokenRecallWaitTimeMinutes =
                 data['settings']['missedTokenRecallWaitTimeMinutes'] ?? 10;
+            _notificationThreshold = data['settings']['notificationThreshold'] ?? 2;
           });
         }
       }
@@ -254,6 +256,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
           "missedTokenRecalls": _missedTokenRecalls,
           "missedTokenRetries": _missedTokenRetries,
           "missedTokenRecallWaitTimeMinutes": _missedTokenRecallWaitTimeMinutes,
+          "notificationThreshold": _notificationThreshold,
         }),
       );
       if (response.statusCode == 200) {
@@ -560,6 +563,49 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     );
   }
 
+  void _showNotificationThresholdDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Notification Threshold'),
+        content: DropdownButton<int>(
+          value: _notificationThreshold,
+          onChanged: (int? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _notificationThreshold = newValue;
+              });
+            }
+          },
+          items:
+              List.generate(10, (index) => index + 1) // 1 to 10
+                  .map<DropdownMenuItem<int>>((int value) {
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text(
+                        '$value tokens before',
+                      ),
+                    );
+                  })
+                  .toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(Translations.translate('cancel', currentLanguage)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateQueueSettings();
+              Navigator.pop(context);
+            },
+            child: Text(Translations.translate('save', currentLanguage)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -692,6 +738,11 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
               currentLanguage,
             ),
             onTap: () => _showMissedTokenRetriesDialog(),
+          ),
+          _settingTile(
+            icon: Icons.notifications_active,
+            title: "Notification Threshold",
+            onTap: () => _showNotificationThresholdDialog(),
           ),
 
           const SizedBox(height: 16),

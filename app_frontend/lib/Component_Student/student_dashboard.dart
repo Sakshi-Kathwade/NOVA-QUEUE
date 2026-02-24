@@ -43,6 +43,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   String nowServingToken = "--";
   int waitingCount = 0;
   String currentLanguage = 'english';
+  bool notificationsEnabled = true;
 
   int activePendingCount = 0; // ✅ New state for Pending Today
   int activeCompletedCount = 0; // ✅ New state for Completed Today
@@ -108,6 +109,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             studentEmail = s["email"] ?? "";
             studentRole = s["role"] ?? "Student";
             _studentProfilePictureUrl = s['profilePicture'];
+            if (s["notificationEnabled"] != null) {
+              notificationsEnabled = s["notificationEnabled"];
+            }
           });
         }
       }
@@ -338,15 +342,17 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
+            icon: Icon(
+              notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
+              color: notificationsEnabled ? Colors.greenAccent : Colors.white54,
+            ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    Translations.translate(
-                      'no_new_notifications',
-                      currentLanguage,
-                    ),
+                    notificationsEnabled 
+                        ? Translations.translate('no_new_notifications', currentLanguage)
+                        : "Notifications are currently disabled.",
                   ),
                 ),
               );
@@ -571,6 +577,26 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                         Text(
                           Translations.translate('my Token', currentLanguage),
                           textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
+                              size: 14,
+                              color: notificationsEnabled ? Colors.green : Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              notificationsEnabled ? "Notif On" : "Notif Off",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: notificationsEnabled ? Colors.green : Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

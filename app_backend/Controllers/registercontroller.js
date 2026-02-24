@@ -230,6 +230,7 @@ const getStudentProfile = async (req, res) => {
         email: student.email,
         role: student.role,
         profilePicture: student.profilePicture, // Include profile picture
+        notificationEnabled: student.notificationEnabled,
       },
     });
 
@@ -246,7 +247,7 @@ const getStudentProfile = async (req, res) => {
 const updateStudentProfile = async (req, res) => {
   try {
     const { studentID } = req.params;
-    const { name, email } = req.body; // Password changes handled by changePassword
+    const { name, email, notificationEnabled } = req.body; // Password changes handled by changePassword
 
     if (!studentID) {
       return res.status(400).json({ success: false, message: "Student ID is required" });
@@ -262,6 +263,9 @@ const updateStudentProfile = async (req, res) => {
     }
 
     student.name = name || student.name;
+    if (notificationEnabled !== undefined) {
+      student.notificationEnabled = notificationEnabled === 'true' || notificationEnabled === true;
+    }
     // Student email is typically not editable, but if it were, add validation
     // student.email = email || student.email;
 
@@ -283,6 +287,7 @@ const updateStudentProfile = async (req, res) => {
         email: student.email,
         role: student.role,
         profilePicture: student.profilePicture,
+        notificationEnabled: student.notificationEnabled,
       },
     });
   } catch (error) {

@@ -761,30 +761,34 @@ exports.nextToken = async (req, res) => {
 
     // 🔔 SEND NOTIFICATION: It's Your Turn!
     try {
+        const Admin = require("../Models/adminmodel.js");
+        const adminSettings = await Admin.findById(adminId);
+        const threshold = adminSettings ? (adminSettings.notificationThreshold || 2) : 2;
+        
         const student = await Student.findById(nextToken.studentId);
-        if (student && student.fcmToken) {
+        if (student && student.fcmToken && student.notificationEnabled !== false) {
             await notificationService.sendNotification(
                 student.fcmToken,
                 "It's Your Turn! 🚀",
-                `Please proceed to Counter ${req.body.counterId || 'Assigned Counter'} for ${queueName}.`,
+                `Please proceed to Counter ${req.body.counterId || 'Assigned Counter'} for ${queueName} immediately.`,
                 { type: "your_turn", tokenId: nextToken._id.toString() }
             );
         }
 
-        // 🔔 SEND REMINDERS: Next 2 students in line
+        // 🔔 SEND REMINDERS: Next N students in line based on Admin setting
         const upcomingTokens = await Token.find({
             queueName,
             status: "waiting",
             tokenNumber: { $gt: nextToken.tokenNumber } 
-        }).sort({ tokenNumber: 1 }).limit(2);
+        }).sort({ tokenNumber: 1 }).limit(threshold);
 
         for (const t of upcomingTokens) {
             const s = await Student.findById(t.studentId);
-            if (s && s.fcmToken) {
+            if (s && s.fcmToken && s.notificationEnabled !== false) {
                  await notificationService.sendNotification(
                     s.fcmToken,
                     "Get Ready! ⏳",
-                    `Only ${t.tokenNumber - nextToken.tokenNumber} students ahead of you. Please be near the counter.`,
+                    `You are near the queue, please come near the office. Only ${t.tokenNumber - nextToken.tokenNumber} students ahead of you.`,
                     { type: "upcoming_turn", tokenId: t._id.toString() }
                 );
             }

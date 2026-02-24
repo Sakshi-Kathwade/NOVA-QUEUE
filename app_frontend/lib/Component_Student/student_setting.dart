@@ -133,6 +133,9 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
           setState(() {
             studentEmail = student["email"] ?? "";
             studentRole = student["role"] ?? "Student";
+            if (student["notificationEnabled"] != null) {
+              notificationsEnabled = student["notificationEnabled"];
+            }
           });
         }
       }
@@ -354,17 +357,19 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
               Translations.translate('notifications', currentLanguage),
             ),
             secondary: const Icon(Icons.notifications),
-            onChanged: (value) {
+            onChanged: (value) async {
               setState(() => notificationsEnabled = value);
               if (value) {
                 NotificationService.initNotifications(widget.studentId);
-              } else {
-                // In a real app we might delete token from backend or locally unsubscribe
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Notifications Disabled (Mock)"),
-                  ),
+              }
+              try {
+                await http.put(
+                  Uri.parse("http://10.155.83.53:8000/api/student/profile/${widget.studentId}"),
+                  headers: {"Content-Type": "application/json"},
+                  body: jsonEncode({"notificationEnabled": value}),
                 );
+              } catch (e) {
+                debugPrint("Failed to update notification setting");
               }
             },
           ),

@@ -40,6 +40,10 @@ const adminSchema = new mongoose.Schema(
       type: Number,
       default: 10, // Default to 10 minutes wait before recalling
     },
+    notificationThreshold: {
+      type: Number,
+      default: 2, // Default to 2 students before notifying
+    },
   },
   { timestamps: true }
 );
