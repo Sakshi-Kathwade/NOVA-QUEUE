@@ -674,6 +674,53 @@ exports.getHeldTokens = async (req, res) => {
   }
 };
 
+const sendRealTimeQueueNotifications = async (queueName, currentToken, adminId) => {
+    try {
+        const Admin = require("../Models/adminmodel.js");
+        const adminSettings = await Admin.findById(adminId);
+        const threshold = adminSettings ? (adminSettings.notificationThreshold || 3) : 3;
+        
+        const Student = require("../Models/registermodel.js");
+        
+        // 1. Notify the one whose turn it is now
+        const student = await Student.findById(currentToken.studentId);
+        if (student && student.fcmToken && student.notificationEnabled !== false) {
+            await notificationService.sendNotification(
+                student.fcmToken,
+                "It's Your Turn! 🔔",
+                "It's your turn now.",
+                { type: "your_turn", tokenId: currentToken._id.toString() }
+            );
+        }
+
+        // 2. Notify the upcoming ones
+        const upcomingTokens = await Token.find({
+            queueName,
+            status: "waiting",
+            tokenNumber: { $gt: currentToken.tokenNumber, $lte: currentToken.tokenNumber + threshold } 
+        }).sort({ tokenNumber: 1 });
+
+        for (const t of upcomingTokens) {
+            const difference = t.tokenNumber - currentToken.tokenNumber;
+            const s = await Student.findById(t.studentId);
+            if (s && s.fcmToken && s.notificationEnabled !== false) {
+                 let messageBody = difference === 1 
+                      ? "Only 1 student is left before your turn." 
+                      : `${difference} students are left before your turn.`;
+                      
+                 await notificationService.sendNotification(
+                    s.fcmToken,
+                    "Queue Update ⏳",
+                    messageBody,
+                    { type: "upcoming_turn", tokenId: t._id.toString() }
+                );
+            }
+        }
+    } catch (e) {
+        console.error("Error sending real-time queue notifications:", e.message);
+    }
+};
+
 // ✅ NEXT TOKEN (skip hold tokens)
 // ✅ NEXT TOKEN (handle recalled tokens)
 // ✅ NEXT TOKEN (Move current to completed, pick next waiting/recalled)
@@ -710,6 +757,9 @@ exports.nextToken = async (req, res) => {
           const Student = require("../Models/registermodel.js");
           const student = await Student.findById(updated.studentId);
           const studentName = student ? student.name : "Unknown";
+
+          // Send real-time notifications
+          await sendRealTimeQueueNotifications(queueName, updated, adminId);
 
           return res.status(200).json({
             success: true,
@@ -796,44 +846,8 @@ exports.nextToken = async (req, res) => {
       ...(req.body.counterId && { counterId: req.body.counterId }) // ✅ Update counter if provided
     });
 
-    // 🔔 SEND NOTIFICATION: It's Your Turn!
-    try {
-        const Admin = require("../Models/adminmodel.js");
-        const adminSettings = await Admin.findById(adminId);
-        const threshold = adminSettings ? (adminSettings.notificationThreshold || 2) : 2;
-        
-        const student = await Student.findById(nextToken.studentId);
-        if (student && student.fcmToken && student.notificationEnabled !== false) {
-            await notificationService.sendNotification(
-                student.fcmToken,
-                "It's Your Turn! 🚀",
-                `Please proceed to Counter ${req.body.counterId || 'Assigned Counter'} for ${queueName} immediately.`,
-                { type: "your_turn", tokenId: nextToken._id.toString() }
-            );
-        }
-
-        // 🔔 SEND REMINDERS: Next N students in line based on Admin setting
-        const upcomingTokens = await Token.find({
-            queueName,
-            status: "waiting",
-            tokenNumber: { $gt: nextToken.tokenNumber } 
-        }).sort({ tokenNumber: 1 }).limit(threshold);
-
-        for (const t of upcomingTokens) {
-            const s = await Student.findById(t.studentId);
-            if (s && s.fcmToken && s.notificationEnabled !== false) {
-                 await notificationService.sendNotification(
-                    s.fcmToken,
-                    "Get Ready! ⏳",
-                    `You are near the queue, please come near the office. Only ${t.tokenNumber - nextToken.tokenNumber} students ahead of you.`,
-                    { type: "upcoming_turn", tokenId: t._id.toString() }
-                );
-            }
-        }
-
-    } catch (e) {
-        console.error("Error sending next token notifications:", e.message);
-    }
+    // Send real-time notifications
+    await sendRealTimeQueueNotifications(queueName, nextToken, adminId);
 
     // Get student name
     const Student = require("../Models/registermodel.js");
