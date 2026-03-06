@@ -40,6 +40,14 @@ const adminSchema = new mongoose.Schema(
       type: Number,
       default: 10, // Default to 10 minutes wait before recalling
     },
+    breakStartTime: {
+      type: String, // e.g. "13:00"
+      default: null,
+    },
+    breakEndTime: {
+      type: String, // e.g. "14:00"
+      default: null,
+    },
     notificationThreshold: {
       type: Number,
       default: 2, // Default to 2 students before notifying

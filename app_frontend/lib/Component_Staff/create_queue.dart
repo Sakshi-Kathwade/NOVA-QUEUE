@@ -17,6 +17,79 @@ class CreateQueueScreen extends StatefulWidget {
 class _CreateQueueScreenState extends State<CreateQueueScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  int _estimatedTime = 5;
+  TimeOfDay? _breakStartTime;
+  TimeOfDay? _breakEndTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchQueueSettings();
+  }
+
+  Future<void> _fetchQueueSettings() async {
+    if (widget.adminId == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/${widget.adminId}"),
+        headers: {"Content-Type": "application/json"},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['settings'] != null) {
+          setState(() {
+            _estimatedTime = data['settings']['estimatedServiceTimePerStudent'] ?? 5;
+            if (data['settings']['breakStartTime'] != null) {
+              final parts = data['settings']['breakStartTime'].split(':');
+              _breakStartTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+            }
+            if (data['settings']['breakEndTime'] != null) {
+              final parts = data['settings']['breakEndTime'].split(':');
+              _breakEndTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching queue settings: $e");
+    }
+  }
+
+  void _calculateMaxStudents() {
+    if (startTime != null && endTime != null) {
+      final start = _convertToDateTime(startTime!);
+      final end = _convertToDateTime(endTime!);
+
+      if (end.isAfter(start)) {
+        int breakDuration = 0;
+        if (_breakStartTime != null && _breakEndTime != null) {
+           final bStart = _convertToDateTime(_breakStartTime!);
+           final bEnd = _convertToDateTime(_breakEndTime!);
+           // Calculate overlap
+           final actualBStart = bStart.isAfter(start) ? bStart : start;
+           final actualBEnd = bEnd.isBefore(end) ? bEnd : end;
+           if (actualBEnd.isAfter(actualBStart)) {
+               breakDuration = actualBEnd.difference(actualBStart).inMinutes;
+           }
+        }
+
+        final durationInMinutes = end.difference(start).inMinutes;
+        final actualWorkingMinutes = durationInMinutes - breakDuration;
+
+        if (actualWorkingMinutes > 0 && _estimatedTime > 0) {
+          final maxTokens = (actualWorkingMinutes / _estimatedTime).floor();
+          maxStudents.text = maxTokens > 0 ? maxTokens.toString() : "0";
+        } else {
+          maxStudents.text = "0";
+        }
+      } else {
+        maxStudents.text = "0";
+      }
+    }
+  }
+
+
+
   final TextEditingController queueName = TextEditingController();
   final TextEditingController maxStudents = TextEditingController();
 
@@ -255,11 +328,12 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                   TextFormField(
                     controller: maxStudents,
                     keyboardType: TextInputType.number,
+                    readOnly: true, // Auto-calculated and shouldn't be manually edited if logic dictates
                     decoration: _inputDecoration(
-                      label: "Max Students",
+                      label: "Max Students (Auto-calculated)",
                       icon: Icons.people,
                     ),
-                    validator: (v) => v!.isEmpty ? "Required" : null,
+                    validator: (v) => v!.isEmpty || v == "0" ? "Required/Invalid" : null,
                   ),
                   const SizedBox(height: 20),
 
@@ -289,6 +363,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                                 );
                               },
                             );
+                            if (startTime != null) _calculateMaxStudents();
                             setState(() {});
                           },
                         ),
@@ -317,6 +392,7 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                                 );
                               },
                             );
+                            if (endTime != null) _calculateMaxStudents();
                             setState(() {});
                           },
                         ),

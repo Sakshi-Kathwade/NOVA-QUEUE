@@ -3,6 +3,7 @@ const Queue = require("../Models/create_queue_model");
 const QueueHistory = require("../Models/queueHistoryModel");
 const notificationService = require("../utils/notificationService"); // ✅ Import Notification Service
 const Student = require("../Models/registermodel"); 
+const { syncQueueRealTime } = require("../utils/queueRealTimeSync"); // ✅ Auto-move tokens
 
 exports.createToken = async (req, res) => {
   try {
@@ -205,18 +206,40 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
 
     // 🔹 Calculate estimated waiting time
     const Admin = require("../Models/adminmodel");
-    // Find admin associated with the token (if available) or queue
     const admin = await Admin.findById(token.adminId);
     const AVG_TIME_PER_STUDENT = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
     
-    const estimatedWaitingTime = studentsAhead * AVG_TIME_PER_STUDENT;
+    let estimatedWaitingTime = studentsAhead * AVG_TIME_PER_STUDENT;
+
+    // Add break remaining time if the queue is active and break is upcoming/ongoing
+    if (admin && admin.breakStartTime && admin.breakEndTime) {
+       let now = new Date();
+       const Queue = require("../Models/create_queue_model");
+       let queue = await Queue.findOne({queueName: token.queueName});
+       if (queue && queue.startTime) {
+           let start = new Date(queue.startTime);
+           let [bStartH, bStartM] = admin.breakStartTime.split(':').map(Number);
+           let [bEndH, bEndM] = admin.breakEndTime.split(':').map(Number);
+           let breakStart = new Date(start); breakStart.setHours(bStartH, bStartM, 0, 0);
+           let breakEnd = new Date(start); breakEnd.setHours(bEndH, bEndM, 0, 0);
+           
+           let tokenExpectedTime = new Date(now.getTime() + estimatedWaitingTime * 60000);
+
+           if (tokenExpectedTime > breakStart && now < breakEnd) {
+               let overlapStart = now > breakStart ? now : breakStart;
+               let overlapEnd = tokenExpectedTime > breakEnd ? breakEnd : tokenExpectedTime;
+               let breakTimeToAdd = (breakEnd - overlapStart) / 60000;
+               if (breakTimeToAdd > 0) estimatedWaitingTime += breakTimeToAdd;
+           }
+       }
+    }
 
     res.status(200).json({
       success: true,
       tokenNumber: token.tokenNumber,
       queueName: token.queueName,
       studentsAhead: studentsAhead,
-      estimatedWaitingTime: estimatedWaitingTime,
+      estimatedWaitingTime: Math.ceil(estimatedWaitingTime),
       status: token.status,
     });
 
@@ -379,6 +402,9 @@ exports.getCurrentToken = async (req, res) => {
       });
     }
 
+    // ✅ Sync real time token auto-movement
+    await syncQueueRealTime(queueName);
+
     // 1️⃣ Priority: Get token currently being SERVED
     let token = await Token.findOne({
       queueName,
@@ -427,6 +453,17 @@ exports.getCurrentToken = async (req, res) => {
         totalCount,
       });
     }
+
+    // 🔴 Calculate dynamic waiting time based on number of students ahead and real time limit
+    // because real time auto moves token
+    const studentsAhead = await Token.countDocuments({
+      queueName,
+      status: "waiting",
+      tokenNumber: { $lt: token.tokenNumber },
+    });
+    
+    // Add real time estimated wait processing here if needed, but since it auto-moves
+    // and frontend relies on Token model's `estimatedWaitingTime` or just time left.
 
     // ✅ Get student name from studentId
     const Student = require("../Models/registermodel");

@@ -38,6 +38,8 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
   int _missedTokenRetries = 3;
   int _missedTokenRecallWaitTimeMinutes = 10;
   int _notificationThreshold = 2;
+  TimeOfDay? _breakStartTime;
+  TimeOfDay? _breakEndTime;
 
   @override
   void initState() {
@@ -89,6 +91,20 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             _missedTokenRecallWaitTimeMinutes =
                 data['settings']['missedTokenRecallWaitTimeMinutes'] ?? 10;
             _notificationThreshold = data['settings']['notificationThreshold'] ?? 2;
+            
+            if (data['settings']['breakStartTime'] != null) {
+              final parts = data['settings']['breakStartTime'].split(':');
+              _breakStartTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+            } else {
+              _breakStartTime = null;
+            }
+
+            if (data['settings']['breakEndTime'] != null) {
+              final parts = data['settings']['breakEndTime'].split(':');
+              _breakEndTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+            } else {
+              _breakEndTime = null;
+            }
           });
         }
       }
@@ -257,6 +273,8 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
           "missedTokenRetries": _missedTokenRetries,
           "missedTokenRecallWaitTimeMinutes": _missedTokenRecallWaitTimeMinutes,
           "notificationThreshold": _notificationThreshold,
+          "breakStartTime": _breakStartTime != null ? "${_breakStartTime!.hour.toString().padLeft(2, '0')}:${_breakStartTime!.minute.toString().padLeft(2, '0')}" : null,
+          "breakEndTime": _breakEndTime != null ? "${_breakEndTime!.hour.toString().padLeft(2, '0')}:${_breakEndTime!.minute.toString().padLeft(2, '0')}" : null,
         }),
       );
       if (response.statusCode == 200) {
@@ -606,6 +624,60 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     );
   }
 
+  void _showBreakTimeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Break Time'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   ElevatedButton(
+                     onPressed: () async {
+                       final time = await showTimePicker(context: context, initialTime: _breakStartTime ?? TimeOfDay.now());
+                       if (time != null) {
+                         setStateDialog(() => _breakStartTime = time);
+                         setState(() {}); // to update parent too
+                       }
+                     },
+                     child: Text(_breakStartTime == null ? "Select Start Time" : "Start: ${_breakStartTime!.format(context)}")
+                   ),
+                   const SizedBox(height: 10),
+                   ElevatedButton(
+                     onPressed: () async {
+                       final time = await showTimePicker(context: context, initialTime: _breakEndTime ?? TimeOfDay.now());
+                       if (time != null) {
+                         setStateDialog(() => _breakEndTime = time);
+                         setState(() {});
+                       }
+                     },
+                     child: Text(_breakEndTime == null ? "Select End Time" : "End: ${_breakEndTime!.format(context)}")
+                   ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(Translations.translate('cancel', currentLanguage)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _updateQueueSettings();
+                    Navigator.pop(context);
+                  },
+                  child: Text(Translations.translate('save', currentLanguage)),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -743,6 +815,11 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
             icon: Icons.notifications_active,
             title: "Notification Threshold",
             onTap: () => _showNotificationThresholdDialog(),
+          ),
+          _settingTile(
+            icon: Icons.free_breakfast,
+            title: "Break Time",
+            onTap: () => _showBreakTimeDialog(),
           ),
 
           const SizedBox(height: 16),

@@ -76,7 +76,10 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
 
       int fetchedMax = maxStudents ?? 0;
       int estimationConfigTime = 5;
+      String? bStartStr;
+      String? bEndStr;
       bool qOpen = isQueueOpen;
+      DateTime? queueStartTime;
 
       try {
         final qRes = await http.get(
@@ -90,6 +93,7 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
               if (q['queueName'] == widget.queueName) {
                 fetchedMax = q['maxStudents'] ?? 0;
                 qOpen = q['status'] == "Active";
+                if (q['startTime'] != null) queueStartTime = DateTime.parse(q['startTime']);
                 String adminId = q['adminId'] ?? "";
                 if (adminId.isNotEmpty) {
                    final stRes = await http.get(Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/$adminId"));
@@ -97,6 +101,8 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
                       final stData = jsonDecode(stRes.body);
                       if (stData["success"] == true && stData["settings"] != null) {
                          estimationConfigTime = stData["settings"]["estimatedServiceTimePerStudent"] ?? 5;
+                         bStartStr = stData["settings"]["breakStartTime"];
+                         bEndStr = stData["settings"]["breakEndTime"];
                       }
                    }
                 }
@@ -164,6 +170,27 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
       } else {
          studentsAheadNum = totalWaiting;
          estTime = studentsAheadNum * estimationConfigTime;
+         
+         // Apply break time delay if there is no token (so fall back computed)
+         if (bStartStr != null && bEndStr != null && queueStartTime != null) {
+             try {
+                final now = DateTime.now();
+                final bSParts = bStartStr.split(':');
+                final bEParts = bEndStr.split(':');
+                DateTime breakStart = DateTime(queueStartTime.year, queueStartTime.month, queueStartTime.day, int.parse(bSParts[0]), int.parse(bSParts[1]));
+                DateTime breakEnd = DateTime(queueStartTime.year, queueStartTime.month, queueStartTime.day, int.parse(bEParts[0]), int.parse(bEParts[1]));
+                
+                DateTime tokenExpectedTime = now.add(Duration(minutes: estTime));
+                if (tokenExpectedTime.isAfter(breakStart) && now.isBefore(breakEnd)) {
+                    DateTime overlapStart = now.isAfter(breakStart) ? now : breakStart;
+                    DateTime overlapEnd = tokenExpectedTime.isAfter(breakEnd) ? breakEnd : tokenExpectedTime;
+                    int breakTimeToAdd = overlapEnd.difference(overlapStart).inMinutes;
+                    if (breakTimeToAdd > 0) estTime += breakTimeToAdd;
+                }
+             } catch (e) {
+                 // ignore parse errors
+             }
+         }
       }
 
       if (mounted) {

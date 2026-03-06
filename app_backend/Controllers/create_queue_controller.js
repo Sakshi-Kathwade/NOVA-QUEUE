@@ -3,6 +3,7 @@ const Token = require("../Models/tokenmodel");
 const QueueHistory = require("../Models/queueHistoryModel");
 const CompletedHistoryToken = require("../Models/completedHistoryTokenModel");
 const PendingHistoryToken = require("../Models/pendingHistoryTokenModel");
+const { syncQueueRealTime } = require("../utils/queueRealTimeSync");
 
     // ✅ Expire Queue Logic
 async function expireQueueIfNeeded(queueDoc) {
@@ -210,6 +211,8 @@ const getActiveQueue = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     if (activeQueue) {
+        await syncQueueRealTime(activeQueue.queueName);
+        
         // Check expiry
         const now = new Date();
         const endTime = activeQueue.endTime ? new Date(activeQueue.endTime) : null;

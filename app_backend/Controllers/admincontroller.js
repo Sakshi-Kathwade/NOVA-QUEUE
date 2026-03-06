@@ -293,7 +293,7 @@ const getAdminQueueSettings = async (req, res) => {
     }
 
     const admin = await Admin.findById(adminId).select(
-      "estimatedServiceTimePerStudent missedTokenRecalls missedTokenRetries missedTokenRecallWaitTimeMinutes notificationThreshold"
+      "estimatedServiceTimePerStudent missedTokenRecalls missedTokenRetries missedTokenRecallWaitTimeMinutes notificationThreshold breakStartTime breakEndTime"
     );
 
     if (!admin) {
@@ -311,6 +311,8 @@ const getAdminQueueSettings = async (req, res) => {
         missedTokenRetries: admin.missedTokenRetries,
         missedTokenRecallWaitTimeMinutes: admin.missedTokenRecallWaitTimeMinutes,
         notificationThreshold: admin.notificationThreshold,
+        breakStartTime: admin.breakStartTime,
+        breakEndTime: admin.breakEndTime,
       },
     });
   } catch (error) {
@@ -325,7 +327,7 @@ const getAdminQueueSettings = async (req, res) => {
 const updateAdminQueueSettings = async (req, res) => {
   try {
     const { adminId } = req.params;
-    const { estimatedServiceTimePerStudent, missedTokenRecalls, missedTokenRetries, missedTokenRecallWaitTimeMinutes, notificationThreshold } = req.body;
+    const { estimatedServiceTimePerStudent, missedTokenRecalls, missedTokenRetries, missedTokenRecallWaitTimeMinutes, notificationThreshold, breakStartTime, breakEndTime } = req.body;
 
     if (!adminId) {
       return res.status(400).json({
@@ -357,6 +359,12 @@ const updateAdminQueueSettings = async (req, res) => {
     if (notificationThreshold !== undefined) {
       admin.notificationThreshold = notificationThreshold;
     }
+    if (breakStartTime !== undefined) {
+      admin.breakStartTime = breakStartTime;
+    }
+    if (breakEndTime !== undefined) {
+      admin.breakEndTime = breakEndTime;
+    }
 
     await admin.save();
 
@@ -369,6 +377,8 @@ const updateAdminQueueSettings = async (req, res) => {
         missedTokenRetries: admin.missedTokenRetries,
         missedTokenRecallWaitTimeMinutes: admin.missedTokenRecallWaitTimeMinutes,
         notificationThreshold: admin.notificationThreshold,
+        breakStartTime: admin.breakStartTime,
+        breakEndTime: admin.breakEndTime,
       },
     });
   } catch (error) {
