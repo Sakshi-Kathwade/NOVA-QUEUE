@@ -6,7 +6,7 @@ const admin = require('firebase-admin');
 let serviceAccount;
 try {
   // Try to load from a file if it exists, otherwise use a placeholder or env vars
-  serviceAccount = require('../serviceAccountKey.json');
+  serviceAccount = require('../firebaseServiceKey.json');
 } catch (e) {
   console.log("⚠️ Firebase Service Account Key not found. Notifications will be disabled until configured.");
 }

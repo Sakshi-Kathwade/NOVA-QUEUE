@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "smart-queue-management-s-554cc",
+  "private_key_id": "4c7cdcc2fc5c47adb3b89e16c161046699ad03cc",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDEa81pqp1VT4yN\n+QviFuYsczcakPxRtMiDiE7eyItlH7qlhzRtiq0+G77ShjMmJwFZz2vzsOTCnNMN\nMz9d95zRs1m/GeTsiBZH0aJPUqzzcAdQbUVHIajVMq5ESZsjusDSPfKJEs/zVVOn\nt6bUqHN0uF7/vuDj5wHWPXd/kZjaDzEMs7MxMfWOpYmiZpL6T5xKiSreiOXhDS6B\n9qvWr7omL2XBs/1tUXhwJrZTrVXkrZeO3eVKBaZyXfKRyCYv3OJWo+feILvx3tSR\nXVI6OGwpGK4C+/A6kVVN/PuhYs30o6HwhC9MH5dLLT4K0/B1e68TmvaZA0ERV+Bl\nTyrwmpAZAgMBAAECggEAKeJvCARIzoNLDo832HtXk8zxyCl4lJe/VkT/xIPxLZwp\nedit9lnm/WJ/O3dAevdAU31moK1s6o70dlEiRxBhEVp0XcrQxRtz3Na4DMAtfy+5\nb44NgtCLpwLKpGcpvOG68lohWNd5HoNodlA0NA7Dp/UU1OZIIHEHND8hN0O922mX\nyJh59ULsaaYr7rqbZ1SU67/dIrWEwRh4oXkGOJXwURC6Xuzm5VJHmei7f9h/XeZ7\n65PG8DEcu37u9TNIKU9UOXHoBB0RLik+HSTq2+IutczSo3bexmvfltJz3rMy+ZWX\nrgM4dPYnjA40r1vQOwjxeVc0/hTRjpT4v02rXMKhrQKBgQD3w2y1OHs4F/vZUBEV\nkvx38+VfhWupPOUpTeDMN+MeKt9I+50q74EsFtF00PawUVBAVjKGYhuoAftLX4iv\nz28/5rWz+E9m87QqcaXE17FPBc4pKkvIm7MUmFE8xziipNYyt8tX8nP0vmufeG82\nVpT/ATsjNiw+N6aAnk/wb1GAXwKBgQDK826yP3rmVvrGFfJPvKb7FEtflrBTSjVv\nNpVD9RzdNqnwHqwMIq0g1thDBTt4RFLGNipTh96emqugGscRLMLloiOOTH2vR7nI\nB+JYFPeBOuTOl1ZDCbUqEtsfYzQfPm0cgLccVYmga8mlzBsOzz/aQQAkefrBy1cA\n2KFHijTihwKBgD5QbW/qw7ro9VPDunhFnrAArKjooppPEYfg6XATglDdEYmGlxHs\naP2Qw59wywqveNKlm1GHLVOFJBHh9jvZnS5iNUMNadMH6kFekgW/Bf5NBHwAAk1z\nM4gzgwMZTBpEAQeCiGcXOKjOl7zlCnuNLS4xvhDuGBSR5JOmvY5IQSRbAoGBAJxF\nS2RHCvwX12r1dSo+qhjE7LDC2CyaBIEI93BnaX1QXRP+mh2SCdsycz1P5xXZDh9/\nj6HYCev4TtSuKcAoxj2JVnV4ooJ36S6EG54VLus8DPiigRKHhA7MjBskCPtR1zRO\nTDCuEJYMyS0391G09Ya57EEqB5J3XxvQsobifYw7AoGBANgWkbva9VK9LT01HBWG\nW0QEJPBVu8GQu23Hee56RAs1ZBffTC9Fxiw8bVhA+K3nBBG9JP4exE1tQ5lktogA\nuuypcMht/VbYQ9PvMGpSpFoHVXM6tcn+FsNE78mw47M/zmJQcv3OM9+QvFqaa4dc\nk2b9DLTIl4qqcKeqOGBoFvuY\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@smart-queue-management-s-554cc.iam.gserviceaccount.com",
+  "client_id": "107698200316942904379",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40smart-queue-management-s-554cc.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
