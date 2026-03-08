@@ -134,6 +134,31 @@ exports.createToken = async (req, res) => {
     const admin = await Admin.findById(queue.adminId);
     const estimatedTimePerStudent = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
 
+    let initialEstimatedWait = studentsAhead * estimatedTimePerStudent;
+
+    if (queue.totalPausedMs && queue.totalPausedMs > 0) {
+        initialEstimatedWait += (queue.totalPausedMs / 60000);
+    }
+
+    if (admin && admin.breakStartTime && admin.breakEndTime && queue.startTime) {
+       let start = new Date(queue.startTime);
+       let [bStartH, bStartM] = admin.breakStartTime.split(':').map(Number);
+       let [bEndH, bEndM] = admin.breakEndTime.split(':').map(Number);
+       let breakStart = new Date(start); breakStart.setHours(bStartH, bStartM, 0, 0);
+       let breakEnd = new Date(start); breakEnd.setHours(bEndH, bEndM, 0, 0);
+       
+       let tokenExpectedTime = new Date(now.getTime() + initialEstimatedWait * 60000);
+
+       if (tokenExpectedTime > breakStart && now < breakEnd) {
+           let overlapStart = now > breakStart ? now : breakStart;
+           let overlapEnd = tokenExpectedTime > breakEnd ? breakEnd : tokenExpectedTime;
+           let breakTimeToAdd = (breakEnd - overlapStart) / 60000;
+           if (breakTimeToAdd > 0) initialEstimatedWait += breakTimeToAdd;
+       }
+    }
+
+    initialEstimatedWait = Math.ceil(initialEstimatedWait);
+
     // 5️⃣ Create new token
     const token = await Token.create({
       queueName,
@@ -143,7 +168,7 @@ exports.createToken = async (req, res) => {
       tokenNumber,
       serviceId: queue.serviceId, // ✅ Save Service ID from Queue
       studentsAhead, // Initially equal to number of waiting students
-      estimatedWaitingTime: studentsAhead * estimatedTimePerStudent, // ✅ Use dynamic time
+      estimatedWaitingTime: initialEstimatedWait, // ✅ Use dynamic time
       status: "waiting", // ✅ Start as waiting immediately
       adminId: queue.adminId, // ✅ Save Admin ID for reports
       serviceName: (department || queue.department) || purpose, // ✅ Snapshot service name (department is often used as service)
@@ -155,6 +180,7 @@ exports.createToken = async (req, res) => {
         if (studentData && studentData.fcmToken) {
             await notificationService.sendNotification(
                 studentData.fcmToken,
+                studentId,
                 "Token Confirmed! 🎉",
                 `Your token A-${tokenNumber} is generated for ${queueName}. Estimated wait: ${token.estimatedWaitingTime} mins.`,
                 { type: "token_created", tokenId: token._id.toString() }
@@ -212,11 +238,21 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
     let estimatedWaitingTime = studentsAhead * AVG_TIME_PER_STUDENT;
 
     // Add break remaining time if the queue is active and break is upcoming/ongoing
-    if (admin && admin.breakStartTime && admin.breakEndTime) {
-       let now = new Date();
-       const Queue = require("../Models/create_queue_model");
-       let queue = await Queue.findOne({queueName: token.queueName});
-       if (queue && queue.startTime) {
+    let now = new Date();
+    const Queue = require("../Models/create_queue_model");
+    let queue = await Queue.findOne({queueName: token.queueName});
+
+    if (queue) {
+        // Add paused time
+        let pausedMs = queue.totalPausedMs || 0;
+        if (queue.status === "Paused" && queue.lastPausedAt) {
+            pausedMs += (now - new Date(queue.lastPausedAt));
+        }
+        if (pausedMs > 0) {
+            estimatedWaitingTime += (pausedMs / 60000);
+        }
+
+        if (admin && admin.breakStartTime && admin.breakEndTime && queue.startTime) {
            let start = new Date(queue.startTime);
            let [bStartH, bStartM] = admin.breakStartTime.split(':').map(Number);
            let [bEndH, bEndM] = admin.breakEndTime.split(':').map(Number);
@@ -231,7 +267,7 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
                let breakTimeToAdd = (breakEnd - overlapStart) / 60000;
                if (breakTimeToAdd > 0) estimatedWaitingTime += breakTimeToAdd;
            }
-       }
+        }
     }
 
     res.status(200).json({
@@ -419,15 +455,6 @@ exports.getCurrentToken = async (req, res) => {
       }).sort({ tokenNumber: 1 }); // Get the first one in line
     }
 
-    // ✅ Get counts
-    const totalCount = await Token.countDocuments({ queueName });
-    
-    const completedCount = await Token.countDocuments({
-      queueName,
-      status: { $in: ["completed", "Completed"] },
-      // generatedAt: { $gte: startOfDay }, // Optional: Ensure it belongs to today's session if queue names are reused
-    });
-
     const queueDoc = await Queue.findOne({ queueName });
     const now = new Date();
     let isExpired = false;
@@ -439,6 +466,14 @@ exports.getCurrentToken = async (req, res) => {
         }
     }
 
+    // ✅ Get counts
+    const totalCount = await Token.countDocuments({ queueName });
+    
+    const completedCount = isExpired ? 0 : await Token.countDocuments({
+      queueName,
+      status: { $in: ["completed", "Completed"] },
+    });
+
     const pendingCount = isExpired ? 0 : await Token.countDocuments({
       queueName,
       status: { $in: ["waiting", "serving", "hold", "missed", "pending"] }, // ✅ Count all active tokens
@@ -447,7 +482,17 @@ exports.getCurrentToken = async (req, res) => {
     if (!token) {
       return res.status(200).json({
         success: true,
-        data: null, // No active token being served
+        data: {
+          tokenId: null,
+          tokenNumber: 0,
+          studentName: "N/A",
+          purpose: "N/A",
+          status: "none",
+          isRetried: false,
+          completedCount,
+          pendingCount,
+          totalCount,
+        }, // Return 0 as active token when empty
         completedCount,
         pendingCount, // Now returns total incomplete tokens
         totalCount,
@@ -687,29 +732,32 @@ const sendRealTimeQueueNotifications = async (queueName, currentToken, adminId) 
         if (student && student.fcmToken && student.notificationEnabled !== false) {
             await notificationService.sendNotification(
                 student.fcmToken,
+                currentToken.studentId,
                 "It's Your Turn! 🔔",
                 "It's your turn now.",
                 { type: "your_turn", tokenId: currentToken._id.toString() }
             );
         }
 
-        // 2. Notify the upcoming ones
+        // 2. Notify the upcoming ones (ALL waiting students)
         const upcomingTokens = await Token.find({
             queueName,
             status: "waiting",
-            tokenNumber: { $gt: currentToken.tokenNumber, $lte: currentToken.tokenNumber + threshold } 
+            tokenNumber: { $gt: currentToken.tokenNumber } 
         }).sort({ tokenNumber: 1 });
 
         for (const t of upcomingTokens) {
             const difference = t.tokenNumber - currentToken.tokenNumber;
             const s = await Student.findById(t.studentId);
             if (s && s.fcmToken && s.notificationEnabled !== false) {
+                 // Different message structure if they are within the nearby threshold
                  let messageBody = difference === 1 
                       ? "Only 1 student is left before your turn." 
                       : `${difference} students are left before your turn.`;
                       
                  await notificationService.sendNotification(
                     s.fcmToken,
+                    t.studentId,
                     "Queue Update ⏳",
                     messageBody,
                     { type: "upcoming_turn", tokenId: t._id.toString() }
@@ -832,9 +880,16 @@ exports.nextToken = async (req, res) => {
 
 
     if (!nextToken) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         message: "No more tokens in queue",
+        data: {
+          tokenId: null,
+          tokenNumber: 0,
+          studentName: "N/A",
+          purpose: "N/A",
+          status: "none",
+        }
       });
     }
 
@@ -998,17 +1053,6 @@ exports.getStudentHistory = async (req, res) => {
   }
 };
 
-// ✅ GET COMPLETED TOKENS TODAY WITH HOURLY BREAKDOWN
-exports.getCompletedToday = async (req, res) => {
-  try {
-    const { queueName } = req.params;
-
-    if (!queueName) {
-      return res.status(400).json({
-        success: false,
-        message: "queueName is required",
-      });
-    }
 // ✅ GET PENDING TOKENS (Unserved students after queue expiry)
 exports.getPendingTokens = async (req, res) => {
   try {
@@ -1066,6 +1110,41 @@ exports.getPendingTokens = async (req, res) => {
     });
   }
 };
+
+// ✅ GET COMPLETED TOKENS TODAY WITH HOURLY BREAKDOWN
+exports.getCompletedToday = async (req, res) => {
+  try {
+    const { queueName } = req.params;
+
+    if (!queueName) {
+      return res.status(400).json({
+        success: false,
+        message: "queueName is required",
+      });
+    }
+
+    const queueDoc = await Queue.findOne({ queueName });
+    const now = new Date();
+    let isExpired = false;
+    if (!queueDoc) {
+        isExpired = true;
+    } else if (queueDoc.endTime) {
+        if (now > queueDoc.endTime) {
+            isExpired = true;
+        }
+    }
+
+    if (isExpired) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            totalCompleted: 0,
+            hourlyBreakdown: [],
+            completedTokens: [],
+          },
+        });
+    }
+
     // Get today's date range (start and end of day)
     const today = new Date();
     today.setHours(0, 0, 0, 0);

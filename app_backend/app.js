@@ -67,7 +67,8 @@ app.use('/api',currenttoken);
 const remainingtoken = require('./Routers/tokenrouter');
 app.use('/api',remainingtoken); 
 
-
+const notificationRouter = require('./Routers/notificationRouter');
+app.use('/api', notificationRouter);
 
 
 // Start server

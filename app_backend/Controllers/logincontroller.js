@@ -1,10 +1,11 @@
 const User = require('../Models/registermodel');
 const Admin = require('../Models/adminmodel'); // Import Admin model
+const notificationService = require('../utils/notificationService');
 
 // LOGIN USER (STUDENT / ADMIN)
 const loginStudent = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, fcmToken } = req.body;
 
     // 1️⃣ Validation
     if (!email || !password) {
@@ -31,7 +32,23 @@ const loginStudent = async (req, res) => {
       });
     }
 
-    // 4️⃣ SUCCESS RESPONSE (IMPORTANT)
+    // 4️⃣ Update FCM Token if provided and send notification
+    if (fcmToken) {
+        user.fcmToken = fcmToken;
+        await user.save();
+        
+        if (user.role === 'student') {
+             await notificationService.sendNotification(
+                fcmToken,
+                user._id,
+                "Welcome to Smart Queue Management",
+                "🔔 Notifications are active. You will receive queue alerts.",
+                { type: "login_alert" }
+            );
+        }
+    }
+
+    // 5️⃣ SUCCESS RESPONSE (IMPORTANT)
     return res.status(200).json({
       success: true,
       message: "Login successful",

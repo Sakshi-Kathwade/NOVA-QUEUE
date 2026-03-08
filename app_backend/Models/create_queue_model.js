@@ -10,7 +10,9 @@ const QueueSchema = new mongoose.Schema({
    status: {
       type: String,
       enum: ["Active", "Inactive", "Paused"],
-      default: "Active", }
+      default: "Active", },
+  lastPausedAt: { type: Date, default: null },
+  totalPausedMs: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Queue", QueueSchema);

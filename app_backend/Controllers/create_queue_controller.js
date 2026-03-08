@@ -308,7 +308,7 @@ const getAllQueues = async (req, res) => {
 const updateQueueStatus = async (req, res) => {
   try {
     const { id } = req.params;        // queue id
-    const { status } = req.body;      // Active / Inactive
+    const { status } = req.body;      // Active / Inactive / Paused
 
     // 🔹 Validation
     if (!status) {
@@ -318,21 +318,30 @@ const updateQueueStatus = async (req, res) => {
       });
     }
 
-
-
-    // 🔹 Update status
-    const updatedQueue = await Queue.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true } // updated data return
-    );
-
-    if (!updatedQueue) {
+    const queue = await Queue.findById(id);
+    if (!queue) {
       return res.status(404).json({
         success: false,
         message: "Queue not found",
       });
     }
+
+    let updateData = { status };
+
+    if (status === "Paused" && queue.status !== "Paused") {
+      updateData.lastPausedAt = new Date();
+    } else if (status === "Active" && queue.status === "Paused" && queue.lastPausedAt) {
+      const pausedDurationMs = new Date() - queue.lastPausedAt;
+      updateData.totalPausedMs = (queue.totalPausedMs || 0) + pausedDurationMs;
+      updateData.lastPausedAt = null;
+    }
+
+    // 🔹 Update status
+    const updatedQueue = await Queue.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true } // updated data return
+    );
 
     res.status(200).json({
       success: true,

@@ -413,6 +413,18 @@ const updateFcmToken = async (req, res) => {
     await user.save();
 
     console.log(`✅ FCM Token updated for user ${user.name}`);
+    
+    // Trigger welcome/login active notification when mobile app registers FCM Token
+    const notificationService = require('../utils/notificationService');
+    if (fcmToken) {
+         await notificationService.sendNotification(
+            fcmToken,
+            user._id,
+            "Welcome to Smart Queue Management",
+            "🔔 Notifications are active. You will receive queue alerts.",
+            { type: "login_alert" }
+        );
+    }
 
     return res.status(200).json({ success: true, message: "FCM Token updated" });
   } catch (error) {

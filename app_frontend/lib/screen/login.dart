@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:app_frontend/Component_Staff/admin_dashboard.dart';
 import 'package:app_frontend/Component_Staff/queue_status.dart';
 import 'package:app_frontend/Component_Student/student_dashboard.dart';
@@ -82,6 +83,13 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = true);
 
     try {
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (e) {
+        print("Failed to get FCM token during login: $e");
+      }
+
       // 1️⃣ Try ADMIN login first
       http.Response response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}/adminLogin"),
@@ -89,6 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
         body: jsonEncode({
           "email": emailController.text.trim(),
           "password": passwordController.text,
+          if (fcmToken != null) "fcmToken": fcmToken,
         }),
       );
 
@@ -100,6 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
           body: jsonEncode({
             "email": emailController.text.trim(),
             "password": passwordController.text,
+            if (fcmToken != null) "fcmToken": fcmToken,
           }),
         );
       }

@@ -22,14 +22,30 @@ if (serviceAccount) {
   }
 }
 
+const Notification = require('../Models/notificationModel');
+
 /**
  * Send a push notification to a specific device token
  * @param {string} fcmToken - The device token
+ * @param {string} userId - The unique identifier of the user (Student/Admin)
  * @param {string} title - Notification title
  * @param {string} body - Notification body
  * @param {object} data - Optional data payload
  */
-exports.sendNotification = async (fcmToken, title, body, data = {}) => {
+exports.sendNotification = async (fcmToken, userId, title, body, data = {}) => {
+  if (userId) {
+     try {
+       await Notification.create({
+         userId: userId,
+         title: title,
+         body: body,
+         data: data
+       });
+     } catch (dbErr) {
+       console.error("❌ Error saving notification to DB:", dbErr.message);
+     }
+  }
+
   if (!serviceAccount || !fcmToken) {
      if(!fcmToken) console.log("⚠️ No FCM Token provided for notification");
      return;
