@@ -58,6 +58,13 @@ exports.sendNotification = async (fcmToken, userId, title, body, data = {}) => {
     },
     data: data, // Custom data
     token: fcmToken,
+    android: {
+      priority: 'high', // MUST BE HIGH FOR POP-UP!
+      notification: {
+        sound: 'default', // Requires a sound to trigger the Pop-Up overlay
+        channelId: 'high_importance_channel' // MUST match the Flutter channel!
+      }
+    }
   };
 
   try {

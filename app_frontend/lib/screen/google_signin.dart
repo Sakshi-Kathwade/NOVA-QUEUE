@@ -4,23 +4,20 @@ import 'package:flutter/foundation.dart'; // for kIsWeb
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId:
+        "1092004219946-a10iuqe384o69jpcah5hbe7t56j00s02.apps.googleusercontent.com",
+    clientId: kIsWeb ? "1092004219946-a10iuqe384o69jpcah5hbe7t56j00s02.apps.googleusercontent.com" : null,
+  );
 
   Future<User?> signInWithGoogle() async {
     try {
       GoogleSignInAccount? googleUser;
 
-      // 🔹 For Web, pass clientId
-      if (kIsWeb) {
-        googleUser = await GoogleSignIn(
-          clientId:
-              "924772821592-agif6fk5vbs4qrsuvjkmlk23rbn5fa5h.apps.googleusercontent.com",
-        ).signIn();
-      } else {
-        // Sign out any existing Google account first to ensure fresh sign-in
-        await _googleSignIn.signOut();
-        googleUser = await _googleSignIn.signIn();
-      }
+      // Sign out any existing Google account first to ensure fresh sign-in
+      await _googleSignIn.signOut();
+      googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
         // User canceled the sign-in

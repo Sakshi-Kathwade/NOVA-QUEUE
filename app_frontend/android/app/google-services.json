@@ -1,20 +1,20 @@
 {
   "project_info": {
-    "project_number": "924772821592",
-    "project_id": "smartqueuemanagemnt",
-    "storage_bucket": "smartqueuemanagemnt.firebasestorage.app"
+    "project_number": "1092004219946",
+    "project_id": "smart-queue-management-app",
+    "storage_bucket": "smart-queue-management-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:924772821592:android:4cd3750f663b97ed88f82d",
+        "mobilesdk_app_id": "1:1092004219946:android:4a724f6755563abc4e0753",
         "android_client_info": {
           "package_name": "com.example.app_frontend"
         }
       },
       "oauth_client": [
         {
-          "client_id": "924772821592-ugls8p2bssu2h9jq7e2vvs2qrtghdacf.apps.googleusercontent.com",
+          "client_id": "1092004219946-c234naen981v9tadvi23itgt6jreg9fh.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.app_frontend",
@@ -22,20 +22,20 @@
           }
         },
         {
-          "client_id": "924772821592-agif6fk5vbs4qrsuvjkmlk23rbn5fa5h.apps.googleusercontent.com",
+          "client_id": "1092004219946-a10iuqe384o69jpcah5hbe7t56j00s02.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBLOr8XON3i-lMJYkDQH79XWgfb5jxJDOU"
+          "current_key": "AIzaSyB9A2Aju7NQXDVYXrzOvIjlQ-z8fAYrt-U"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "924772821592-agif6fk5vbs4qrsuvjkmlk23rbn5fa5h.apps.googleusercontent.com",
+              "client_id": "1092004219946-a10iuqe384o69jpcah5hbe7t56j00s02.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

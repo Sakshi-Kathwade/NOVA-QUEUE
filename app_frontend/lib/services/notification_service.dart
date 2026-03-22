@@ -7,20 +7,19 @@ import 'dart:io';
 import '../services/api_config.dart';
 
 // Top-level function for background handling
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("Handling a background message: ${message.messageId}");
 }
 
 class NotificationService {
-  static final FirebaseMessaging _firebaseMessaging =
-      FirebaseMessaging.instance;
+  static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  // Initialize
   static Future<void> initNotifications(String userId) async {
-    // 1. Request Permissions
+    // 1. Request Permission (For Android 13+ & iOS)
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,
       announcement: false,
@@ -38,14 +37,28 @@ class NotificationService {
       return;
     }
 
-    // 2. Setup Local Notifications
+    // 2. Define the High Importance Channel for Pop-Ups
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel', // id (MUST MATCH THE ONE IN ANDROID MANIFEST)
+      'High Importance Notifications', // title
+      description: 'This channel is used for pop-up notifications.',
+      importance: Importance.max, // MAXIMUM importance makes it Pop-Up!
+    );
+
+    // Create the channel on the device
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    // 3. Setup Local Notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
 
-    // ✅ FIXED initialize() — named parameters only
+    // Initialize local notifications
     await _localNotifications.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
@@ -53,7 +66,7 @@ class NotificationService {
       },
     );
 
-    // 3. Get FCM Token
+    // 4. Get FCM Token and save it to backend
     try {
       String? token = await _firebaseMessaging.getToken();
 
@@ -62,7 +75,7 @@ class NotificationService {
         await _sendTokenToBackend(userId, token);
       }
 
-      // 4. Listen for Token Refresh
+      // Listen for Token Refresh
       _firebaseMessaging.onTokenRefresh.listen((newToken) {
         _sendTokenToBackend(userId, newToken);
       });
@@ -70,17 +83,30 @@ class NotificationService {
       print("Error getting FCM token: $e");
     }
 
-    // 5. Handle Foreground Messages
+    // 5. FOREGROUND: Manually show Notification Pop-Up
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Foreground message received');
-      print('Message data: ${message.data}');
+      print('Foreground message received: ${message.data}');
 
       if (message.notification != null) {
-        _showLocalNotification(message);
+        _localNotifications.show(
+          id: message.notification.hashCode,
+          title: message.notification!.title,
+          body: message.notification!.body,
+          notificationDetails: NotificationDetails(
+            android: AndroidNotificationDetails(
+              channel.id,
+              channel.name,
+              channelDescription: channel.description,
+              importance: Importance.max, // Force Pop Up
+              priority: Priority.high,    // Force Head-Up
+              icon: '@mipmap/ic_launcher',
+            ),
+          ),
+        );
       }
     });
 
-    // 6. Background Handler
+    // 6. BACKGROUND: Register Background Handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   }
 
@@ -101,32 +127,5 @@ class NotificationService {
     } catch (e) {
       print("Error sending FCM token: $e");
     }
-  }
-
-  // Show Local Notification
-  static Future<void> _showLocalNotification(RemoteMessage message) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          channelDescription:
-              'This channel is used for important notifications.',
-          importance: Importance.max,
-          priority: Priority.high,
-          showWhen: false,
-        );
-
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
-
-    // ✅ FIXED show() — named parameters
-    await _localNotifications.show(
-      id: 0,
-      title: message.notification?.title,
-      body: message.notification?.body,
-      notificationDetails: platformChannelSpecifics,
-      payload: 'item x',
-    );
   }
 }

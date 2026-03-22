@@ -9,6 +9,8 @@ import '../services/api_config.dart';
 import 'register.dart';
 import 'forgot_password.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -23,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool hidePassword = true;
   bool isLoading = false;
+
 
   @override
   void dispose() {
@@ -77,17 +80,20 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+
+
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
 
     try {
+      // 0️⃣ Fetch FCM Token to ensure login notifications work
       String? fcmToken;
       try {
         fcmToken = await FirebaseMessaging.instance.getToken();
       } catch (e) {
-        print("Failed to get FCM token during login: $e");
+        print("Failed to get FCM token: $e");
       }
 
       // 1️⃣ Try ADMIN login first
@@ -120,6 +126,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200 && data['success'] == true) {
         String role = data['role'];
+        final userId = data['userId'] ?? data['adminId'];
+
+
 
         showPopup(
           title: "Login Successful 🎉",
@@ -285,7 +294,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                           ),
                         ),
+                        
                         const SizedBox(height: 16),
+
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

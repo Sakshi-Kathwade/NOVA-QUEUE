@@ -4,6 +4,8 @@ import 'firebase_options.dart';
 import 'Component_Staff/theme_pref.dart';
 import 'screen/home.dart';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 // 🌙 Global Dark Mode notifier
 ValueNotifier<bool> isDarkMode = ValueNotifier(false);
 
@@ -15,6 +17,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // Removed automatic permission prompt
   } catch (e) {
     debugPrint("Firebase initialization note: $e");
   }

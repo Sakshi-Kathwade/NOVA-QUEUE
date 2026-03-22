@@ -63,6 +63,7 @@ const addstudent = async (req, res) => {
       confirmPassword, // (later hash it)
       role,
       profilePicture: req.file ? `/uploads/student_profiles/${req.file.filename}` : null,
+      fcmToken: req.body.fcmToken || null,
     });
 
     await user.save();
@@ -326,7 +327,7 @@ const uploadStudentProfilePicture = async (req, res) => {
 // 🔐 GOOGLE OAUTH REGISTRATION
 const registerWithGoogle = async (req, res) => {
   try {
-    const { name, email, role } = req.body;
+    const { name, email, role, fcmToken } = req.body;
 
     // 1️⃣ Check required fields
     if (!name || !email || !role) {
@@ -338,6 +339,11 @@ const registerWithGoogle = async (req, res) => {
     // 2️⃣ Check existing user
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      if (fcmToken && existingUser.fcmToken !== fcmToken) {
+        existingUser.fcmToken = fcmToken;
+        await existingUser.save();
+      }
+      
       // If user exists, return success (they can login)
       return res.status(200).json({
         message: "User already exists. Please login.",
@@ -359,6 +365,7 @@ const registerWithGoogle = async (req, res) => {
       confirmPassword: "GOOGLE_OAUTH_USER", // Placeholder for Google OAuth users
       role: role.toLowerCase(),
       isGoogleAuth: true,
+      fcmToken: fcmToken || null,
     });
 
     await user.save();
@@ -417,13 +424,15 @@ const updateFcmToken = async (req, res) => {
     // Trigger welcome/login active notification when mobile app registers FCM Token
     const notificationService = require('../utils/notificationService');
     if (fcmToken) {
-         await notificationService.sendNotification(
-            fcmToken,
-            user._id,
-            "Welcome to Smart Queue Management",
-            "🔔 Notifications are active. You will receive queue alerts.",
-            { type: "login_alert" }
-        );
+         setTimeout(async () => {
+             await notificationService.sendNotification(
+                fcmToken,
+                user._id,
+                "Welcome to Smart Queue Management",
+                "🔔 Notifications are active. You will receive queue alerts.",
+                { type: "login_alert" }
+            );
+         }, 3000); // 3 second delay allows the app to load dashboard and start listening
     }
 
     return res.status(200).json({ success: true, message: "FCM Token updated" });

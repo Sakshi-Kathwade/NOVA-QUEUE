@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'google_signin.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -121,6 +122,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => isLoading = false);
 
       if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        
+
+
         showPopup(
           title: "Registration Successful 🎉",
           message:
@@ -202,6 +207,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
+        
+
+
         // Check if user already exists
         if (data["alreadyExists"] == true) {
           showPopup(
