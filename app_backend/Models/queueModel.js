@@ -14,7 +14,7 @@ const queueSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Active', 'Inactive'],
+    enum: ['Active', 'Inactive', 'Closed', 'Paused', 'Expired'],
     default: 'Inactive',
   },
   currentTurn: {

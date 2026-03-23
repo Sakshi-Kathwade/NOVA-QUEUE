@@ -117,10 +117,10 @@ exports.createToken = async (req, res) => {
       });
     }
 
-    // 3️⃣ Count students ahead in SAME queue
+    // 3️⃣ Count ALL active students ahead in SAME queue (including serving/hold) to correctly calculate wait
     const studentsAhead = await Token.countDocuments({
       queueName,
-      status: "waiting",
+      status: { $in: ["waiting", "serving", "hold"] },
     });
 
     // 4️⃣ Generate next token number
@@ -134,7 +134,8 @@ exports.createToken = async (req, res) => {
     const admin = await Admin.findById(queue.adminId);
     const estimatedTimePerStudent = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
 
-    let initialEstimatedWait = studentsAhead * estimatedTimePerStudent;
+    // First student (0 ahead) gets assigned the set estimating time (e.g. 5). Subsequent students get (ahead + 1) * time.
+    let initialEstimatedWait = (studentsAhead + 1) * estimatedTimePerStudent;
 
     if (queue.totalPausedMs && queue.totalPausedMs > 0) {
         initialEstimatedWait += (queue.totalPausedMs / 60000);
@@ -223,10 +224,10 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
       });
     }
 
-    // 🔹 Count students ahead in SAME queue
+    // 🔹 Count BOTH waiting, serving, and hold students ahead in SAME queue
     const studentsAhead = await Token.countDocuments({
       queueName: queueName,
-      status: "waiting",
+      status: { $in: ["waiting", "serving", "hold"] },
       tokenNumber: { $lt: token.tokenNumber },
     });
 
@@ -235,7 +236,8 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
     const admin = await Admin.findById(token.adminId);
     const AVG_TIME_PER_STUDENT = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
     
-    let estimatedWaitingTime = studentsAhead * AVG_TIME_PER_STUDENT;
+    // Assign estimated waiting time adding their own service time (so the first student shows > 0 wait)
+    let estimatedWaitingTime = (studentsAhead + 1) * AVG_TIME_PER_STUDENT;
 
     // Add break remaining time if the queue is active and break is upcoming/ongoing
     let now = new Date();
@@ -734,7 +736,7 @@ const sendRealTimeQueueNotifications = async (queueName, currentToken, adminId) 
                 student.fcmToken,
                 currentToken.studentId,
                 "It's Your Turn! 🔔",
-                "It's your turn now.",
+                "It's your turn now, Please go to the office.",
                 { type: "your_turn", tokenId: currentToken._id.toString() }
             );
         }
@@ -748,20 +750,31 @@ const sendRealTimeQueueNotifications = async (queueName, currentToken, adminId) 
 
         for (const t of upcomingTokens) {
             const difference = t.tokenNumber - currentToken.tokenNumber;
+            
+            // Only notify if difference is 1, 2, or 3 completely matching user request
+            if (difference > 3) continue;
+
             const s = await Student.findById(t.studentId);
             if (s && s.fcmToken && s.notificationEnabled !== false) {
-                 // Different message structure if they are within the nearby threshold
-                 let messageBody = difference === 1 
-                      ? "Only 1 student is left before your turn." 
-                      : `${difference} students are left before your turn.`;
-                      
-                 await notificationService.sendNotification(
-                    s.fcmToken,
-                    t.studentId,
-                    "Queue Update ⏳",
-                    messageBody,
-                    { type: "upcoming_turn", tokenId: t._id.toString() }
-                );
+                 let messageBody = "";
+                 
+                 if (difference === 3) {
+                     messageBody = "We are near the current serving and the student ahead three from you.";
+                 } else if (difference === 2) {
+                     messageBody = "Student ahead two from you.";
+                 } else if (difference === 1) {
+                     messageBody = "Student ahead one from you, please go to the office.";
+                 }
+
+                 if (messageBody !== "") {
+                     await notificationService.sendNotification(
+                        s.fcmToken,
+                        t.studentId,
+                        "Queue Update ⏳",
+                        messageBody,
+                        { type: "upcoming_turn", tokenId: t._id.toString() }
+                    );
+                 }
             }
         }
     } catch (e) {

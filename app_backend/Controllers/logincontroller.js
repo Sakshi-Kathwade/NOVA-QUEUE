@@ -89,11 +89,27 @@ const forgotPassword = async (req, res) => {
       return res.status(404).json({ success: false, message: "Email not found" });
     }
 
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Send the OTP via Push Notification if FCM Token exists
+    if (user.fcmToken) {
+      const notificationService = require('../utils/notificationService');
+      await notificationService.sendNotification(
+        user.fcmToken,
+        user._id,
+        "Password Reset OTP 🔐",
+        `Your 6-digit OTP for resetting your password is: ${otp}`,
+        { type: "otp_alert", otp: otp }
+      );
+    }
+
     return res.status(200).json({ 
       success: true, 
-      message: "Email verified", 
+      message: "Email verified and OTP sent", 
       studentId: user._id,
-      name: user.name
+      name: user.name,
+      otp: otp // Return OTP for frontend validation
     });
 
   } catch (error) {

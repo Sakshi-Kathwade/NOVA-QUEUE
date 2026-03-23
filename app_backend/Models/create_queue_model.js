@@ -9,7 +9,7 @@ const QueueSchema = new mongoose.Schema({
   maxStudents: { type: Number, required: true },
    status: {
       type: String,
-      enum: ["Active", "Inactive", "Paused"],
+      enum: ["Active", "Inactive", "Paused", "Closed", "Expired"],
       default: "Active", },
   lastPausedAt: { type: Date, default: null },
   totalPausedMs: { type: Number, default: 0 }

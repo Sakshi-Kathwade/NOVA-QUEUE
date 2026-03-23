@@ -16,9 +16,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _isEmailVerified = false;
+  bool _isOtpVerified = false;
   bool _isLoading = false;
   String? _studentId;
   String? _studentName;
+  String? _sentOtp;
+  final _otpController = TextEditingController();
 
   // 1. Verify Email
   Future<void> _verifyEmail() async {
@@ -44,6 +47,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           _isEmailVerified = true;
           _studentId = data['studentId'];
           _studentName = data['name'];
+          _sentOtp = data['otp'];
         });
         _showSnack("Email verified successfully", Colors.green);
       } else {
@@ -53,6 +57,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _showSnack("Server Error: $e", Colors.red);
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  // Verify OTP locally
+  void _verifyOtp() {
+    final enteredOtp = _otpController.text.trim();
+    if (enteredOtp.isEmpty) {
+      _showSnack("Please enter the 6-digit OTP", Colors.red);
+      return;
+    }
+
+    if (enteredOtp == _sentOtp) {
+      setState(() {
+        _isOtpVerified = true;
+      });
+      _showSnack("OTP Verified Successfully", Colors.green);
+    } else {
+      _showSnack("Invalid OTP, please try again", Colors.red);
     }
   }
 
@@ -190,6 +212,45 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           "Verify Email",
                           style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
+                ),
+              ),
+            ]
+            // OTP VERIFICATION STEP
+            else if (!_isOtpVerified) ...[
+              const Text(
+                "An OTP has been sent to your registered mobile notification.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 30),
+              TextField(
+                controller: _otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: InputDecoration(
+                  labelText: "Enter 6-digit OTP",
+                  prefixIcon: const Icon(Icons.password),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _verifyOtp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepOrange,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "Verify OTP",
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                 ),
               ),
             ]
