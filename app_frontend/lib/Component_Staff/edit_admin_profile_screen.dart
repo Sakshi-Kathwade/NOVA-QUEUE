@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../services/translations.dart';
 import 'package:path/path.dart' as path;
+import '../services/api_config.dart';
+
 import 'package:flutter/foundation.dart' show kIsWeb; // Add this import
 
 class EditAdminProfileScreen extends StatefulWidget {
@@ -48,7 +50,7 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://10.155.83.53:8000/api/admin/profile/${widget.adminId}"),
+        Uri.parse("${ApiConfig.baseUrl}/admin/profile/${widget.adminId}"),
         headers: {"Content-Type": "application/json"},
       );
 
@@ -94,7 +96,7 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
     try {
       var request = http.MultipartRequest(
         'PUT',
-        Uri.parse("http://10.155.83.53:8000/api/admin/profile/${widget.adminId}"),
+        Uri.parse("${ApiConfig.baseUrl}/admin/profile/${widget.adminId}"),
       );
 
       request.headers["Content-Type"] = "application/json";
@@ -183,7 +185,7 @@ class _EditAdminProfileScreenState extends State<EditAdminProfileScreen> {
       }
     } else if (_profilePictureUrl != null && _profilePictureUrl!.isNotEmpty) {
       backgroundImage = NetworkImage(
-        "http://10.155.83.53:8000" + _profilePictureUrl!,
+        "${ApiConfig.baseUrl.replaceAll('/api', '')}" + _profilePictureUrl!,
       );
     }
 

@@ -86,7 +86,7 @@ class _CompletedTodayScreenState extends State<CompletedTodayScreen> {
 
     try {
       final url = Uri.parse(
-        "http://10.155.83.53:8000/api/completedtoday/${widget.queueName}",
+        "${ApiConfig.baseUrl}/completedtoday/${Uri.encodeComponent(widget.queueName!)}",
       );
 
       final response = await http.get(url);

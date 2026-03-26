@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/Projects/Smart_Queue_Management_Application/app_frontend/windows/flutter"
+    "cmake.sourceDirectory": "D:/Projects/Smart_Queue_Management_Application/app_frontend/windows/flutter",
+    "java.configuration.updateBuildConfiguration": "automatic"
 }

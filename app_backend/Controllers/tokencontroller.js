@@ -134,8 +134,8 @@ exports.createToken = async (req, res) => {
     const admin = await Admin.findById(queue.adminId);
     const estimatedTimePerStudent = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
 
-    // First student (0 ahead) gets assigned the set estimating time (e.g. 5). Subsequent students get (ahead + 1) * time.
-    let initialEstimatedWait = (studentsAhead + 1) * estimatedTimePerStudent;
+    // First student (0 ahead) gets assigned the set estimating time 0. Subsequent students get their proper wait time.
+    let initialEstimatedWait = studentsAhead === 0 ? 0 : studentsAhead * estimatedTimePerStudent;
 
     if (queue.totalPausedMs && queue.totalPausedMs > 0) {
         initialEstimatedWait += (queue.totalPausedMs / 60000);
@@ -236,8 +236,8 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
     const admin = await Admin.findById(token.adminId);
     const AVG_TIME_PER_STUDENT = admin ? (admin.estimatedServiceTimePerStudent || 5) : 5;
     
-    // Assign estimated waiting time adding their own service time (so the first student shows > 0 wait)
-    let estimatedWaitingTime = (studentsAhead + 1) * AVG_TIME_PER_STUDENT;
+    // Assign estimated waiting time adding their own service time (0 for first student)
+    let estimatedWaitingTime = studentsAhead === 0 ? 0 : studentsAhead * AVG_TIME_PER_STUDENT;
 
     // Add break remaining time if the queue is active and break is upcoming/ongoing
     let now = new Date();
@@ -741,29 +741,26 @@ const sendRealTimeQueueNotifications = async (queueName, currentToken, adminId) 
             );
         }
 
-        // 2. Notify the upcoming ones (ALL waiting students)
+        // 2. Notify the upcoming ones (ONLY next 5 users to ensure max efficiency and no "all users" iteration delay)
         const upcomingTokens = await Token.find({
             queueName,
             status: "waiting",
-            tokenNumber: { $gt: currentToken.tokenNumber } 
+            tokenNumber: { $gt: currentToken.tokenNumber, $lte: currentToken.tokenNumber + 5 } 
         }).sort({ tokenNumber: 1 });
 
         for (const t of upcomingTokens) {
             const difference = t.tokenNumber - currentToken.tokenNumber;
             
-            // Only notify if difference is 1, 2, or 3 completely matching user request
-            if (difference > 3) continue;
-
             const s = await Student.findById(t.studentId);
             if (s && s.fcmToken && s.notificationEnabled !== false) {
                  let messageBody = "";
                  
-                 if (difference === 3) {
-                     messageBody = "We are near the current serving and the student ahead three from you.";
+                 if (difference === 5 || difference === 4 || difference === 3) {
+                     messageBody = `${difference} students ahead of you`;
                  } else if (difference === 2) {
-                     messageBody = "Student ahead two from you.";
+                     messageBody = "2 students ahead of you";
                  } else if (difference === 1) {
-                     messageBody = "Student ahead one from you, please go to the office.";
+                     messageBody = "you are next, get ready";
                  }
 
                  if (messageBody !== "") {

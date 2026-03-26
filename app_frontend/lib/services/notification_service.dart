@@ -13,7 +13,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class NotificationService {
-  static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  static final FirebaseMessaging _firebaseMessaging =
+      FirebaseMessaging.instance;
 
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -48,7 +49,8 @@ class NotificationService {
     // Create the channel on the device
     await _localNotifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
     // 3. Setup Local Notifications
@@ -98,7 +100,7 @@ class NotificationService {
               channel.name,
               channelDescription: channel.description,
               importance: Importance.max, // Force Pop Up
-              priority: Priority.high,    // Force Head-Up
+              priority: Priority.high, // Force Head-Up
               icon: '@mipmap/ic_launcher',
             ),
           ),
@@ -108,6 +110,32 @@ class NotificationService {
 
     // 6. BACKGROUND: Register Background Handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  // Show Local Notification
+  static Future<void> showLocalNotification(String title, String body) async {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      description: 'This channel is used for pop-up notifications.',
+      importance: Importance.max,
+    );
+
+    await _localNotifications.show(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000 % 100000,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          channel.id,
+          channel.name,
+          channelDescription: channel.description,
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+      ),
+    );
   }
 
   // Send Token to Backend

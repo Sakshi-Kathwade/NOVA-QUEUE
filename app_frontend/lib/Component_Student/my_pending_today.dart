@@ -47,9 +47,7 @@ class _MyPendingTodayState extends State<MyPendingToday> {
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
-        Uri.parse(
-          "${ApiConfig.baseUrl}/student/pending/${widget.studentId}",
-        ),
+        Uri.parse("${ApiConfig.baseUrl}/student/pending/${widget.studentId}"),
       );
 
       if (response.statusCode == 200) {

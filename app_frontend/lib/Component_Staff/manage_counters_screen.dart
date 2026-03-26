@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../services/translations.dart';
+import '../services/api_config.dart';
+
 
 class ManageCountersScreen extends StatefulWidget {
   final String? adminId;
@@ -51,7 +53,7 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://10.155.83.53:8000/api/admin/settings/counters/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/settings/counters/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
       );
@@ -106,7 +108,7 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
     try {
       final response = await http.post(
         Uri.parse(
-          "http://10.155.83.53:8000/api/admin/settings/counters/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/settings/counters/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"counterName": counterName}),
@@ -156,7 +158,7 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
     try {
       final response = await http.put(
         Uri.parse(
-          "http://10.155.83.53:8000/api/admin/settings/counters/$counterId/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/settings/counters/$counterId/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"counterName": counterName}),
@@ -228,7 +230,7 @@ class _ManageCountersScreenState extends State<ManageCountersScreen> {
       try {
         final response = await http.delete(
           Uri.parse(
-            "http://10.155.83.53:8000/api/admin/settings/counters/$counterId/${widget.adminId}",
+            "${ApiConfig.baseUrl}/admin/settings/counters/$counterId/${widget.adminId}",
           ),
           headers: {"Content-Type": "application/json"},
         );

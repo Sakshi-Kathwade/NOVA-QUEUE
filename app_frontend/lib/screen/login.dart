@@ -26,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool hidePassword = true;
   bool isLoading = false;
 
-
   @override
   void dispose() {
     emailController.dispose();
@@ -80,8 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-
-
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -127,8 +124,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         String role = data['role'];
         final userId = data['userId'] ?? data['adminId'];
-
-
 
         showPopup(
           title: "Login Successful 🎉",
@@ -294,9 +289,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                           ),
                         ),
-                        
-                        const SizedBox(height: 16),
 
+                        const SizedBox(height: 16),
 
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,

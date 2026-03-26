@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
+
 import '../../services/translations.dart'; // Adjust path as needed
 
 class ManageServicesScreen extends StatefulWidget {
@@ -52,7 +54,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://10.155.83.53:8000/api/admin/settings/services/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/settings/services/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
       );
@@ -105,7 +107,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     try {
       final response = await http.post(
         Uri.parse(
-          "http://10.155.83.53:8000/api/admin/settings/services/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/settings/services/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
@@ -160,7 +162,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     try {
       final response = await http.put(
         Uri.parse(
-          "http://10.155.83.53:8000/api/admin/settings/services/$serviceId/${widget.adminId}",
+          "${ApiConfig.baseUrl}/admin/settings/services/$serviceId/${widget.adminId}",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
@@ -236,7 +238,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
       try {
         final response = await http.delete(
           Uri.parse(
-            "http://10.155.83.53:8000/api/admin/settings/services/$serviceId/${widget.adminId}",
+            "${ApiConfig.baseUrl}/admin/settings/services/$serviceId/${widget.adminId}",
           ),
           headers: {"Content-Type": "application/json"},
         );

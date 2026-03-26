@@ -48,7 +48,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
   int activePendingCount = 0; // ✅ New state for Pending Today
   int activeCompletedCount = 0; // ✅ New state for Completed Today
   int estimatedTime = 0; // ✅ New state for Estimated Time
-  int studentsAhead = 0; 
+  int studentsAhead = 0;
   int estimationConfigTime = 5;
   int maxStudents = 0;
 
@@ -186,10 +186,12 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             }
 
             // ✅ Update Completed Counts
-            if (data["data"] != null && data["data"]["completedCount"] != null) {
+            if (data["data"] != null &&
+                data["data"]["completedCount"] != null) {
               activeCompletedCount = data["data"]["completedCount"];
             } else {
-              activeCompletedCount = data["completedCount"] ?? data["completedToday"] ?? 0;
+              activeCompletedCount =
+                  data["completedCount"] ?? data["completedToday"] ?? 0;
             }
           });
         }
@@ -234,13 +236,20 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                 fetchedMax = q['maxStudents'] ?? 0;
                 String adminId = q['adminId'] ?? "";
                 if (adminId.isNotEmpty) {
-                   final stRes = await http.get(Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/$adminId"));
-                   if (stRes.statusCode == 200) {
-                      final stData = jsonDecode(stRes.body);
-                      if (stData["success"] == true && stData["settings"] != null) {
-                         estConfig = stData["settings"]["estimatedServiceTimePerStudent"] ?? 5;
-                      }
-                   }
+                  final stRes = await http.get(
+                    Uri.parse(
+                      "${ApiConfig.baseUrl}/admin/settings/queue/$adminId",
+                    ),
+                  );
+                  if (stRes.statusCode == 200) {
+                    final stData = jsonDecode(stRes.body);
+                    if (stData["success"] == true &&
+                        stData["settings"] != null) {
+                      estConfig =
+                          stData["settings"]["estimatedServiceTimePerStudent"] ??
+                          5;
+                    }
+                  }
                 }
                 break;
               }
@@ -260,7 +269,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
           int count = data["waitingCount"] ?? 0;
           int myTokenNum = int.tryParse(currentToken.replaceAll("A-", "")) ?? 0;
           int ahead = 0;
-          
+
           if (data["waiting"] != null) {
             final waitingList = data["waiting"] as List;
             for (var w in waitingList) {
@@ -271,7 +280,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
             }
           }
           if (myTokenNum == 0) ahead = count;
-          
+
           int calcEst = ahead * estConfig;
 
           if (mounted) {
@@ -281,7 +290,7 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               estimationConfigTime = estConfig;
               studentsAhead = ahead;
               if (calcEst > 0) {
-                 estimatedTime = calcEst;
+                estimatedTime = calcEst;
               }
             });
           }
@@ -343,15 +352,20 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
         actions: [
           IconButton(
             icon: Icon(
-              notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
+              notificationsEnabled
+                  ? Icons.notifications_active
+                  : Icons.notifications_off,
               color: notificationsEnabled ? Colors.greenAccent : Colors.white54,
             ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    notificationsEnabled 
-                        ? Translations.translate('no_new_notifications', currentLanguage)
+                    notificationsEnabled
+                        ? Translations.translate(
+                            'no_new_notifications',
+                            currentLanguage,
+                          )
                         : "Notifications are currently disabled.",
                   ),
                 ),
@@ -523,7 +537,9 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                       'live_queue',
                       currentLanguage,
                     ),
-                    value: nowServingToken != "--" ? nowServingToken : (maxStudents > 0 ? maxStudents.toString() : "--"),
+                    value: nowServingToken != "--"
+                        ? nowServingToken
+                        : (maxStudents > 0 ? maxStudents.toString() : "--"),
                     icon: Icons.people,
                     color: Colors.orange,
                   ),
@@ -583,16 +599,22 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
+                              notificationsEnabled
+                                  ? Icons.notifications_active
+                                  : Icons.notifications_off,
                               size: 14,
-                              color: notificationsEnabled ? Colors.green : Colors.grey,
+                              color: notificationsEnabled
+                                  ? Colors.green
+                                  : Colors.grey,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               notificationsEnabled ? "Notif On" : "Notif Off",
                               style: TextStyle(
                                 fontSize: 12,
-                                color: notificationsEnabled ? Colors.green : Colors.grey,
+                                color: notificationsEnabled
+                                    ? Colors.green
+                                    : Colors.grey,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

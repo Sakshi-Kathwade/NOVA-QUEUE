@@ -31,21 +31,30 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
     if (widget.adminId == null) return;
     try {
       final response = await http.get(
-        Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/${widget.adminId}"),
+        Uri.parse(
+          "${ApiConfig.baseUrl}/admin/settings/queue/${widget.adminId}",
+        ),
         headers: {"Content-Type": "application/json"},
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['settings'] != null) {
           setState(() {
-            _estimatedTime = data['settings']['estimatedServiceTimePerStudent'] ?? 5;
+            _estimatedTime =
+                data['settings']['estimatedServiceTimePerStudent'] ?? 5;
             if (data['settings']['breakStartTime'] != null) {
               final parts = data['settings']['breakStartTime'].split(':');
-              _breakStartTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+              _breakStartTime = TimeOfDay(
+                hour: int.parse(parts[0]),
+                minute: int.parse(parts[1]),
+              );
             }
             if (data['settings']['breakEndTime'] != null) {
               final parts = data['settings']['breakEndTime'].split(':');
-              _breakEndTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+              _breakEndTime = TimeOfDay(
+                hour: int.parse(parts[0]),
+                minute: int.parse(parts[1]),
+              );
             }
           });
         }
@@ -63,14 +72,14 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
       if (end.isAfter(start)) {
         int breakDuration = 0;
         if (_breakStartTime != null && _breakEndTime != null) {
-           final bStart = _convertToDateTime(_breakStartTime!);
-           final bEnd = _convertToDateTime(_breakEndTime!);
-           // Calculate overlap
-           final actualBStart = bStart.isAfter(start) ? bStart : start;
-           final actualBEnd = bEnd.isBefore(end) ? bEnd : end;
-           if (actualBEnd.isAfter(actualBStart)) {
-               breakDuration = actualBEnd.difference(actualBStart).inMinutes;
-           }
+          final bStart = _convertToDateTime(_breakStartTime!);
+          final bEnd = _convertToDateTime(_breakEndTime!);
+          // Calculate overlap
+          final actualBStart = bStart.isAfter(start) ? bStart : start;
+          final actualBEnd = bEnd.isBefore(end) ? bEnd : end;
+          if (actualBEnd.isAfter(actualBStart)) {
+            breakDuration = actualBEnd.difference(actualBStart).inMinutes;
+          }
         }
 
         final durationInMinutes = end.difference(start).inMinutes;
@@ -87,8 +96,6 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
       }
     }
   }
-
-
 
   final TextEditingController queueName = TextEditingController();
   final TextEditingController maxStudents = TextEditingController();
@@ -328,12 +335,14 @@ class _CreateQueueScreenState extends State<CreateQueueScreen> {
                   TextFormField(
                     controller: maxStudents,
                     keyboardType: TextInputType.number,
-                    readOnly: true, // Auto-calculated and shouldn't be manually edited if logic dictates
+                    readOnly:
+                        true, // Auto-calculated and shouldn't be manually edited if logic dictates
                     decoration: _inputDecoration(
                       label: "Max Students (Auto-calculated)",
                       icon: Icons.people,
                     ),
-                    validator: (v) => v!.isEmpty || v == "0" ? "Required/Invalid" : null,
+                    validator: (v) =>
+                        v!.isEmpty || v == "0" ? "Required/Invalid" : null,
                   ),
                   const SizedBox(height: 20),
 

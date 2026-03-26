@@ -82,7 +82,7 @@ class _CurrentTokenScreenState extends State<CurrentTokenScreen> {
       // ApiConfig was NOT imported. I should import it or use localhost for now to match previous state,
       // BUT user wants correctness. I should probably add the import too?
       // For now I'll use the localhost URL as it was, to minimize risk, or try to use the generic URL.
-      // The original code had: "http://10.155.83.53:8000/api/currenttoken/${widget.queueName}"
+      // The original code had: "${ApiConfig.baseUrl}/currenttoken/${widget.queueName}"
 
       final url = Uri.parse(
         "${ApiConfig.baseUrl}/currenttoken/${widget.queueName}",

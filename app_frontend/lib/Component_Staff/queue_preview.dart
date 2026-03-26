@@ -4,6 +4,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
+
 import '../services/translations.dart'; // Import translations
 
 class LiveQueuePreviewScreen extends StatefulWidget {
@@ -77,7 +79,7 @@ class _LiveQueuePreviewScreenState extends State<LiveQueuePreviewScreen> {
     if (confirmedQueueName == null) {
       try {
         final queueResponse = await http.get(
-          Uri.parse("http://10.155.83.53:8000/api/activequeue/${widget.adminId}"),
+          Uri.parse("${ApiConfig.baseUrl}/activequeue/${widget.adminId}"),
         );
         if (queueResponse.statusCode == 200) {
           final jsonData = json.decode(queueResponse.body);
@@ -106,10 +108,10 @@ class _LiveQueuePreviewScreenState extends State<LiveQueuePreviewScreen> {
 
     try {
       final currentTokenRes = await http.get(
-        Uri.parse("http://10.155.83.53:8000/api/currenttoken/$encodedQueue"),
+        Uri.parse("${ApiConfig.baseUrl}/currenttoken/$encodedQueue"),
       );
       final remainingTokensRes = await http.get(
-        Uri.parse("http://10.155.83.53:8000/api/remainingtoken/$encodedQueue"),
+        Uri.parse("${ApiConfig.baseUrl}/remainingtoken/$encodedQueue"),
       );
 
       if (!mounted) return;

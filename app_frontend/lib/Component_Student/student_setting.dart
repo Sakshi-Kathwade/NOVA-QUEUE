@@ -13,6 +13,8 @@ import '../services/language_service.dart';
 import '../services/translations.dart';
 import 'edit_student_profile_screen.dart';
 import '../services/notification_service.dart';
+import '../services/api_config.dart';
+
 
 class StudentSettingScreen extends StatefulWidget {
   final String studentId;
@@ -121,7 +123,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://10.155.83.53:8000/api/student/profile/${widget.studentId}",
+          "${ApiConfig.baseUrl}/student/profile/${widget.studentId}",
         ),
         headers: {"Content-Type": "application/json"},
       );
@@ -153,7 +155,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
 
     try {
       final uri = Uri.parse(
-        "http://10.155.83.53:8000/api/changepassword/${widget.studentId}",
+        "${ApiConfig.baseUrl}/changepassword/${widget.studentId}",
       );
 
       final response = await http.put(
@@ -230,7 +232,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
   Future<void> logoutStudent() async {
     try {
       final response = await http.delete(
-        Uri.parse("http://10.155.83.53:8000/api/logout/${widget.studentId}"),
+        Uri.parse("${ApiConfig.baseUrl}/logout/${widget.studentId}"),
       );
 
       if (response.statusCode == 200) {
@@ -364,7 +366,7 @@ class _StudentSettingScreenState extends State<StudentSettingScreen> {
               }
               try {
                 await http.put(
-                  Uri.parse("http://10.155.83.53:8000/api/student/profile/${widget.studentId}"),
+                  Uri.parse("${ApiConfig.baseUrl}/student/profile/${widget.studentId}"),
                   headers: {"Content-Type": "application/json"},
                   body: jsonEncode({"notificationEnabled": value}),
                 );

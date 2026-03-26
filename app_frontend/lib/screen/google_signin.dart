@@ -8,7 +8,9 @@ class AuthService {
     scopes: ['email', 'profile'],
     serverClientId:
         "1092004219946-a10iuqe384o69jpcah5hbe7t56j00s02.apps.googleusercontent.com",
-    clientId: kIsWeb ? "1092004219946-a10iuqe384o69jpcah5hbe7t56j00s02.apps.googleusercontent.com" : null,
+    clientId: kIsWeb
+        ? "1092004219946-a10iuqe384o69jpcah5hbe7t56j00s02.apps.googleusercontent.com"
+        : null,
   );
 
   Future<User?> signInWithGoogle() async {

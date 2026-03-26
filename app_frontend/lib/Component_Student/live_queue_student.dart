@@ -65,7 +65,9 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
 
     try {
       final tokenRes = await http.get(
-        Uri.parse("${ApiConfig.baseUrl}/tokenget/$encodedQueue/${widget.studentId}"),
+        Uri.parse(
+          "${ApiConfig.baseUrl}/tokenget/$encodedQueue/${widget.studentId}",
+        ),
       );
       final currentRes = await http.get(
         Uri.parse("${ApiConfig.baseUrl}/currenttoken/$encodedQueue"),
@@ -82,9 +84,7 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
       DateTime? queueStartTime;
 
       try {
-        final qRes = await http.get(
-          Uri.parse("${ApiConfig.baseUrl}/queue"),
-        );
+        final qRes = await http.get(Uri.parse("${ApiConfig.baseUrl}/queue"));
         if (qRes.statusCode == 200) {
           final qd = jsonDecode(qRes.body);
           if (qd['success'] == true && qd['data'] != null) {
@@ -93,24 +93,32 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
               if (q['queueName'] == widget.queueName) {
                 fetchedMax = q['maxStudents'] ?? 0;
                 qOpen = q['status'] == "Active";
-                if (q['startTime'] != null) queueStartTime = DateTime.parse(q['startTime']);
+                if (q['startTime'] != null)
+                  queueStartTime = DateTime.parse(q['startTime']);
                 String adminId = q['adminId'] ?? "";
                 if (adminId.isNotEmpty) {
-                   final stRes = await http.get(Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/$adminId"));
-                   if (stRes.statusCode == 200) {
-                      final stData = jsonDecode(stRes.body);
-                      if (stData["success"] == true && stData["settings"] != null) {
-                         estimationConfigTime = stData["settings"]["estimatedServiceTimePerStudent"] ?? 5;
-                         bStartStr = stData["settings"]["breakStartTime"];
-                         bEndStr = stData["settings"]["breakEndTime"];
-                      }
-                   }
+                  final stRes = await http.get(
+                    Uri.parse(
+                      "${ApiConfig.baseUrl}/admin/settings/queue/$adminId",
+                    ),
+                  );
+                  if (stRes.statusCode == 200) {
+                    final stData = jsonDecode(stRes.body);
+                    if (stData["success"] == true &&
+                        stData["settings"] != null) {
+                      estimationConfigTime =
+                          stData["settings"]["estimatedServiceTimePerStudent"] ??
+                          5;
+                      bStartStr = stData["settings"]["breakStartTime"];
+                      bEndStr = stData["settings"]["breakEndTime"];
+                    }
+                  }
                 }
                 break;
               }
             }
           } else {
-             qOpen = false;
+            qOpen = false;
           }
         }
       } catch (e) {
@@ -135,7 +143,7 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
 
       int totalWaiting = 0;
       List<Map<String, String>> queueList = [];
-      
+
       int myToken = myTokenNumber;
       int fetchedStudentsAhead = 0;
       int fetchedEstTime = 0;
@@ -143,10 +151,10 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
       if (tokenRes.statusCode == 200) {
         final data = jsonDecode(tokenRes.body);
         if (data["success"] == true) {
-           hasToken = true;
-           myToken = data["tokenNumber"] ?? myToken;
-           fetchedStudentsAhead = data["studentsAhead"] ?? 0;
-           fetchedEstTime = data["estimatedWaitingTime"] ?? 0;
+          hasToken = true;
+          myToken = data["tokenNumber"] ?? myToken;
+          fetchedStudentsAhead = data["studentsAhead"] ?? 0;
+          fetchedEstTime = data["estimatedWaitingTime"] ?? 0;
         }
       }
 
@@ -158,39 +166,59 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
         for (var w in waiting) {
           queueList.add({
             "token": "A-${w["tokenNumber"] ?? w["token"] ?? "?"}",
-            "name": w["studentName"]?.toString() ?? w["name"]?.toString() ?? "—",
+            "name":
+                w["studentName"]?.toString() ?? w["name"]?.toString() ?? "—",
           });
         }
       }
 
       int estTime = 0;
       if (hasToken) {
-         studentsAheadNum = fetchedStudentsAhead;
-         estTime = fetchedEstTime;
+        studentsAheadNum = fetchedStudentsAhead;
+        estTime = fetchedEstTime;
       } else {
-         studentsAheadNum = totalWaiting;
-         estTime = studentsAheadNum * estimationConfigTime;
-         
-         // Apply break time delay if there is no token (so fall back computed)
-         if (bStartStr != null && bEndStr != null && queueStartTime != null) {
-             try {
-                final now = DateTime.now();
-                final bSParts = bStartStr.split(':');
-                final bEParts = bEndStr.split(':');
-                DateTime breakStart = DateTime(queueStartTime.year, queueStartTime.month, queueStartTime.day, int.parse(bSParts[0]), int.parse(bSParts[1]));
-                DateTime breakEnd = DateTime(queueStartTime.year, queueStartTime.month, queueStartTime.day, int.parse(bEParts[0]), int.parse(bEParts[1]));
-                
-                DateTime tokenExpectedTime = now.add(Duration(minutes: estTime));
-                if (tokenExpectedTime.isAfter(breakStart) && now.isBefore(breakEnd)) {
-                    DateTime overlapStart = now.isAfter(breakStart) ? now : breakStart;
-                    DateTime overlapEnd = tokenExpectedTime.isAfter(breakEnd) ? breakEnd : tokenExpectedTime;
-                    int breakTimeToAdd = overlapEnd.difference(overlapStart).inMinutes;
-                    if (breakTimeToAdd > 0) estTime += breakTimeToAdd;
-                }
-             } catch (e) {
-                 // ignore parse errors
-             }
-         }
+        studentsAheadNum = totalWaiting;
+        estTime = studentsAheadNum * estimationConfigTime;
+
+        // Apply break time delay if there is no token (so fall back computed)
+        if (bStartStr != null && bEndStr != null && queueStartTime != null) {
+          try {
+            final now = DateTime.now();
+            final bSParts = bStartStr.split(':');
+            final bEParts = bEndStr.split(':');
+            DateTime breakStart = DateTime(
+              queueStartTime.year,
+              queueStartTime.month,
+              queueStartTime.day,
+              int.parse(bSParts[0]),
+              int.parse(bSParts[1]),
+            );
+            DateTime breakEnd = DateTime(
+              queueStartTime.year,
+              queueStartTime.month,
+              queueStartTime.day,
+              int.parse(bEParts[0]),
+              int.parse(bEParts[1]),
+            );
+
+            DateTime tokenExpectedTime = now.add(Duration(minutes: estTime));
+            if (tokenExpectedTime.isAfter(breakStart) &&
+                now.isBefore(breakEnd)) {
+              DateTime overlapStart = now.isAfter(breakStart)
+                  ? now
+                  : breakStart;
+              DateTime overlapEnd = tokenExpectedTime.isAfter(breakEnd)
+                  ? breakEnd
+                  : tokenExpectedTime;
+              int breakTimeToAdd = overlapEnd
+                  .difference(overlapStart)
+                  .inMinutes;
+              if (breakTimeToAdd > 0) estTime += breakTimeToAdd;
+            }
+          } catch (e) {
+            // ignore parse errors
+          }
+        }
       }
 
       if (mounted) {
@@ -202,13 +230,14 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
           averageWaitingTime = estTime;
           studentsAhead = studentsAheadNum;
           isQueueOpen = qOpen;
-          currentlyServingToken = servingToken != null ? "A-$servingToken" : null;
+          currentlyServingToken = servingToken != null
+              ? "A-$servingToken"
+              : null;
           liveQueueList = queueList;
           if (fetchedMax > 0) maxStudents = fetchedMax;
           isLoading = false;
         });
       }
-
     } catch (e) {
       if (mounted) setState(() => isLoading = false);
     }
@@ -230,7 +259,9 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
     }
 
     int estimatedTotalWait = totalStudentsWaiting * averageWaitingTime;
-    int serving = currentlyServingToken != null ? int.tryParse(currentlyServingToken!.replaceAll("A-", "")) ?? 0 : 0;
+    int serving = currentlyServingToken != null
+        ? int.tryParse(currentlyServingToken!.replaceAll("A-", "")) ?? 0
+        : 0;
 
     // ✅ Progress bar based on (Completed / MaxStudents) or fallback to current/myToken logic
     // Using max students gives a better "overall progress" view.
@@ -462,7 +493,9 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey.shade800,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[300]
+                    : Colors.grey.shade800,
               ),
             ),
             const SizedBox(height: 10),
@@ -481,7 +514,11 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
                       children: [
                         Text(
                           "Progress",
-                          style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
+                          ),
                         ),
                         Text(
                           "${(progress * 100).toStringAsFixed(0)}%",
@@ -493,7 +530,10 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
                     LinearProgressIndicator(
                       value: progress,
                       minHeight: 12,
-                      backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700] : Colors.grey.shade300,
+                      backgroundColor:
+                          Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[700]
+                          : Colors.grey.shade300,
                       valueColor: const AlwaysStoppedAnimation(
                         Colors.deepPurple,
                       ),
@@ -502,7 +542,9 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
                       "$completedToday out of ${maxStudents != null && maxStudents! > 0 ? maxStudents : (completedToday + liveQueueList.length)} students served today",
                       style: TextStyle(
                         fontSize: 13,
-                        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey.shade600,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey.shade600,
                       ),
                     ),
                   ],
@@ -517,7 +559,9 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey.shade800,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[300]
+                      : Colors.grey.shade800,
                 ),
               ),
               const SizedBox(height: 10),
@@ -527,7 +571,9 @@ class _LiveQueueStudentState extends State<LiveQueueStudent> {
                 final isServing =
                     currentlyServingToken != null &&
                     tokenStr == currentlyServingToken;
-                Color bg = Theme.of(context).brightness == Brightness.dark ? Colors.grey[850]! : Colors.grey.shade100;
+                Color bg = Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[850]!
+                    : Colors.grey.shade100;
                 if (isServing) bg = Colors.green.withOpacity(0.2);
                 if (isMine) bg = Colors.deepPurple.withOpacity(0.2);
                 return Container(

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
+
 class ApiConfig {
   static String get baseUrl {
     // 🔹 If running on Web
@@ -20,4 +21,3 @@ class ApiConfig {
     return "http://10.58.241.53:8000/api";
   }
 }
- 

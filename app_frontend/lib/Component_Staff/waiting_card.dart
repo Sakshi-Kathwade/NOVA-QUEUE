@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
+
 
 class WaitingCardScreen extends StatefulWidget {
   const WaitingCardScreen({super.key, required this.queueName});
@@ -18,7 +20,7 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
   Timer? _pollTimer; // ✅ Timer for real-time updates
 
   // ✅ ANDROID EMULATOR SAFE URL
-  final String baseUrl = "http://10.155.83.53:8000";
+  final String baseUrl = ApiConfig.baseUrl.replaceAll('/api', '');
 
   @override
   void initState() {
@@ -53,7 +55,7 @@ class _WaitingCardScreenState extends State<WaitingCardScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse("$baseUrl/api/remainingtoken/${widget.queueName}"),
+        Uri.parse("$baseUrl/api/remainingtoken/${Uri.encodeComponent(widget.queueName)}"),
       );
 
       if (response.statusCode == 200) {

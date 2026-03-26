@@ -91,7 +91,9 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
 
       // Fetch admin settings for estimated wait time
       final settingsRes = await http.get(
-        Uri.parse("${ApiConfig.baseUrl}/admin/settings/queue/${widget.adminId}"),
+        Uri.parse(
+          "${ApiConfig.baseUrl}/admin/settings/queue/${widget.adminId}",
+        ),
       );
 
       if (!mounted) return;
@@ -112,7 +114,8 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
       if (settingsRes.statusCode == 200) {
         final stData = jsonDecode(settingsRes.body);
         if (stData["success"] == true && stData["settings"] != null) {
-          fetchedEstimationTime = stData["settings"]["estimatedServiceTimePerStudent"] ?? 5;
+          fetchedEstimationTime =
+              stData["settings"]["estimatedServiceTimePerStudent"] ?? 5;
         }
       }
 
@@ -122,7 +125,7 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
           if (cur["data"] != null) {
             serving = cur["data"]["tokenNumber"] ?? 0;
           }
-          
+
           if (cur["data"] != null && cur["data"]["completedCount"] != null) {
             completed = cur["data"]["completedCount"];
           } else {
@@ -359,7 +362,9 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey.shade800,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[300]
+                          : Colors.grey.shade800,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -378,7 +383,11 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                             children: [
                               Text(
                                 "Served Students",
-                                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color,
+                                ),
                               ),
                               Text(
                                 "${(progress * 100).toStringAsFixed(0)}%",
@@ -392,7 +401,10 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                           LinearProgressIndicator(
                             value: progress,
                             minHeight: 12,
-                            backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700] : Colors.grey.shade300,
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[700]
+                                : Colors.grey.shade300,
                             valueColor: const AlwaysStoppedAnimation(
                               Colors.deepPurple,
                             ),
@@ -402,7 +414,11 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                             "$completedToday out of ${widget.maxStudents ?? totalToday} students served today",
                             style: TextStyle(
                               fontSize: 13,
-                              color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey.shade600,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[400]
+                                  : Colors.grey.shade600,
                             ),
                           ),
                         ],
@@ -417,13 +433,17 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey.shade800,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[300]
+                            : Colors.grey.shade800,
                       ),
                     ),
                     const SizedBox(height: 10),
                     ...liveQueueList.map((e) {
                       final isServing = e["status"] == "serving";
-                      Color bg = Theme.of(context).brightness == Brightness.dark ? Colors.grey[850]! : Colors.grey.shade100;
+                      Color bg = Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[850]!
+                          : Colors.grey.shade100;
                       if (isServing) bg = Colors.green.withOpacity(0.2);
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -462,7 +482,9 @@ class _AdminLiveQueueScreenState extends State<AdminLiveQueueScreen> {
                                       fontSize: 16,
                                       color: isServing
                                           ? Colors.green
-                                          : Theme.of(context).textTheme.bodyLarge?.color,
+                                          : Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
                                     ),
                                   ),
                                   Text(

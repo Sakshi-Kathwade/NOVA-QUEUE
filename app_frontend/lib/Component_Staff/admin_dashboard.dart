@@ -513,7 +513,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _adminProfilePictureUrl != null &&
                             _adminProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "http://10.155.83.53:8000" +
+                                "${ApiConfig.baseUrl.replaceAll('/api', '')}" +
                                     _adminProfilePictureUrl!,
                               )
                               as ImageProvider
@@ -579,7 +579,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _adminProfilePictureUrl != null &&
                             _adminProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "http://10.155.83.53:8000" +
+                                "${ApiConfig.baseUrl.replaceAll('/api', '')}" +
                                     _adminProfilePictureUrl!,
                               )
                               as ImageProvider

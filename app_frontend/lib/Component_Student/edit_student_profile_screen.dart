@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../services/translations.dart';
+import '../services/api_config.dart';
+
 import 'package:flutter/foundation.dart' show kIsWeb; // Add this import
 
 class EditStudentProfileScreen extends StatefulWidget {
@@ -45,7 +47,7 @@ class _EditStudentProfileScreenState extends State<EditStudentProfileScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://10.155.83.53:8000/api/student/profile/${widget.studentId}",
+          "${ApiConfig.baseUrl}/student/profile/${widget.studentId}",
         ),
         headers: {"Content-Type": "application/json"},
       );
@@ -91,7 +93,7 @@ class _EditStudentProfileScreenState extends State<EditStudentProfileScreen> {
       var request = http.MultipartRequest(
         'PUT',
         Uri.parse(
-          "http://10.155.83.53:8000/api/student/profile/${widget.studentId}",
+          "${ApiConfig.baseUrl}/student/profile/${widget.studentId}",
         ),
       );
 
@@ -181,7 +183,7 @@ class _EditStudentProfileScreenState extends State<EditStudentProfileScreen> {
       }
     } else if (_profilePictureUrl != null && _profilePictureUrl!.isNotEmpty) {
       backgroundImage = NetworkImage(
-        "http://10.155.83.53:8000" + _profilePictureUrl!,
+        "${ApiConfig.baseUrl.replaceAll('/api', '')}" + _profilePictureUrl!,
       );
     }
 

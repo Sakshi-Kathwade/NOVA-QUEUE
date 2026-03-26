@@ -123,8 +123,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        
-
 
         showPopup(
           title: "Registration Successful 🎉",
@@ -207,9 +205,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        
-
-
         // Check if user already exists
         if (data["alreadyExists"] == true) {
           showPopup(
