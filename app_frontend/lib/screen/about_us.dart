@@ -572,30 +572,27 @@ class AboutUsScreen extends StatelessWidget {
   // ✅ Launch Instagram Function
   Future<void> _launchInstagram(BuildContext context, String username) async {
     final cleanUsername = username.replaceAll('@', '');
-    // Try app specific URL schema first
-    final Uri appUrl = Uri.parse("instagram://user?username=$cleanUsername");
-    // Fallback directly to web
     final Uri webUrl = Uri.parse("https://www.instagram.com/$cleanUsername");
 
     try {
-      if (await canLaunchUrl(appUrl)) {
-        await launchUrl(appUrl, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(webUrl)) {
-        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
-      } else {
+      if (!await launchUrl(webUrl, mode: LaunchMode.externalApplication)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Could not open Instagram for @$cleanUsername"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Could not launch Instagram for @$cleanUsername"),
+            content: Text("Could not open Instagram for @$cleanUsername"),
             backgroundColor: Colors.red,
           ),
         );
-      }
-    } catch (e) {
-      // Fallback for older versions or web
-      try {
-        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
-      } catch (err) {
-        debugPrint("Error launching URL: $err");
       }
     }
   }

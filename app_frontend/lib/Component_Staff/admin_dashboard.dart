@@ -152,6 +152,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
             }
           }
 
+          if (finalStatus == "Closed" || finalStatus == "Completed") {
+            setState(() {
+              queueName = null;
+              queueId = null;
+              queueStatus = "N/A";
+              liveQueueData = [];
+              maxStudents = 0;
+            });
+            fetchDashboardData();
+            fetchLiveQueueData();
+            return;
+          }
+
           // ✅ Only update if queue name changed (to avoid unnecessary rebuilds)
           if (queueName != newQueueName) {
             setState(() {
@@ -459,7 +472,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             Text(
               queueName != null
                   ? queueName!
-                  : Translations.translate('no_active_queue', currentLanguage),
+                  : "No Queue Created",
               style: const TextStyle(color: Colors.white70, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -754,8 +767,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
               context: context,
               title: Translations.translate('live_queue', currentLanguage),
               value: queueName != null
-                  ? (currentToken == "N/A" || currentToken == "--" ? (maxStudents != null ? maxStudents.toString() : "--") : currentToken)
-                  : "--",
+                  ? (currentToken == "N/A" || currentToken == "--" ? (maxStudents != null ? maxStudents.toString() : "0") : currentToken)
+                  : "0",
               icon: Icons.people_alt,
               color: Colors.deepPurple,
               navigateTo: adminId != null

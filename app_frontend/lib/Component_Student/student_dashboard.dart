@@ -18,6 +18,7 @@ import 'edit_student_profile_screen.dart';
 import 'my_pending_today.dart';
 import 'completed_today.dart';
 import '../screen/about_us.dart';
+import 'student_notifications.dart';
 
 class QueueStatusScreen extends StatefulWidget {
   final String studentId;
@@ -358,18 +359,22 @@ class _QueueStatusScreenState extends State<QueueStatusScreen> {
               color: notificationsEnabled ? Colors.greenAccent : Colors.white54,
             ),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    notificationsEnabled
-                        ? Translations.translate(
-                            'no_new_notifications',
-                            currentLanguage,
-                          )
-                        : "Notifications are currently disabled.",
+              if (notificationsEnabled) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StudentNotificationsScreen(
+                      studentId: widget.studentId,
+                    ),
                   ),
-                ),
-              );
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Notifications are currently disabled."),
+                  ),
+                );
+              }
             },
           ),
           PopupMenuButton<String>(
