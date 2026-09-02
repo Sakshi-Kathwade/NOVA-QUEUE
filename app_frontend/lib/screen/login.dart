@@ -123,7 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200 && data['success'] == true) {
         String role = data['role'];
-        final userId = data['userId'] ?? data['adminId'];
 
         showPopup(
           title: "Login Successful 🎉",
