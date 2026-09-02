@@ -122,8 +122,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => isLoading = false);
 
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-
         showPopup(
           title: "Registration Successful 🎉",
           message:
