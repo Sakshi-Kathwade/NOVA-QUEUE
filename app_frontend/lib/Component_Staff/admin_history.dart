@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../services/api_config.dart';
+import '../services/toast_service.dart';
 
 class AdminHistoryScreen extends StatefulWidget {
   final String? queueName;
@@ -572,39 +573,72 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
   }
 
   Future<void> _exportToCsv() async {
-    List<List<dynamic>> rows = [];
-    rows.add(['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time']);
-    for (var token in _historyTokens) {
-      rows.add([
-        DateFormat(
-          'yyyy-MM-dd HH:mm',
-        ).format(DateTime.parse(token['generatedAt']).toLocal()),
-        "A-${token['tokenNumber']}",
-        token['student']?['name'] ?? 'Guest',
-        "${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}",
-        token['status'],
-        _calculateWait(token),
-      ]);
-    }
+    try {
+      if (_historyTokens.isEmpty) {
+        ToastService.showInfo(context, "No history data available to export");
+        return;
+      }
 
-    String csv = const ListToCsvConverter().convert(rows);
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File(
-      '${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.csv',
-    );
-    await file.writeAsString(csv);
-    await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV Report');
+      List<List<dynamic>> rows = [];
+      rows.add(['Date', 'Token', 'Name', 'Service', 'Status', 'Wait Time']);
+      for (var token in _historyTokens) {
+        String dateStr = "-";
+        if (token['generatedAt'] != null) {
+          try {
+            dateStr = DateFormat('yyyy-MM-dd HH:mm').format(
+              DateTime.parse(token['generatedAt'].toString()).toLocal(),
+            );
+          } catch (_) {
+            dateStr = token['generatedAt'].toString();
+          }
+        }
+
+        final tokenNum = token['tokenNumber'] != null ? "A-${token['tokenNumber']}" : "-";
+        final studentName = token['student']?['name']?.toString() ?? 'Guest';
+        final serviceName = "${token['department'] ?? token['service']?['serviceName'] ?? '-'} ${token['counter'] != null ? '(${token['counter']['counterName']})' : ''}".trim();
+        final status = token['status']?.toString() ?? "-";
+        final waitTime = _calculateWait(token);
+
+        rows.add([dateStr, tokenNum, studentName, serviceName, status, waitTime]);
+      }
+
+      String csv = const ListToCsvConverter().convert(rows);
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath = '${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File(filePath);
+      await file.writeAsString(csv);
+
+      if (mounted) {
+        ToastService.showSuccess(
+          context,
+          'CSV exported successfully',
+        );
+      }
+
+      try {
+        await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV Report');
+      } catch (shareErr) {
+        debugPrint("Share not supported or dismissed: $shareErr");
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastService.showError(context, 'Error exporting CSV: $e');
+      }
+    }
   }
 
   String _calculateWait(dynamic token) {
-    if (token['generatedAt'] != null && token['completedAt'] != null) {
-      final gen = DateTime.parse(token['generatedAt']);
-      final comp = DateTime.parse(token['completedAt']);
-      final diff = comp.difference(gen).inMinutes;
-      return "${diff}m";
-    }
+    try {
+      if (token['generatedAt'] != null && token['completedAt'] != null) {
+        final gen = DateTime.parse(token['generatedAt'].toString());
+        final comp = DateTime.parse(token['completedAt'].toString());
+        final diff = comp.difference(gen).inMinutes;
+        return "${diff}m";
+      }
+    } catch (_) {}
     return "-";
   }
+
 
   @override
   Widget build(BuildContext context) {

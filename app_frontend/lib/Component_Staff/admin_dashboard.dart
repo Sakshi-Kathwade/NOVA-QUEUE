@@ -27,6 +27,8 @@ import '../services/language_service.dart';
 import '../services/translations.dart';
 import '../screen/about_us.dart';
 import '../services/toast_service.dart';
+import '../Component_Student/student_notifications.dart';
+import '../services/notification_service.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String? adminEmail; // ✅ Store admin email
@@ -81,6 +83,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     startPolling(); // ✅ Start real-time polling
     startQueuePolling(); // ✅ Start queue polling to detect changes
     startExpiryCheck(); // ✅ Start expiry check
+    if (adminId != null) {
+      NotificationService.initNotifications(adminId!);
+    }
   }
 
   // Fetch admin profile picture and role from backend
@@ -484,11 +489,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
         actions: [
           IconButton(
             icon: const Icon(
-              Icons.notifications_none,
+              Icons.notifications_active_outlined,
               color: Colors.white,
-              size: 28,
+              size: 26,
             ),
-            onPressed: () {},
+            tooltip: Translations.translate('Notifications', currentLanguage),
+            onPressed: () {
+              if (adminId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StudentNotificationsScreen(
+                      studentId: adminId!,
+                    ),
+                  ),
+                );
+              }
+            },
           ),
 
           PopupMenuButton<String>(
@@ -526,8 +543,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _adminProfilePictureUrl != null &&
                             _adminProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "${ApiConfig.baseUrl.replaceAll('/api', '')}" +
-                                    _adminProfilePictureUrl!,
+                                "${ApiConfig.baseUrl.replaceAll('/api', '')}${_adminProfilePictureUrl!}",
                               )
                               as ImageProvider
                         : null,
@@ -592,8 +608,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _adminProfilePictureUrl != null &&
                             _adminProfilePictureUrl!.isNotEmpty
                         ? NetworkImage(
-                                "${ApiConfig.baseUrl.replaceAll('/api', '')}" +
-                                    _adminProfilePictureUrl!,
+                                "${ApiConfig.baseUrl.replaceAll('/api', '')}${_adminProfilePictureUrl!}",
                               )
                               as ImageProvider
                         : null,
@@ -614,17 +629,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _adminRole != null
-                              ? (_adminRole!.toLowerCase() == 'admin'
-                                    ? Translations.translate(
+                          (_adminName != null && _adminName!.trim().isNotEmpty)
+                              ? _adminName!
+                              : (_adminRole != null
+                                    ? (_adminRole!.toLowerCase() == 'admin'
+                                          ? Translations.translate(
+                                              'administrator',
+                                              currentLanguage,
+                                            )
+                                          : _adminRole!)
+                                    : Translations.translate(
                                         'administrator',
                                         currentLanguage,
-                                      )
-                                    : _adminRole!)
-                              : Translations.translate(
-                                  'administrator',
-                                  currentLanguage,
-                                ),
+                                      )),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -638,9 +657,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white70,
-                            fontSize: 14,
+                            fontSize: 13,
                           ),
                         ),
+                        if (_adminName != null && _adminName!.trim().isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            _adminRole != null
+                                ? (_adminRole!.toLowerCase() == 'admin'
+                                      ? Translations.translate(
+                                          'administrator',
+                                          currentLanguage,
+                                        )
+                                      : _adminRole!)
+                                : Translations.translate(
+                                    'administrator',
+                                    currentLanguage,
+                                  ),
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

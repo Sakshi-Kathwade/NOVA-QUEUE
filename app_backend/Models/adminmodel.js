@@ -16,6 +16,14 @@ const adminSchema = new mongoose.Schema(
       unique: true,
       sparse: true, // Allow multiple nulls if not provided initially
     },
+    name: {
+      type: String,
+      default: "",
+    },
+    fcmToken: {
+      type: String,
+      default: null,
+    },
     role: {
       type: String,
       default: "admin", // ✅ added role

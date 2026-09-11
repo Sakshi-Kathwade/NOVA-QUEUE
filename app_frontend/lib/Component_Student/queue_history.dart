@@ -410,6 +410,18 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
 
   Future<void> _exportToCsv() async {
     try {
+      if (_filteredHistory.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No history records available to export'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
       List<List<dynamic>> rows = [];
       rows.add([
         'Date',
@@ -423,15 +435,32 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
 
       final data = _filteredHistory;
       for (var item in data) {
-        final d = DateTime.parse(item["date"]).toLocal();
+        String dateFormatted = "-";
+        if (item["date"] != null) {
+          try {
+            dateFormatted = DateFormat('yyyy-MM-dd HH:mm').format(
+              DateTime.parse(item["date"].toString()).toLocal(),
+            );
+          } catch (_) {
+            dateFormatted = item["date"].toString();
+          }
+        }
+
+        final queueNameStr = item['queueName']?.toString() ?? "-";
+        final tokenStr = item['tokenNumber'] != null ? "A-${item['tokenNumber']}" : "-";
+        final deptStr = item['department']?.toString() ?? "-";
+        final purposeStr = item['purpose']?.toString() ?? "-";
+        final statusStr = item['status']?.toString() ?? "-";
+        final waitStr = "${item['waitingTimeMinutes'] ?? 0} min";
+
         rows.add([
-          DateFormat('yyyy-MM-dd HH:mm').format(d),
-          item['queueName'],
-          "A-${item['tokenNumber']}",
-          item['department'],
-          item['purpose'],
-          item['status'],
-          "${item['waitingTimeMinutes']} min",
+          dateFormatted,
+          queueNameStr,
+          tokenStr,
+          deptStr,
+          purposeStr,
+          statusStr,
+          waitStr,
         ]);
       }
 
@@ -444,22 +473,32 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('CSV downloaded to Documents folder')),
+          const SnackBar(
+            content: Text('CSV downloaded to Documents folder'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
 
-      await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV History');
+      try {
+        await Share.shareXFiles([XFile(file.path)], text: 'Exported CSV History');
+      } catch (shareErr) {
+        debugPrint("Share dismissed or unsupported: $shareErr");
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error downloading CSV: $e'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

@@ -10,6 +10,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/language_service.dart';
 import '../services/translations.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'edit_admin_profile_screen.dart';
 import '../services/toast_service.dart';
 import '../services/api_config.dart';
@@ -439,12 +441,103 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
     performLogout();
   }
 
-  void clearCache() {
-    ToastService.showSuccess(
-      context,
-      Translations.translate('cache_cleared_successfully', currentLanguage),
+  Future<void> _performClearCache() async {
+    try {
+      // 1. Clear Flutter Image Cache
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+
+      // 2. Clear App Temporary Directory Cache
+      try {
+        final tempDir = await getTemporaryDirectory();
+        if (tempDir.existsSync()) {
+          final tempFiles = tempDir.listSync(recursive: true, followLinks: false);
+          for (final file in tempFiles) {
+            try {
+              if (file is File) {
+                file.deleteSync();
+              } else if (file is Directory) {
+                file.deleteSync(recursive: true);
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (e) {
+        debugPrint("Error clearing temp directory: $e");
+      }
+
+      if (mounted) {
+        ToastService.showSuccess(
+          context,
+          Translations.translate('cache_cleared_successfully', currentLanguage),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastService.showError(context, "Error clearing cache: $e");
+      }
+    }
+  }
+
+  void clearCacheDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_sweep, color: Colors.deepPurple),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                Translations.translate('clear_cache', currentLanguage),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              Translations.translate('clear_cache_confirm', currentLanguage),
+              style: const TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              Translations.translate('action_cannot_be_undone', currentLanguage),
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              Translations.translate('cancel', currentLanguage),
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _performClearCache();
+            },
+            child: Text(
+              Translations.translate('permanent_delete', currentLanguage),
+            ),
+          ),
+        ],
+      ),
     );
   }
+
 
   void _showEstimatedServiceTimeDialog() {
     showDialog(
@@ -830,7 +923,7 @@ class _AdminSettingScreenState extends State<AdminSettingScreen> {
           _settingTile(
             icon: Icons.delete,
             title: Translations.translate('clear_cache', currentLanguage),
-            onTap: clearCache,
+            onTap: clearCacheDialog,
           ),
 
           const SizedBox(height: 30),

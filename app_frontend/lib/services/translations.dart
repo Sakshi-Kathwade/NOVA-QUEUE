@@ -133,6 +133,20 @@ class Translations {
       'admission': 'Admission',
       'exam': 'Exam',
       'fee': 'Fee',
+
+      // Notification & Cache Deletion
+      'delete': 'Delete',
+      'delete_notification': 'Delete Notification',
+      'delete_notifications': 'Delete Notifications',
+      'select_all': 'Select All',
+      'deselect_all': 'Deselect All',
+      'selected': 'selected',
+      'delete_confirm_single': 'Are you sure you want to permanently delete this notification?',
+      'delete_confirm_multiple': 'Are you sure you want to permanently delete the selected notification(s)?',
+      'permanent_delete': 'Permanently Delete',
+      'notifications_deleted': 'Notification(s) deleted permanently',
+      'clear_cache_confirm': 'Are you sure you want to permanently clear cached data and temporary storage?',
+      'action_cannot_be_undone': 'This action cannot be undone.',
     },
     'hindi': {
       // Common
@@ -262,6 +276,20 @@ class Translations {
       'admission': 'प्रवेश',
       'exam': 'परीक्षा',
       'fee': 'शुल्क',
+
+      // Notification & Cache Deletion
+      'delete': 'हटाएं',
+      'delete_notification': 'सूचना हटाएं',
+      'delete_notifications': 'सूचनाएं हटाएं',
+      'select_all': 'सभी चुनें',
+      'deselect_all': 'सभी अचयनित करें',
+      'selected': 'चयनित',
+      'delete_confirm_single': 'क्या आप वाकई इस सूचना को स्थायी रूप से हटाना चाहते हैं?',
+      'delete_confirm_multiple': 'क्या आप वाकई चयनित सूचनाओं को स्थायी रूप से हटाना चाहते हैं?',
+      'permanent_delete': 'स्थायी रूप से हटाएं',
+      'notifications_deleted': 'सूचनाएं स्थायी रूप से हटा दी गईं',
+      'clear_cache_confirm': 'क्या आप वाकई कैश्ड डेटा और अस्थायी स्टोरेज को स्थायी रूप से साफ करना चाहते हैं?',
+      'action_cannot_be_undone': 'इस क्रिया को पूर्ववत नहीं किया जा सकता है।',
     },
     'marathi': {
       // Common
@@ -394,6 +422,20 @@ class Translations {
       'admission': 'प्रवेश',
       'exam': 'परीक्षा',
       'fee': 'शुल्क',
+
+      // Notification & Cache Deletion
+      'delete': 'हटवा',
+      'delete_notification': 'सूचना हटवा',
+      'delete_notifications': 'सूचना हटवा',
+      'select_all': 'सर्व निवडा',
+      'deselect_all': 'सर्व निवड रद्द करा',
+      'selected': 'निवडले',
+      'delete_confirm_single': 'तुम्हाला खात्री आहे की तुम्ही ही सूचना कायमची हटवू इच्छिता?',
+      'delete_confirm_multiple': 'तुम्हाला खात्री आहे की तुम्ही निवडलेल्या सूचना कायमच्या हटवू इच्छिता?',
+      'permanent_delete': 'कायमचे हटवा',
+      'notifications_deleted': 'सूचना कायमच्या हटवल्या',
+      'clear_cache_confirm': 'तुम्हाला खात्री आहे की तुम्ही कॅशे केलेला डेटा आणि तात्पुरता स्टोरेज कायमचा साफ करू इच्छिता?',
+      'action_cannot_be_undone': 'ही क्रिया पूर्ववत केली जाऊ शकत नाही.',
     },
   };
 

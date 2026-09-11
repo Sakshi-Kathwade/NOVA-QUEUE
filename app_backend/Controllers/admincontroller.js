@@ -10,7 +10,7 @@ const CompletedHistoryToken = require('../Models/completedHistoryTokenModel.js')
 const PendingHistoryToken = require('../Models/pendingHistoryTokenModel.js');
 const adminLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, fcmToken } = req.body;
 
     // 1️⃣ Validation
     if (!email || !password) {
@@ -38,13 +38,37 @@ const adminLogin = async (req, res) => {
       });
     }
 
-    // 4️⃣ Success
+    // 4️⃣ Push notification and welcome record
+    const notificationService = require('../utils/notificationService');
+    const Notification = require('../Models/notificationModel');
+
+    if (fcmToken) {
+      admin.fcmToken = fcmToken;
+      await admin.save();
+      await notificationService.sendNotification(
+        fcmToken,
+        admin._id,
+        "Welcome to NOVA-QUEUE",
+        "🔔 Welcome back, Administrator! Notifications are active.",
+        { type: "admin_login_alert" }
+      );
+    } else {
+      await Notification.create({
+        userId: admin._id,
+        title: "Welcome to NOVA-QUEUE",
+        body: "🔔 Welcome to NOVA-QUEUE! Manage your queues and service counters efficiently.",
+        data: { type: "admin_login_alert" }
+      });
+    }
+
+    // 5️⃣ Success
     return res.status(200).json({
       success: true,
       message: "Admin login successful",
       role: "admin",
       adminId: admin._id,
       email: admin.email,
+      name: admin.name || "",
     });
 
   } catch (error) {
@@ -254,6 +278,7 @@ const updateAdminProfile = async (req, res) => {
       });
     }
 
+    if (name !== undefined) admin.name = name;
     if (email) admin.email = email;
 
     if (req.file) {
@@ -267,6 +292,7 @@ const updateAdminProfile = async (req, res) => {
       message: "Profile updated successfully",
       admin: {
         adminId: admin._id,
+        name: admin.name || "",
         email: admin.email,
         role: admin.role || "Admin",
         profilePicture: admin.profilePicture,
@@ -275,6 +301,7 @@ const updateAdminProfile = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
+      error: error.message,
       message: error.message,
     });
   }

@@ -210,23 +210,31 @@ exports.getTokenByQueueAndStudent = async (req, res) => {
   try {
     const { queueName, studentId } = req.params;
 
-    // 🔹 Find student's token in THIS queue only
-    const token = await Token.findOne({
-      queueName: queueName,
+    // 🔹 Build search query
+    let query = {
       studentId: studentId,
       status: { $in: ["waiting", "serving", "hold"] },
-    });
+    };
+
+    if (queueName && queueName !== "all" && queueName !== "null" && queueName !== "undefined" && queueName.trim() !== "") {
+      query.queueName = queueName;
+    }
+
+    // 🔹 Find student's active token
+    const token = await Token.findOne(query).sort({ createdAt: -1 });
 
     if (!token) {
       return res.status(404).json({
         success: false,
-        message: "No token found for this student in this queue",
+        message: "No active token found for this student",
       });
     }
 
+    const effectiveQueueName = token.queueName;
+
     // 🔹 Count BOTH waiting, serving, and hold students ahead in SAME queue
     const studentsAhead = await Token.countDocuments({
-      queueName: queueName,
+      queueName: effectiveQueueName,
       status: { $in: ["waiting", "serving", "hold"] },
       tokenNumber: { $lt: token.tokenNumber },
     });
